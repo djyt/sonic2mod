@@ -47,7 +47,7 @@ class TrackState:
         self.detune = 0                     # smpsDetune / smpsAlterNote: raw FNUM (PSG: divider) offset
         self.voice: int | None = None       # smpsSetvoice index
         self.envelope: str | None = None    # the driver's VoiceIndex: header voice, then every smpsPSGvoice
-        self.noise_form: int | None = None  # the smpsPSGform byte once one ran (SMPS_Track.PSGNoise); permanent
+        self.noise_form: int | None = None  # the smpsPSGform byte while one holds (SMPS_Track.PSGNoise)
         self.fill = 0                       # smpsNoteFill frames, 0 = off
         self.modulation: tuple[int, ...] | None = None   # smpsModSet (wait, speed, delta, steps)
         self.modulation_on = False          # smpsModSet / smpsModOn on, smpsModOff off
@@ -85,7 +85,8 @@ class TrackState:
             case ChangeTransposition(semitones=semitones):
                 self.transpose += semitones
             case PsgForm(noise=noise):
-                # cfSetPSGNoise: a noise channel from here on (nothing in Sonic 1 music turns it back)
+                # cfSetPSGNoise: a noise channel from here on, until a driver turns it back (None:
+                # Streets of Rage 2's; nothing in Sonic 1 music does)
                 self.noise_form = noise
             case PsgVoice(envelope=envelope):
                 # cfSetPSGTone: VoiceIndex, in tone and noise mode alike
@@ -111,7 +112,7 @@ class TrackState:
 
     @property
     def in_noise_mode(self) -> bool:
-        """True once smpsPSGform ran on this channel; nothing in Sonic 1 music leaves it."""
+        """True while a noise form holds on this channel (smpsPSGform until a PsgForm(None))."""
         return self.noise_form is not None
 
     def level_db(self, pan_law_db: float) -> float:

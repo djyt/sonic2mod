@@ -14,6 +14,13 @@ phase, so a whole burst lands in one frame:
 The phase is the commonest burst start (mod the frame), found from the writes themselves; the
 first frame is the one holding the log's first write.  This table is what the lift reads.
 
+A DAC sample starts at a PCM seek, or where bytes resume after a pause.  A ripper's bank is the
+stream as heard, so a sample cutting into another often needs neither (Streets of Rage 2's: no
+rest stops one); given the driver's samples, a start is wherever the stream begins one of them,
+but where the sample playing holds those bytes next (a drum's opening repeated in its own body):
+
+    stream   ... 83 8d 81 87 | 86 7a 80 86 7a 80 7f 7e ...      $82's opening: a start, no seek
+
 A driver on Timer A (OutRun's) cuts the log itself: each update ends by resetting the timer's flag
 ($27, bit 4), so a frame is the writes up to and including a reset.  Its frames follow the updates
 the driver ran, however late each began (it polls the timer) and whichever overflows a long update
@@ -26,14 +33,15 @@ swallowed:
 from __future__ import annotations
 
 import bisect
-from collections import Counter
-from collections.abc import Iterator
+from collections import Counter, deque
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from enum import Enum
 
 from ..chips import OPERATOR_SLOT_OFFSETS, split_operator_register
 from .chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_TONE_CHANNELS, Change, ChangeKind, ChipState
 from .reader import VGM_SAMPLE_RATE, VgmLog, VgmOp, VgmWrite
+from .writes import is_dac_byte
 
 NTSC_RATE = 60
 
@@ -48,7 +56,7 @@ _BURST_GAP = 200                # samples: writes closer than this belong to one
 _PHASE_WINDOW = 16              # samples either side of a phase that count towards it
 _FRAME_LEAD_DIVISOR = 4         # a frame's window opens a quarter frame before the phase
 _DAC_PAUSE_DIVISOR = 4          # DAC bytes resuming after a quarter frame's silence: a sample started
-_DAC_REG = 0x2A
+DAC_OPENING = 16                # bytes of a sample's start that identify it in the stream
 _VOICE_FIRST = 0x30             # DT/MUL .. SSG-EG: the operator registers
 _VOICE_LAST = 0x9F
 _REGISTER_STRIDE = 0x10         # from one operator register's base to the next
@@ -102,6 +110,7 @@ class DacStart:
 
     offset: int                     # the PCM bank byte it starts on
     sample: int                     # where in the log (the Z80 starts a sample late)
+    sound: int | None = None        # the driver's sample it opens (frame_log's openings); None: unknown
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,22 +180,25 @@ class FrameLog:
         return VGM_SAMPLE_RATE * (len(timed) - 1) / (timed[-1] - timed[0])
 
 
-def frame_log(log: VgmLog, state: ChipState | None = None, cut: FrameCut = FrameCut.VINT) -> FrameLog:
+def frame_log(log: VgmLog, state: ChipState | None = None, cut: FrameCut = FrameCut.VINT,
+              dac_samples: Mapping[int, bytes] | None = None) -> FrameLog:
     """`log` cut into frames (`state`: the chips to replay into, with the log's clocks by default),
-    one each run of its driver's update."""
+    one each run of its driver's update.  `dac_samples`: the driver's samples (sound -> its bytes
+    as written to $2A); given, a DAC sample starts where the stream begins one."""
     state = state or ChipState.for_log(log)
+    samples = dict(dac_samples or {})
     if cut is FrameCut.TIMER_A:
-        return _cut_at_resets(log, state)
+        return _cut_at_resets(log, state, samples)
     frame_samples = VGM_SAMPLE_RATE // (log.header.rate or NTSC_RATE)
     phase = _burst_phase(log.writes, frame_samples)
     lead = phase - frame_samples // _FRAME_LEAD_DIVISOR
     origin = -((frame_samples - lead % frame_samples) % frame_samples)
 
-    builder = _FrameBuilder(state, origin, frame_samples)
+    builder = _FrameBuilder(state, origin, frame_samples, samples=samples)
     return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample, log.pcm, log.end_sample)
 
 
-def _cut_at_resets(log: VgmLog, state: ChipState) -> FrameLog:
+def _cut_at_resets(log: VgmLog, state: ChipState, samples: dict[int, bytes]) -> FrameLog:
     """`log` cut after each Timer A reset."""
     cuts = tuple(w.sample for w in log.writes if _is_reset(w))
     if not cuts:
@@ -194,7 +206,7 @@ def _cut_at_resets(log: VgmLog, state: ChipState) -> FrameLog:
     timed = [c for c in cuts if c > 0]
     mean = round((timed[-1] - timed[0]) / (len(timed) - 1)) if len(timed) > 1 else VGM_SAMPLE_RATE // NTSC_RATE
 
-    builder = _FrameBuilder(state, 0, mean, cuts)
+    builder = _FrameBuilder(state, 0, mean, cuts, samples)
     return FrameLog(list(builder.run(log)), mean, 0, 0, log.loop_sample, log.pcm, log.end_sample, cuts)
 
 
@@ -202,16 +214,12 @@ def _is_reset(w: VgmWrite) -> bool:
     return w.op is VgmOp.FM and w.port == 0 and w.reg == _REG_MODE and bool(w.value & _RESET_A)
 
 
-def _is_dac_byte(w: VgmWrite) -> bool:
-    return w.op is VgmOp.FM and w.port == 0 and w.reg == _DAC_REG
-
-
 def _burst_phase(writes: list[VgmWrite], frame_samples: int) -> int:
     """The commonest burst start within a frame, counting starts within _PHASE_WINDOW of it."""
     starts: list[int] = []
     last = None
     for w in writes:
-        if _is_dac_byte(w) or w.op is VgmOp.PCM_SEEK:
+        if is_dac_byte(w) or w.op is VgmOp.PCM_SEEK:
             continue
         if last is None or w.sample - last > _BURST_GAP:
             starts.append(w.sample % frame_samples)
@@ -228,10 +236,16 @@ def _burst_phase(writes: list[VgmWrite], frame_samples: int) -> int:
 
 class _FrameBuilder:
     """Replays the log, closing a Frame each time a write falls past the current one (`cuts`: at
-    each reset instead, the frame after the last to the log's end)."""
+    each reset instead, the frame after the last to the log's end).  `samples` (sound -> its bytes):
+    the DAC's starts are where the stream begins one, seeks and pauses aside."""
 
-    def __init__(self, state: ChipState, origin: int, frame_samples: int, cuts: tuple[int, ...] = ()) -> None:
+    def __init__(self, state: ChipState, origin: int, frame_samples: int, cuts: tuple[int, ...] = (),
+                 samples: dict[int, bytes] | None = None) -> None:
         self._state = state
+        self._samples = samples or {}
+        self._openings = {data[:DAC_OPENING]: sound for sound, data in self._samples.items()}
+        self._playing: int | None = None          # the sample the last start opened
+        self._recent: deque[tuple[int, int, int]] = deque(maxlen=DAC_OPENING)   # (byte, sample, bank offset)
         self._origin = origin
         self._frame_samples = frame_samples
         self._cuts = cuts
@@ -279,8 +293,8 @@ class _FrameBuilder:
 
     def _apply(self, w: VgmWrite, after: VgmWrite | None) -> None:
         # The DAC's byte stream, most of a log's writes, is only counted: no state reads 0x2A
-        if w.reg == _DAC_REG and w.port == 0 and w.op is VgmOp.FM:
-            self._dac_write(w.sample)
+        if is_dac_byte(w):
+            self._dac_write(w.sample, w.value)
             return
         change = self._state.apply(w, after)
         if change is not None:
@@ -298,7 +312,8 @@ class _FrameBuilder:
             self._period_writes[ch] += 1
         elif kind is ChangeKind.PCM_SEEK:
             self._pcm_at = change.value
-            self._start(change.sample)
+            if not self._openings:
+                self._start(change.sample)
 
     def _start(self, sample: int) -> None:
         """A new sample: the silence before it is no gap of the byte stream."""
@@ -306,10 +321,17 @@ class _FrameBuilder:
         self._since_start = 0
         self._last_dac = None
 
-    def _dac_write(self, sample: int) -> None:
+    def _dac_write(self, sample: int, value: int) -> None:
         # Bytes resuming after a pause, no seek: the bank holds the next sample where the last ended
+        # (known samples: a start is where one opens, and a pause is no gap of the stream)
         if self._last_dac is not None and sample - self._last_dac > self._frame_samples // _DAC_PAUSE_DIVISOR:
-            self._start(sample)
+            if self._openings:
+                self._last_dac = None
+                self._recent.clear()                    # an opening's bytes are back to back
+            else:
+                self._start(sample)
+        if self._openings:
+            self._opened(sample, value)
 
         self._dac_writes += 1
         self._since_start += 1
@@ -317,6 +339,29 @@ class _FrameBuilder:
         if self._last_dac is not None:
             self._gaps[sample - self._last_dac] += 1
         self._last_dac = sample
+
+    def _opened(self, sample: int, value: int) -> None:
+        """A start where the last DAC_OPENING bytes open one of the driver's samples: dated by its
+        first byte, those bytes counted as its own."""
+        self._recent.append((value, sample, self._pcm_at))
+        if len(self._recent) < DAC_OPENING:
+            return
+        window = bytes(b for b, _, _ in self._recent)
+        sound = self._openings.get(window)
+        if sound is None or self._continues(window):
+            return
+        _, first, offset = self._recent[0]
+        self._starts.append(DacStart(offset, first, sound))
+        self._playing = sound
+        self._since_start = DAC_OPENING - 1          # this write is counted next
+        self._recent.clear()
+
+    def _continues(self, window: bytes) -> bool:
+        """`window`, the last DAC_OPENING bytes, is what the sample playing holds there."""
+        if self._playing is None:
+            return False
+        played = self._since_start + 1            # this write's not yet counted
+        return self._samples[self._playing][played - DAC_OPENING:played] == window
 
     def _close(self) -> Frame:
         s = self._state

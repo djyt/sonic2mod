@@ -74,6 +74,8 @@ class Report:
     derived: list = field(default_factory=list)   # the sections a minimal config left to the song
     stale: list = field(default_factory=list)     # its sample_list files these settings do not cut
     folded: dict = field(default_factory=dict)    # {voice copy: (its voice, notes)}: no slot for it (Derivation)
+    volumes_folded: dict = field(default_factory=dict)   # {envelope at a volume: (the one it plays as, notes)}
+    windows_merged: dict = field(default_factory=dict)   # {voice / envelope: windows merged}
 
 
 # ── Warnings: (check, headline, fix) ──────────────────────────────────────────────────────────
@@ -221,10 +223,29 @@ def _w_detune_no_slot(w: dict):
 
 
 def _w_copy_no_slot(w: dict):
-    parts = ", ".join(f"${copy:02X} as ${plain:02X} ×{n}" for copy, (plain, n) in
+    parts = ", ".join(f"${copy:02X} as ${plain:02X} ({n} ticks)" for copy, (plain, n) in
                       sorted(w['folded'].items(), key=lambda kv: -kv[1][1]))
-    return ("pitch", f"{len(w['folded'])} voice copies (FM3 special mode, LFO) have no free slot and play as "
+    return ("pitch", f"{len(w['folded'])} voice copies (LFO, register patch, FM3 special mode) have no free slot and play as "
                      f"their voice: {parts}", "free an instrument slot")
+
+
+def _w_render_pitch(w: dict):
+    parts = ", ".join(f"inst {inst} {cents:+.0f} c" for inst, cents in sorted(w['off'].items()))
+    return ("pitch", f"{len(w['off'])} samples rendered off the pitch their notes are placed for: {parts}",
+            "a renderer and core.plan.rendered_pitches disagree: fix the renderer")
+
+
+def _w_volume_no_slot(w: dict):
+    parts = ", ".join(f"{label} as {head} ({n} ticks)" for label, (head, n) in
+                      sorted(w['folded'].items(), key=lambda kv: -kv[1][1]))
+    return ("pitch", f"{len(w['folded'])} envelopes at a volume have no free slot and play another volume's "
+                     f"sample, Cxx the difference: {parts}", "free an instrument slot")
+
+
+def _w_window_no_slot(w: dict):
+    parts = ", ".join(f"{key} -{n}" for key, n in sorted(w['merged'].items(), key=lambda kv: -kv[1]))
+    return ("pitch", f"{sum(w['merged'].values())} pitch windows merged to fit the slots (notes play further "
+                     f"from their sample's pitch): {parts}", "free an instrument slot")
 
 
 def _lost_parts(w: dict) -> list[str]:
@@ -306,6 +327,8 @@ _WARNINGS: dict[WarningKind, Callable[[dict], tuple[str, str, str | None]]] = {
     WarningKind.NOISE_ENVELOPES: _w_noise_envelopes, WarningKind.SYNTH_ROOT_AMBIGUOUS: _w_synth_root_ambiguous,
     WarningKind.DETUNE_NO_SLOT: _w_detune_no_slot,
     WarningKind.COPY_NO_SLOT: _w_copy_no_slot,
+    WarningKind.RENDER_PITCH: _w_render_pitch,
+    WarningKind.VOLUME_NO_SLOT: _w_volume_no_slot, WarningKind.WINDOW_NO_SLOT: _w_window_no_slot,
     WarningKind.MERGE_LOST: _w_merge_lost, WarningKind.MERGE_HEADROOM: _w_merge_headroom,
     WarningKind.MERGE_UNSUPPORTED: _w_merge_unsupported, WarningKind.MERGE_MISSING_SAMPLE: _w_merge_missing,
     WarningKind.MERGE_FILL_LOST: _w_merge_fill_lost, WarningKind.MERGE_DROPPED: _w_merge_dropped,
@@ -823,6 +846,8 @@ def print_report(console: Console, rep: Report) -> None:
     sources = rep.converter.sample_sources()
     flags = sample_flags(rows, rep.converter.warnings)
     folded = [{'type': WarningKind.COPY_NO_SLOT, 'folded': rep.folded}] if rep.folded else []
+    folded += [{'type': WarningKind.VOLUME_NO_SLOT, 'folded': rep.volumes_folded}] if rep.volumes_folded else []
+    folded += [{'type': WarningKind.WINDOW_NO_SLOT, 'merged': rep.windows_merged}] if rep.windows_merged else []
     lines = warning_lines(folded + rep.converter.warnings)
     # The audit's flags on the written file (an unused or empty slot) count as sample warnings;
     # the converter's own sample warnings are listed already

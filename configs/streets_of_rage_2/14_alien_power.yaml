@@ -1,0 +1,33 @@
+# Streets of Rage 2 - Alien Power.  A minimal config: everything else is derived from the ROM
+# (docs/todo/done/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
+name: "Alien Power"
+input_file: "input/roms/Streets of Rage 2 (USA).md"
+rom_song: "$14"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [7, "fm_v0c_F4.raw", 10, 0]   # VGZ: -4.4 dB at 6
+  - [8, "fm_v0d_E3.raw", 21, 0]   # VGZ: -3.7 dB at 14
+  - [9, "fm_v0e_E4.raw", 13, 0]   # VGZ: -4.5 dB at 8
+  - [10, "fm_v0f_F3.raw", 22, 0]   # VGZ: -3.8 dB at 14
+  - [11, "fm_v10_E3.raw", 10, 0]   # VGZ: -4.5 dB at 6
+  - [5, "fm_v00_Bb2.raw", 22, 0]   # VGZ: -3.8 dB at 14
+  - [6, "fm_v00_B3.raw", 10, 0]   # VGZ: -4.4 dB at 6
+  - [12, "fm_v11_B3.raw", 30, 0]   # VGZ: -4.1 dB at 19
+  - [13, "fm_v12_F3.raw", 10, 0]   # VGZ: -4.5 dB at 6
+  - [14, "fm_v13_D4.raw", 23, 0]   # VGZ: -4.2 dB at 14
+  - [15, "fm_v02_Eb3.raw", 64, 0]   # VGZ: -4.9 dB at 38
+  - [13, "fm_v02_E4.raw", 64, 0]   # VGZ: -4.8 dB at 38
+  - [16, "fm_v14_B3.raw", 14, 0]   # VGZ: -4.8 dB at 8
+  - [17, "fm_v15_Ab3.raw", 22, 0]   # VGZ: -3.9 dB at 14
+  - [18, "fm_v16_D4.raw", 10, 0]   # VGZ: -4.8 dB at 6
+  - [19, "fm_v17_A3.raw", 30, 0]   # VGZ: -4.1 dB at 19
+  - [20, "fm_v18_Ab3.raw", 10, 0]   # VGZ: -4.6 dB at 6
+  - [21, "fm_v19_C4.raw", 21, 0]   # VGZ: -3.7 dB at 14
+  - [22, "fm_v1a_A3.raw", 14, 0]   # VGZ: -4.7 dB at 8
+  - [23, "fm_v1b_C7.raw", 47, 0]   # VGZ: -1.9 dB at 38
+  - [24, "fm_v1c_C7.raw", 53, 0]   # VGZ: -4.4 dB at 32
+  - [25, "fm_v03_D2.raw", 63, 0]   # VGZ: -4.4 dB at 38
+  - [26, "fm_v05_C7.raw", 31, 0]   # VGZ: -4.3 dB at 19
+  - [28, "fm_v07_C7.raw", 32, 0]   # VGZ: -4.5 dB at 19
+  - [29, "fm_v08_C4.raw", 44, 0]   # VGZ: -1.2 dB at 38
+  - [30, "psg_$00_Ab4.raw", 7, 0]   # VGZ: +1.1 dB at 8

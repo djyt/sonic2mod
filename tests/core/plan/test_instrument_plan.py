@@ -6,15 +6,16 @@ each instrument's sounding pitch, roots resolved and detune planned.
 
 from __future__ import annotations
 
+import dataclasses
 import math
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
 from core.audio import semitone_to_hz
-from core.chips import freq_word_hz
+from core.chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
 from core.config import ConversionConfig, InstrumentRange, PsgInstrumentEntry, load_settings
-from core.drivers.reference import FM_FREQUENCIES, PSG_FREQUENCIES
+from core.drivers.reference import FM_FREQUENCIES, SONIC1_RULES
 from core.mod import ModNote
 from core.plan import (
     ConversionPlan,
@@ -25,7 +26,7 @@ from core.plan import (
     prepare_instruments,
     sounding_pitches,
 )
-from core.smps import PsgTable, fm_table_index
+from core.smps import fm_table_index
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -38,9 +39,8 @@ def _word_cents(semitone: int, table: tuple[int, ...]) -> float:
 
 
 def _song(fm_frequencies: tuple[int, ...]) -> SimpleNamespace:
-    return SimpleNamespace(voices=[SimpleNamespace(index=0, channel_fnum_offset=0)],
-                           rules=SimpleNamespace(fm_frequencies=fm_frequencies,
-                                                 psg_table=PsgTable.of(PSG_FREQUENCIES, PSG_FREQUENCIES)))
+    rules = dataclasses.replace(SONIC1_RULES, fm_frequencies=fm_frequencies)
+    return SimpleNamespace(voices=[SimpleNamespace(index=0, channel_fnum_offset=0)], rules=rules)
 
 
 class Sounding(unittest.TestCase):
@@ -65,7 +65,9 @@ class Sounding(unittest.TestCase):
         word = _word_cents(64, FM_FREQUENCIES)                  # Sonic 1's E5: +4 c
         self.assertAlmostEqual(got[3].cents, word + detune_cents(64, 3, FM_FREQUENCIES))
         self.assertAlmostEqual(got[23].cents, word + detune_cents(64, -20, FM_FREQUENCIES))
-        self.assertEqual((got[5].root, got[5].root_semitone, got[5].cents), (_C2, 24, 0.0))   # below the table
+        # below the PSG's reach: rendered at the clamped divider 1023 (A2), 889 c above C2
+        self.assertEqual((got[5].root, got[5].root_semitone), (_C2, 24))
+        self.assertAlmostEqual(got[5].cents, 1200 * math.log2(psg_frequency_hz(1023, MD_PSG_CLOCK) / semitone_to_hz(24)))
         self.assertAlmostEqual(got[7].cents, -41.6, places=1)     # the driver's B7: divider 29
 
     def test_a_table_that_plays_its_notes_off_their_names(self):

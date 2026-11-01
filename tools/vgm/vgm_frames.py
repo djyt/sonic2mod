@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Check a song against its rip's frame log, note by note, with no lift: the chip's pitch, level
-and voice registers on each note's frame (core/audit/frame_check.py).  For any driver; what the
+"""Check a song against its rip's frame log, note by note, with no lift: the chip's pitch, level,
+voice registers and FM pan on each note's frame (core/audit/frame_check.py).  For any driver; what the
 lift (vgm_lift.py) cannot read - a detune, a voice, a slide that writes no key - this sees.
 
 Attacking notes are judged; tied ones are counted apart (vibrato runs on through a tie).  The
@@ -24,6 +24,7 @@ Usage::
     python tools/vgm/vgm_frames.py configs/streets_of_rage/81_fighting_in_the_street.yaml   # its misses
     python tools/vgm/vgm_frames.py --all --configs configs/streets_of_rage                  # a line per pair
     python tools/vgm/vgm_frames.py --all --configs configs/golden_axe --channels FM
+    python tools/vgm/vgm_frames.py configs/streets_of_rage_2/06_slow_moon.yaml --tied           # its tied notes' misses
     python tools/vgm/vgm_frames.py --all --glitches --configs configs/space_harrier_2       # glitch candidates
 """
 
@@ -48,17 +49,16 @@ from core.audit import (
     RipFaults,
     SongSource,
     check_frames,
-    frame_cut,
     named,
     scan_glitches,
     workers,
 )
 from core.config import find_settings, load_settings
 from core.ui import add_shelf_arguments, rip_shelf
-from core.vgm import FrameLog, load_frames
+from core.vgm import FrameLog
 
 _DEFAULT_MISSES = 8               # misses listed per channel and aspect
-_KINDS = ("FM", "PSG")
+_KINDS = ("FM", "PSG", "NOISE")
 
 
 def _check(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
@@ -68,7 +68,7 @@ def _check(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
         source = SongSource.from_config(config, ROOT)
         title = f"{rip.stem} {source.sound}".rstrip()
         song = source.read()
-        return title, check_frames(song, load_frames(rip, cache_dir, frame_cut(song)), channels, faults)
+        return title, check_frames(song, source.rip_frames(rip, song, cache_dir), channels, faults)
     except (OSError, ValueError) as e:
         return f"{rip.stem}: not read: {e}", None
 
@@ -79,7 +79,7 @@ def _scan(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
     try:
         source = SongSource.from_config(config, ROOT)
         song = source.read()
-        frames = load_frames(rip, cache_dir, frame_cut(song))
+        frames = source.rip_frames(rip, song, cache_dir)
         scan = scan_glitches(song, frames, channels, faults)
     except (OSError, ValueError) as e:
         return f"{rip.stem}: not read: {e}", []
@@ -143,13 +143,14 @@ def _print_line(title: str, check: FrameCheck | None, faults: RipFaults) -> None
     print(f"  {title:<34} offset {check.offset:>3}{early}   {_tally(check, False)}" + "".join(f"   {e}" for e in extra))
 
 
-def _print_misses(check: FrameCheck, faults: RipFaults, limit: int) -> None:
-    """The rip's known faults; each channel and aspect's attacking misses: how many, and the first `limit`."""
+def _print_misses(check: FrameCheck, faults: RipFaults, limit: int, tied: bool = False) -> None:
+    """The rip's known faults; each channel and aspect's attacking misses (`tied`: the tied notes'
+    instead): how many, and the first `limit`."""
     for line in faults.lines():
         print(f"  known rip fault: {line}")
     groups: dict[tuple[str, FrameAspect], list] = {}
     for miss in check.misses:
-        if not miss.tied:
+        if miss.tied == tied:
             groups.setdefault((miss.channel, miss.aspect), []).append(miss)
     for (channel, aspect), misses in sorted(groups.items()):
         print(f"  {channel} {aspect}: {len(misses)}")
@@ -166,6 +167,8 @@ def main() -> None:
     ap.add_argument("--channels", nargs="+", default=(), metavar="NAME", help="only these channels, or a prefix (FM, PSG)")
     ap.add_argument("--skip", nargs="+", default=(), metavar="NAME", help="leave these channels out (a prefix too)")
     ap.add_argument("--misses", type=int, default=_DEFAULT_MISSES, help=f"misses listed each (default {_DEFAULT_MISSES})")
+    ap.add_argument("--tied", action="store_true",
+                    help="list the tied notes' misses instead of the attacking ones (a vibrato runs on through a tie)")
     ap.add_argument("--glitches", action="store_true",
                     help="scan for the rip's own glitches (every channel a frame off at once): candidates, not verdicts")
     ap.add_argument("--settings", metavar="PATH", help="settings.yaml whose samples.render_cache keeps the frame logs")
@@ -209,7 +212,7 @@ def main() -> None:
         title, check = _check(configs[0], rips[0], channels, faults[0], cache_dir)
         _print_line(title, check, faults[0])
         if check is not None:
-            _print_misses(check, faults[0], args.misses)
+            _print_misses(check, faults[0], args.misses, args.tied)
         sys.exit(0 if check is not None and check.ok else 1)
 
     # Every pair: a line each

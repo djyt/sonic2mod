@@ -10,14 +10,15 @@ import unittest
 from pathlib import Path
 
 from core.drivers.reference import SONIC1_RULES
-from core.drivers.smps68k.mucom import MUCOM
 from core.drivers.smps68k.sonic1 import SONIC1
+from core.drivers.smps68k.streets_of_rage import STREETS_OF_RAGE
 from core.smps import (
     ChannelType,
     CoordFlag,
     SmpsParser,
     flag_from_macro,
     flag_name,
+    parse_smps_note,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -30,7 +31,7 @@ _GHZ = _MUSIC / "Mus81 - GHZ.asm"
 
 class Flags(unittest.TestCase):
     def test_a_flag_is_a_meaning_each_driver_maps_its_bytes_to(self):
-        sonic1, streets = SONIC1.flags[ChannelType.FM], MUCOM.flags[ChannelType.FM]
+        sonic1, streets = SONIC1.flags[ChannelType.FM], STREETS_OF_RAGE.flags[ChannelType.FM]
         self.assertEqual([sonic1[b].flag for b in (0xE0, 0xE1, 0xEF)],
                          [CoordFlag.PAN, CoordFlag.DETUNE, CoordFlag.SET_VOICE])
         self.assertIs(streets[0xF0].flag, CoordFlag.SET_VOICE)          # another driver, another byte
@@ -47,3 +48,11 @@ class Flags(unittest.TestCase):
         effects = [ev.effect for ch in song.channels for ev in ch.events if ev.effect is not None]
         self.assertTrue(effects)
         self.assertTrue(all(isinstance(e.flag, CoordFlag) for e in effects))
+
+
+class NoteNames(unittest.TestCase):
+    def test_smps_names_and_pitches_past_them(self):
+        # nC0 = 0; nMaxPSG an alias; C8 and B8 past the note bytes (a PSG table to B8)
+        self.assertEqual([parse_smps_note(n) for n in ("C0", "Bb7", "MaxPSG", "C8", "B8")], [0, 94, 69, 96, 107])
+        with self.assertRaisesRegex(ValueError, "Unknown SMPS note name"):
+            parse_smps_note("H2")

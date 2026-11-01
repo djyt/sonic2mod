@@ -8,13 +8,13 @@ aside for the mixer (core.merge) instead of installed.
 """
 
 import dataclasses
+import math
 import os
 from collections.abc import Iterable
 
 from ..audio import DEFAULT_DITHER, SustainLoop, full_scale_int8, saturate, signed8
-from ..chips import MD_PSG_CLOCK
+from ..chips import MD_FM_CLOCK, MD_PSG_CLOCK
 from ..config import (
-    ConversionConfig,
     PsgSynthesisSettings,
     SampleRow,
     SynthesisSettings,
@@ -32,6 +32,7 @@ from ..plan import (
     fm_catalogue,
     fm_drum_catalogue,
     psg_catalogue,
+    rendered_pitches,
 )
 from ..smps import SmpsSong
 from ..synth import generate_fm_drums, generate_fm_samples, generate_psg_samples
@@ -40,16 +41,20 @@ from .level_plan import LevelPlanner
 from .sustain_plan import SustainPlanner
 
 
-def psg_synth_instruments(config: ConversionConfig, psg_synth: PsgSynthesisSettings | None) -> set[int]:
+def psg_synth_instruments(conv: ConversionPlan, psg_synth: PsgSynthesisSettings | None) -> set[int]:
     """The PSG instruments that will be synthesized, so disk loading skips them (no spurious
-    "file not found" warnings): every map entry's, a noise entry's `envelopes:` variants too."""
+    "file not found" warnings, no empty slot): every map entry's, a noise entry's `envelopes:`
+    variants, every detune variant (the catalogue the renderer renders, entries without a root too)."""
     if not (psg_synth and psg_synth.enabled):
         return set()
+    config = conv.config
     insts = {e.mod_instrument for e in config.psg_map.values()}
     insts |= {i for e in config.psg_map.values() for i in e.envelopes.values()}
     insts |= {e.mod_instrument for entries in config.psg_voice_map.values() for e in entries}
-    return insts
+    return insts | set(psg_catalogue(conv))
 
+
+_RENDER_CENTS = 5.0          # a tone rendered further than this from its notes' pitch is warned
 
 class SampleInstaller:
     """One pass's samples into `mod`: `synth` / `psg_synth` the settings as given (dither, clocks),
@@ -80,6 +85,8 @@ class SampleInstaller:
                                                       #   quantisation: what the composite mixer mixes from
         self.sample_rates: dict[int, int] = {}        # {instrument: Hz its synthesised sample was rendered at}
         self.fm_render_levels: dict[int, tuple[int, bool]] = {}   # {instrument: (TL, panned) it was rendered at}
+        self.rendered_hz: dict[int, float] = {}       # {instrument: Hz each tone was rendered at, as the
+                                                      #   renderers wrote it to the chip}
 
     @property
     def dither(self) -> str:
@@ -105,6 +112,27 @@ class SampleInstaller:
             self._placeholders()
         self._saturate_dac_samples()
         self._synthesize_psg(psg_synth, noise_env)
+        self._check_render_pitches(synth, psg_synth)
+
+    def _check_render_pitches(self, synth: SynthesisSettings | None, psg_synth: PsgSynthesisSettings | None) -> None:
+        """Each tone sample rendered at the pitch its notes are placed for (core.plan.rendered_pitches),
+        else warned: a renderer reading a table its own way puts a whole song off, and the pitch
+        audit, which models the samples from the plan, cannot see it (Streets of Rage 2's PSG,
+        three semitones low, heard before it was found).  At another clock than the Mega Drive's
+        the renderers take equal temperament: not compared."""
+        fm_ok = synth is not None and synth.clock_rate == MD_FM_CLOCK
+        psg_ok = psg_synth is not None and psg_synth.clock_rate == MD_PSG_CLOCK
+        fm_insts = set(fm_catalogue(self._song, self._conv).instruments)
+        off = {}
+        for inst, want in rendered_pitches(self._song, self._conv).items():
+            got = self.rendered_hz.get(inst)
+            if got is None or not (fm_ok if inst in fm_insts else psg_ok):
+                continue
+            cents = 1200 * math.log2(got / want)
+            if abs(cents) > _RENDER_CENTS:
+                off[inst] = cents
+        if off:
+            self._diag.warn(WarningKind.RENDER_PITCH, off=off)
 
     def entry_dithers(self) -> dict[int, str]:
         """{instrument: dither} for every synthesised instrument whose entry says `dither:` (the
@@ -248,7 +276,7 @@ class SampleInstaller:
         fm_samples = generate_fm_samples(
             self._song, self._conv, synth, tl_offsets=tl_offsets,
             peaks_out=fm_peaks, loops=fm_loops, loops_out=self.loops, release_out=self.release,
-            raw_out=self.raw_renders, cache_out=fm_cache,
+            raw_out=self.raw_renders, cache_out=fm_cache, pitches_out=self.rendered_hz,
             extra=[c.chip_base for c in chip_bases.values() if c.chip_base is not None])
         if fm_cache:
             self._diag.info(InfoKind.RENDER_CACHE, chip="FM", **fm_cache)
@@ -304,7 +332,8 @@ class SampleInstaller:
             self._conv, psg_synth, self._song.rules, rate3_dividers={i: d.n for i, d in rate3.items()},
             noise_envelopes={i: d.envelope for i, d in noise_env.items()},
             loops=psg_synth.loops_for(self._config.merge_active), loops_out=psg_loops,
-            raw_out=self.raw_renders, cache_out=psg_cache)
+            raw_out=self.raw_renders, cache_out=psg_cache, release_out=self.release,
+            pitches_out=self.rendered_hz)
         if psg_cache:
             self._diag.info(InfoKind.RENDER_CACHE, chip="PSG", **psg_cache)
 

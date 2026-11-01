@@ -3,9 +3,9 @@
 bytecode: what the lift gets wrong, or where the song reads other than the game played.
 
 Both songs go through core.smps.played_song (what the driver plays, the spelling gone) and
-compare_songs matches their notes by start tick, aspect by aspect: by default what the lift reads
-(onset, length, note), with --aspects all also pitch, voice, level, pan, modulation, fill, noise
-and dac (core/audit/rip_diff.py).  A tie that changes nothing compared is merged into the note
+compare_songs matches their notes by start tick, aspect by aspect: what the lift reads (onset,
+length, note; core/audit/rip_diff.py), up to the rip's last whole frame.  A note's pitch, level,
+voice and pan the lift does not read: tools/vgm/vgm_frames.py checks them on the rip's frames.  A tie that changes nothing compared is merged into the note
 before it on both sides.  The lift is given the song's tempo (modifier and divider; inferred
 only where it fits no schedule, said so); the channels compared are those both play.  --all's
 verdict is per channel kind, FM (what the lift reads in full) first.
@@ -46,15 +46,14 @@ _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
-from core.audit import ChannelChoice, RipDiff, RipFaults, SongSource, compare_with_rip, frame_cut, named, workers
+from core.audit import ChannelChoice, RipDiff, RipFaults, SongSource, compare_with_rip, named, workers
 from core.config import find_settings, load_settings, parse_number
-from core.smps import ALL_ASPECTS, Aspect
+from core.smps import Aspect
 from core.ui import add_shelf_arguments, kind_verdicts, modifier_text, rip_shelf, song_diff_lines
-from core.vgm import LIFTED_ASPECTS, LIFTED_KINDS, LiftOptions, is_vgm_path, load_frames
+from core.vgm import LIFTED_ASPECTS, LIFTED_KINDS, LiftOptions, is_vgm_path
 
 _DEFAULT_DIFFS = 12               # differences listed per channel
 _CONFIG_SUFFIXES = (".yaml", ".yml")
-_EVERY_ASPECT = "all"
 
 
 @dataclass
@@ -91,7 +90,7 @@ def _compare(rip: Path, source: SongSource | None, aspects: frozenset[Aspect], c
         song = source.read()
     except ValueError as e:                     # a ROM no variant reads, a song it refuses, a bad asm
         return _Result(rip, source, RipDiff(None, error=f"not read: {e}"))
-    frames = load_frames(rip, cache_dir, frame_cut(song))      # cut as the song's driver's update runs
+    frames = source.rip_frames(rip, song, cache_dir)
     return _Result(rip, source, compare_with_rip(song, frames, aspects, channels, lift, faults))
 
 
@@ -197,9 +196,7 @@ def _lift_options(args: argparse.Namespace) -> LiftOptions | None:
 
 
 def _aspects(names: list[str] | None) -> frozenset[Aspect]:
-    if not names:
-        return LIFTED_ASPECTS
-    return ALL_ASPECTS if _EVERY_ASPECT in names else frozenset(Aspect(a) for a in names)
+    return frozenset(Aspect(a) for a in names) if names else LIFTED_ASPECTS
 
 
 def main() -> None:
@@ -209,9 +206,10 @@ def main() -> None:
     add_shelf_arguments(ap)
     ap.add_argument("--only", nargs="+", metavar="NAME", help="with --all: rips or configs whose name holds one (02, 88_)")
     ap.add_argument("--input", "--compare", metavar="FILE", help="the song: an asm or a ROM (default: the rip's config's input_file)")
-    ap.add_argument("--rom-song", metavar="ID", help="with a ROM --input: its sound ($81 ...)")
-    ap.add_argument("--aspects", nargs="+", choices=[*(a.value for a in Aspect), _EVERY_ASPECT],
-                    help=f"compare these (default: what the lift reads, {' '.join(sorted(LIFTED_ASPECTS))}; {_EVERY_ASPECT}: every one)")
+    ap.add_argument("--rom-song", metavar="ID", help="with a ROM --input: its sound, by its driver's ID ($81 ...)")
+    ap.add_argument("--aspects", nargs="+", choices=sorted(a.value for a in LIFTED_ASPECTS),
+                    help="compare only these of what the lift reads (default: all of them); pitch, level, "
+                         "voice, pan: tools/vgm/vgm_frames.py")
     ap.add_argument("--channels", nargs="+", default=(), metavar="NAME",
                     help="compare only these channels, or every one a prefix names (FM, PSG)")
     ap.add_argument("--skip", nargs="+", default=(), metavar="NAME", help="leave these channels out (a prefix too)")

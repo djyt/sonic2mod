@@ -223,7 +223,9 @@ tone-2 divider lifted as PSG3's note so `derive_rate3_dividers` finds it.
 **Accept:** `psg_map` keys and noise envelopes derived from the lifted song equal the asm's.
 
 ### [ ] 1.8 DAC
-Started: a hit per `0xE0` seek, named `pcm 0x…` by its offset (`dac_hits`).  The rest is open.
+Started: a hit per `0xE0` seek, named `pcm 0x…` by its offset (`dac_hits`); with a ROM's samples, a
+hit where the stream begins one (`frame_log(dac_samples=)`: Streets of Rage 2's rips seek neither at
+a drum cutting into another nor only at starts).  The rest is open.
 - Notes from `0xE0` seeks; the sample is the data-block bytes from the seek to the last `0x8n`
   before the next seek or silence; the rate from the `0x8n` wait nibbles (the Z80 loop's period).
   Same offset at another rate = another pitch of the same sample (timpani).

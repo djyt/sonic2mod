@@ -18,7 +18,7 @@ from core.drivers import dac_samples, read_rom_song
 from core.drivers.reference import SONIC1_RULES
 from core.mod import ModNote
 from core.plan import ConversionPlan, complete_config, derive_config, starting_volume, walk_channel
-from core.plan.derive import _output_path, _windows
+from core.plan.derive import _output_path
 from core.rom import RomImage
 from core.smps import (
     NO_TEMPO_HOLDS,
@@ -39,11 +39,13 @@ from tests.roms import (
     GOLDEN_AXE_ROM,
     MOONWALKER_ROM,
     SPACE_HARRIER_2_ROM,
+    STREETS_OF_RAGE_2_ROM,
     STREETS_OF_RAGE_ROM,
     needs_golden_axe,
     needs_moonwalker,
     needs_space_harrier_2,
     needs_streets_of_rage,
+    needs_streets_of_rage_2,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -69,11 +71,6 @@ class StartingVolume(unittest.TestCase):
 
 
 class Helpers(unittest.TestCase):
-    def test_windows_span_what_their_lowest_pitch_allows(self):
-        self.assertEqual(_windows([40, 10, 45, 46, 81], lambda lo: 35), [(10, 45), (46, 81)])
-        self.assertEqual(_windows([60], lambda lo: 35), [(60, 60)])
-        self.assertEqual(_windows([10, 20, 30, 45], lambda lo: 40 - lo), [(10, 30), (45, 45)])
-
     def test_the_configs_tree_is_mirrored_under_output(self):
         self.assertEqual(_output_path(Path("configs/moonwalker/81_smooth_criminal.yaml")),
                          "output/moonwalker/81_smooth_criminal.mod")
@@ -291,8 +288,8 @@ class StreetsOfRage(unittest.TestCase):
         self.assertNotEqual(noise["envelopes"]["$00"], noise["mod_instrument"])
 
     def test_voice_copies_past_the_slots_play_as_their_voice(self):
-        # Big Boss ($90), windows of 9 (the shipped max_window): its special mode and LFO copies need 36 slots;
-        # the least played copies play as their plain voice, on its windows
+        # Big Boss ($90), windows of 9 (the shipped max_window): its copies need 36 slots; the least played
+        # LFO or register-patched copies play as their voice, on its windows
         rom = RomImage.load(STREETS_OF_RAGE_ROM)
         song = read_rom_song(rom, 0x90)
         out = derive_config({"name": "Big Boss", "input_file": str(STREETS_OF_RAGE_ROM), "rom_song": "$90"}, song,
@@ -301,6 +298,36 @@ class StreetsOfRage(unittest.TestCase):
         voices = {v.index: v for v in song.voices}
         self.assertLessEqual(len(out.data["sample_list"]), 31)
         self.assertTrue(out.folded)
-        for copy, (plain, _) in out.folded.items():
-            self.assertEqual(voices[copy].plain, plain)
-            self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][plain])
+        for copy, (voice, _) in out.folded.items():
+            self.assertIn(voice, (voices[copy].plain, voices[copy].unpatched))
+            self.assertIsNone(voices[copy].fnum_offsets)          # special mode's copies keep their slots
+            self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][voice])
+
+
+@needs_streets_of_rage_2
+class StreetsOfRage2(unittest.TestCase):
+    """Jungle Base ($05), windows of 9: 3 drums, 18 voices in 32 windows, an envelope at 7 volumes in 18: 53 slots."""
+
+    @classmethod
+    def setUpClass(cls):
+        rom = RomImage.load(STREETS_OF_RAGE_2_ROM)
+        cls.song = read_rom_song(rom, 0x05)
+        stated = {"name": "Jungle Base", "input_file": str(STREETS_OF_RAGE_2_ROM), "rom_song": "$05"}
+        settings = replace(load_settings(str(ROOT / "tests" / "settings.yaml"))[0], max_window=9)   # the shipped
+        cls.out = derive_config(stated, cls.song, "configs/streets_of_rage_2/05_jungle_base.yaml", settings, dac_samples(rom))
+
+    def test_it_fits_the_slots_by_volumes_then_copies_then_windows(self):
+        self.assertLessEqual(len(self.out.data["sample_list"]), 31)
+        self.assertTrue(self.out.volumes_folded and self.out.folded and self.out.windows_merged)
+
+    def test_every_note_falls_in_an_entry_of_its_voice(self):
+        config = ConversionConfig.from_data(self.out.data, "configs/streets_of_rage_2/05_jungle_base.yaml")
+        for source, ch in source_map(self.song).items():
+            if ch.header.channel_type == "DAC":
+                continue
+            chan = ChannelConfig(source=source, mod_channel=0)
+            for event, st, res in walk_channel(ch, ConversionPlan.of(config), chan):
+                if res is None or st.noise_form is not None:
+                    continue
+                entries = config.psg_voice_map[st.envelope or "$00"] if st.is_psg else config.voice_map[st.voice]
+                self.assertTrue(any(e.low <= res.chip <= e.high for e in entries), (source, event.tick_position))

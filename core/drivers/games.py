@@ -37,9 +37,10 @@ _GAMES = (
     Game("1f1e480f768237eb0c0e725b622b0d791f47a7a9", "Sonic the Hedgehog (Rev 01)", SmpsDriver.SONIC1, _SONIC1_REV01_FIXES),
     Game("70d9b760c87196af364492512104fa18c9d69cce", "Michael Jackson's Moonwalker (Rev A)", SmpsDriver.TYPE1A),
     Game("2ce17105ca916fbbe3ac9ae3a2086e66b07996dd", "Golden Axe (Rev A)", SmpsDriver.TYPE0FM),
-    Game("731cdf182fe647e4977477ba4dd2e2b46b9b878a", "Streets of Rage (Rev A)", SmpsDriver.MUCOM),
+    Game("731cdf182fe647e4977477ba4dd2e2b46b9b878a", "Streets of Rage (Rev A)", SmpsDriver.STREETS_OF_RAGE),
     Game("db4285e4ffb69aa9f1ca68c4103fbfd0843f7b86", "Space Harrier II", SmpsDriver.SH2),
     Game("95d2055ffd679ab19f0d4ca0af62a0d565bc258e", "OutRun (USA, Europe)", SmpsDriver.OUTRUN),
+    Game("8b656eec9692d88bbbb84787142aa732b44ce0be", "Streets of Rage 2 (USA)", SmpsDriver.MUCOM_MD),
 )
 
 _BY_SHA1 = {game.sha1: game for game in _GAMES}

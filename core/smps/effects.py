@@ -63,6 +63,10 @@ class CoordFlag(StrEnum):
     LEGATO = auto()               # Space Harrier II's $EE
     PITCH_ENVELOPE = auto()       # its $F4
     PAN_STEP = auto()             # its pan animation (a track flag): a step each read
+    SOFT_RELEASE = auto()         # Streets of Rage 2's $FF $F3 / $F5
+    ENVELOPE_PRESET = auto()      # its $F0 on the PSG
+    ADSR_ENVELOPE = auto()        # its $FA on the PSG
+    NOISE_RATE = auto()           # its $F8 on the PSG
 
 
 @dataclass(frozen=True)
@@ -180,7 +184,8 @@ class ModOff(PlayedEffect):
 @dataclass(frozen=True)
 class PsgForm(PlayedEffect):
     flag = CoordFlag.PSG_FORM
-    noise: int                    # the noise register byte
+    noise: int | None             # the noise register byte; None: the track plays tones again
+                                  # (Streets of Rage 2's $F7 8; SMPS has no such flag)
 
 
 @dataclass(frozen=True)
@@ -222,7 +227,7 @@ class SelectSample(PlayedEffect):
 
 @dataclass(frozen=True)
 class VolumeStep(DriverEffect):
-    """The track's volume as a step of its driver's table (TrackRules.volume_steps), the
+    """The track's volume as a step of its driver's table (TrackRules.volume.steps), the
     header volume added: the walk's SetVol."""
     flag = CoordFlag.VOLUME_STEP
     step: int
@@ -247,6 +252,40 @@ class Gate(DriverEffect):
     """Each note keyed off this many frames (track updates) before its end; 0: none."""
     flag = CoordFlag.GATE
     frames: int
+
+
+@dataclass(frozen=True)
+class SoftRelease(DriverEffect):
+    """While on, a key-off softens the note instead and it rings on (TrackRules.key_off.soft_release)."""
+    flag = CoordFlag.SOFT_RELEASE
+    level: int | None             # n, the level it softens by; None: the one set last
+    on: bool
+
+
+@dataclass(frozen=True)
+class EnvelopePreset(DriverEffect):
+    """The driver's ADSR envelope preset n (PlaybackRules.adsr_presets) from the next note on."""
+    flag = CoordFlag.ENVELOPE_PRESET
+    preset: int
+
+
+@dataclass(frozen=True)
+class AdsrEnvelope(DriverEffect):
+    """An ADSR envelope given whole (core/smps/adsr.py), from the next note on."""
+    flag = CoordFlag.ADSR_ENVELOPE
+    attack_level: int
+    attack_rate: int
+    decay_rate: int
+    sustain_level: int
+    sustain_rate: int
+    release_rate: int
+
+
+@dataclass(frozen=True)
+class NoiseRate(DriverEffect):
+    """The noise's rate (its register's bits 0-1) while the track plays noise: a PsgForm."""
+    flag = CoordFlag.NOISE_RATE
+    rate: int
 
 
 @dataclass(frozen=True)

@@ -372,8 +372,7 @@ class SmpsToModConverter:
         # Rendering pitches and detune variants (core.plan.prepare_instruments): every smpsAlterNote
         # detune an instrument plays gets its sample rendered at that offset.  Planned on the song
         # as written, as the audit tools plan it, and before the merge plan takes the slots left free.
-        self.plan_instruments()
-        psg_insts = psg_synth_instruments(self.config, self.psg_synth)
+        psg_insts = psg_synth_instruments(self.plan_instruments(), self.psg_synth)
 
         # The song's ticks as the MOD plays them: tempo dividers applied, loops replayed
         self.prepare_song()

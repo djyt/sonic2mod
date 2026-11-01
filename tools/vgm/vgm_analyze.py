@@ -14,6 +14,7 @@ Usage::
     python tools/vgm/vgm_analyze.py file.vgz --chip all --max-rows 0
     python tools/vgm/vgm_analyze.py file.vgz --max-rows 500 --clock 7670454
     python tools/vgm/vgm_analyze.py file.vgz --frames --chip all --channel FM1 PSG1   # frame by frame
+    python tools/vgm/vgm_analyze.py file.vgz --writes --chip all --channel FM3 --from 0 --to 8   # every write, in order
 
 Output columns (FM):
     time_ms   — milliseconds from track start (VGM 44100 Hz sample clock)
@@ -85,6 +86,7 @@ from core.vgm import (
     PsgFrame,
     VgmError,
     VgmLog,
+    decoded_writes,
     frame_log,
     noise_rate,
     noise_white,
@@ -283,8 +285,10 @@ def _frame_lines(frame: Frame, chip: str, state: ChipState) -> Iterator[tuple[st
         yield "DAC", _dac_line(frame.dac)
 
 
-def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[str] | None, max_rows: int) -> None:
-    """Each frame's writes, one line per channel written to: what the lift reads (core.vgm.frames)."""
+def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[str] | None, max_rows: int,
+                 first: int = 0, last: int | None = None) -> None:
+    """Each frame's writes (frames `first` to `last`), one line per channel written to: what the
+    lift reads (core.vgm.frames)."""
     fl = frame_log(log, state)
     loop = f", loops to frame {fl.loop_frame}" if fl.loop_frame is not None else ""
     print(f"Frames : {len(fl.frames)} of {fl.frame_samples} samples, bursts at +{fl.phase},"
@@ -295,7 +299,7 @@ def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[s
     print("-" * 96)
 
     shown, total = 0, 0
-    for frame in fl.frames:
+    for frame in fl.frames[first:None if last is None else last + 1]:
         for name, text in _frame_lines(frame, chip, state):
             if channel_filter and name not in channel_filter:
                 continue
@@ -311,6 +315,47 @@ def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[s
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+
+# --writes: the channels each --chip covers (YM: the YM2612's own registers)
+_WRITE_KINDS = {"fm": ("FM", "YM"), "psg": ("PSG", "NOISE"), "dac": ("DAC",), "all": ("FM", "YM", "PSG", "NOISE", "DAC")}
+
+
+def print_writes(log: VgmLog, state: ChipState, chip: str, channel_filter: set[str] | None,
+                 frames: range, max_rows: int) -> None:
+    """Each register write in `frames`, in order, decoded (core.vgm.decoded_writes): the order
+    within a frame the frame log folds away.  A run of one field on one channel is one row (a
+    voice's TL op1 .. op4); the DAC's data bytes are left out (--frames: its plays)."""
+    fl = frame_log(log, state)
+    kinds = _WRITE_KINDS[chip]
+    print(f"Frames : {frames.start}-{frames.stop - 1} of {len(fl.frames)}, {fl.frame_samples} samples each")
+    print()
+    print(f"{'frame':>6}  {'time_ms':>9}  {'chan':<5}  write (in order)")
+    print("-" * 60)
+    rows: list[list] = []                       # [frame, channel, text]
+    for w in decoded_writes(log):
+        frame = fl.frame_of(w.sample)
+        if frame not in frames or not _shows(w.channel, kinds, channel_filter):
+            continue
+        field, _, operand = w.text.partition(" op")
+        last = rows[-1] if rows else None
+        operator = f"op{operand.split()[0]} " if operand else ""
+        if (operand and last is not None and last[:2] == [frame, w.channel] and last[2].startswith(f"{field} op")
+                and operator not in last[2]):
+            last[2] += f"  op{operand}"     # a run of one field; an operator written again starts a row
+            continue
+        rows.append([frame, w.channel, w.text])
+
+    shown = rows[:max_rows] if max_rows else rows
+    for frame, channel, text in shown:
+        print(f"{frame:>6}  {fl.seconds(frame) * 1000:>9.1f}  {channel:<5}  {text}")
+    if len(rows) > len(shown):
+        print(f"  ... {len(rows) - len(shown)} more rows (use --max-rows, --from / --to)")
+
+
+def _shows(channel: str, kinds: tuple[str, ...], channel_filter: set[str] | None) -> bool:
+    """A channel named (--channel DAC) shows whatever --chip; else those --chip covers."""
+    return channel in channel_filter if channel_filter else channel.startswith(kinds)
+
 
 def main() -> None:
     ap = argparse.ArgumentParser(
@@ -356,6 +401,13 @@ def main() -> None:
         "--frames", action="store_true",
         help="Print the log frame by frame (every channel written to in each V-int frame) instead of key-ons",
     )
+    ap.add_argument(
+        "--writes", action="store_true",
+        help="Print every register write in order, decoded (TL op1, key on, pan ...), with its frame; "
+             "a run of one field a row",
+    )
+    ap.add_argument("--from", type=int, default=0, dest="first", metavar="FRAME", help="--writes, --frames: the first frame (0)")
+    ap.add_argument("--to", type=int, default=None, dest="last", metavar="FRAME", help="--writes, --frames: the last frame (the end)")
     args = ap.parse_args()
 
     with contextlib.suppress(Exception):
@@ -379,11 +431,18 @@ def main() -> None:
         print("DAC    : none" if stall is None else
               f"DAC    : held {stall.share:.3f} of its playing time ({stall.plays} plays, {stall.bytes} bytes): dac_stall: {stall.share:.3f}")
         return
+    if args.writes:
+        print(f"File   : {path}")
+        state = ChipState.for_log(log, args.clock, args.psg_clock)
+        last = len(frame_log(log, state).frames) - 1 if args.last is None else args.last
+        print_writes(log, state, args.chip, channel_filter, range(args.first, last + 1), args.max_rows)
+        return
     if args.frames:
         print(f"File   : {path}")
         if "track" in log.tags:
             print(f"Track  : {log.tags['track']} ({log.tags.get('game', '?')})")
-        print_frames(log, ChipState.for_log(log, args.clock, args.psg_clock), args.chip, channel_filter, args.max_rows)
+        print_frames(log, ChipState.for_log(log, args.clock, args.psg_clock), args.chip, channel_filter, args.max_rows,
+                     args.first, args.last)
         return
 
     rows, fm_amp, psg_amp = parse_vgm(

@@ -43,7 +43,7 @@ PARTIAL_EFFECTS = {
 }
 
 # Known Sonic 1 DAC samples: suggested MOD note and the rate real hardware plays them at - the
-# Z80 loop's cycle count (core/rom/pcm.py, exact from the ROM's code) less the 68k's once-a-frame
+# Z80 loop's cycle count (core/rom/pcm/, exact from the ROM's code) less the 68k's once-a-frame
 # stopZ80 (~5 %; each song's own share is measured in its VGZ, which the configs' finetunes
 # follow).  The VGZ rips' emulator runs the loop 2-3 % fast: their rates are not the yardstick.
 # docs/yaml_config.md § DAC Sample Rates.
@@ -298,10 +298,12 @@ class _ChannelWalk:
         self._hard_pan = False
         self._voice_idx: int | None = None
         self._psg_label: str | None = None
+        self._envelope_label: str | None = None   # the envelope a noise form's end returns to
 
         # A PSG channel starts on its header voice
         if ch_type == ChannelType.PSG and ch.header.psg_voice_label:
             self._psg_label = ch.header.psg_voice_label
+            self._envelope_label = self._psg_label
             _get_or_create_psg_tone(self.psg_tone_stats, self._psg_label)
 
         self._walk(ch.events)
@@ -370,7 +372,11 @@ class _ChannelWalk:
             case SetVoice(index=index):
                 self._switch_voice(index)
             case PsgVoice(envelope=envelope):
+                self._envelope_label = envelope
                 self._switch_psg(envelope)
+            case PsgForm(noise=None):
+                if self._envelope_label is not None:            # tones again: the envelope's
+                    self._switch_psg(self._envelope_label)
             case PsgForm(noise=noise):
                 self._switch_psg(f"form ${noise:02X}")
             case AlterVol(delta=delta):

@@ -76,6 +76,7 @@ class _Rendered:
     loop: SustainLoop | None
     release: float | None      # dB per second after key-off
     speaker_gain: float = 1.0  # the mono render's level to the hardware speakers' (_speaker_gain)
+    hz: float = 0.0            # the first layer's word as written to the chip (before its own offsets)
 
 
 _worker = threading.local()
@@ -187,7 +188,8 @@ class _FmRenderer:
                 mono = fade_end(mono, heard_n, rate)
         first_peak = self._first_peak(job, mono, sustain if loop is None else probe)
         gain = self._speaker_gain(job, sustain, probe if loop is not None else sustain, rate)
-        return _Rendered(_trim_trailing_silence(mono), rate, first_peak, loop, release, gain)
+        return _Rendered(_trim_trailing_silence(mono), rate, first_peak, loop, release, gain,
+                         fm_frequency_hz(fnum, block, synth.clock_rate))
 
     def _sustains(self, job: _RenderJob) -> tuple[float, float]:
         """(sustain, probe): this instrument's own longest ring when `auto` resolved one
@@ -345,6 +347,7 @@ def generate_fm_samples(
     release_out: dict[int, float | None] | None = None,
     cache_out: dict[str, int] | None = None,
     extra: Sequence[FmInstrument] = (),
+    pitches_out: dict[int, float] | None = None,
 ) -> dict:
     """Render an FM sample for every instrument in the song's catalogue.
 
@@ -370,6 +373,8 @@ def generate_fm_samples(
                     (settings.yaml samples.render_cache; nothing when it is off).
         extra:      renders beyond the catalogue's, under ids that are no MOD slot (core.merge:
                     a mix's FM layers on the chip); returned and reported like the others.
+        pitches_out: filled with {instrument: Hz its first layer's word plays}, the word as
+                    written to the chip: what the converter holds to core.plan.rendered_pitches.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM, each sample
@@ -387,7 +392,7 @@ def generate_fm_samples(
     # render and are consumed in job order, so the MOD does not depend on scheduling.
     cache = _fm_cache(synth)
     renderer = _FmRenderer(synth, cache, loops, verbose, song.rules.fm_frequencies,
-                           song.rules.track(ChannelType.FM).octave_wrap)
+                           song.rules.track(ChannelType.FM).pitch.octave_wrap)
     rendered: list[_Rendered] = []
     if jobs:
         with ThreadPoolExecutor(max_workers=min(len(jobs), synth.worker_threads())) as pool:
@@ -402,6 +407,8 @@ def generate_fm_samples(
             peaks_out[job.inst] = (peak(done.mono), done.first_peak, done.speaker_gain)
         if release_out is not None:
             release_out[job.inst] = done.release
+        if pitches_out is not None:
+            pitches_out[job.inst] = done.hz
         if loops_out is not None and done.loop is not None and done.loop.end <= len(done.mono):
             loops_out[job.inst] = done.loop
         if verbose:

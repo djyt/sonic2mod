@@ -83,3 +83,35 @@ class Pointed(unittest.TestCase):
         rom = _rom(self._code(), (0x7FFFF0).to_bytes(4, "big") + (3).to_bytes(4, "big"))
         with self.assertRaisesRegex(RomError, "no load"):
             z80_loads(rom)
+
+
+def _copy(source: int, dest: int, count: int, source_reg: int, dest_reg: int, data_reg: int, dest_first: bool) -> bytes:
+    """lea (dest).l,ad / lea (source).l,as (or the other way round) / move.w #count-1,dn /
+    move.b (as)+,(ad)+ / dbra dn,*-2"""
+    lea_dest = (0x41F9 | dest_reg << 9).to_bytes(2, "big") + (0xA00000 + dest).to_bytes(4, "big")
+    lea_source = (0x41F9 | source_reg << 9).to_bytes(2, "big") + source.to_bytes(4, "big")
+    leas = lea_dest + lea_source if dest_first else lea_source + lea_dest
+    move = (0x10D8 | dest_reg << 9 | source_reg).to_bytes(2, "big")
+    return (leas + (0x303C | data_reg << 9).to_bytes(2, "big") + (count - 1).to_bytes(2, "big") + move
+            + (0x51C8 | data_reg).to_bytes(2, "big") + bytes.fromhex("FFFC"))
+
+
+class Copied(unittest.TestCase):
+    """A plain byte copy: Moonwalker's and Golden Axe's on a6 / a5, Streets of Rage 2's on a2 / a1."""
+
+    def test_any_registers_either_lea_first(self):
+        for regs, dest_first in (((5, 6, 0), True), ((1, 2, 0), False), ((3, 4, 2), False)):
+            with self.subTest(registers=regs):
+                rom = _rom(_copy(_DATA, 0x10, 3, *regs, dest_first=dest_first), bytes([7, 8, 9]))
+                (load,) = z80_loads(rom)
+                self.assertEqual((load.at, load.dest, load.data), (_CODE, 0x10, bytes([7, 8, 9])))
+
+    def test_a_copy_from_68k_ram_is_no_load(self):
+        with self.assertRaisesRegex(RomError, "no load"):
+            z80_loads(_rom(_copy(0xFF7000, 0, 3, 2, 1, 2, dest_first=True), b""))
+
+    def test_a_copy_reading_a_register_no_lea_loads_is_no_load(self):
+        code = bytearray(_copy(_DATA, 0, 3, 1, 2, 0, dest_first=False))
+        code[-6:-4] = (0x10D8 | 2 << 9 | 3).to_bytes(2, "big")         # move.b (a3)+,(a2)+
+        with self.assertRaisesRegex(RomError, "no load"):
+            z80_loads(_rom(bytes(code), bytes(3)))

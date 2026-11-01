@@ -32,7 +32,7 @@ def dac_samples(rom: RomImage, variant: SmpsVariant | None = None) -> list[DacSa
 
 def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
                   fix_data_bugs: bool = True, variant: SmpsVariant | None = None) -> SongCode:
-    """Sound `sound_id` ($81 GHZ ... $93; SFX from $A0) before the walk.  `index`: the ROM's,
+    """Sound `sound_id` (its driver's ID: Sonic 1's $81 GHZ ... $93, SFX from $A0) before the walk.  `index`: the ROM's,
     when already located.  fix_data_bugs: the fixes known for this exact ROM (fixes.py), as the
     asm parser applies the disassembly's; False reads the game as shipped."""
     variant = variant or detect_variant(rom)
@@ -43,7 +43,7 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     read_header = sfx_header if index.is_sfx(sound_id) else music_header
     head = read_header(memory, address, variant)
 
-    tracks = decode_tracks(memory, head.tracks, variant, splices)
+    tracks = decode_tracks(memory, head.tracks, variant, splices, head.loops)
     voices = []
     if head.voices is not None:
         voices = bank_voices(memory, head.voices, voices_used(tracks.code), variant)
@@ -53,7 +53,7 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     if variant.fm_drums and not index.is_sfx(sound_id):
         drums = variant.fm_drums(image, head.header, rules.fm_frequencies)
     return SongCode(head.header, tracks.code, voices, rules, address=address, addresses=tracks.labels,
-                    dropped=dict(tracks.dropped), fm_drums=drums)
+                    dropped=dict(tracks.dropped), fm_drums=drums, flags=tracks.flags)
 
 
 def _rules(variant: SmpsVariant, image: RomImage, memory: SoundMemory, index: SoundIndex) -> PlaybackRules:

@@ -5,11 +5,16 @@
 
 from __future__ import annotations
 
+import dataclasses
 import unittest
 
 from core.drivers.reference import FM_FREQUENCIES, SONIC1_RULES
 from core.smps import (
+    NOISE_CHANNEL_NAME,
+    ChannelType,
     CoordFlag,
+    PlaybackRules,
+    PsgForm,
     SmpsChannel,
     SmpsChannelHeader,
     SmpsEvent,
@@ -17,6 +22,8 @@ from core.smps import (
     SmpsSong,
     SmpsSongHeader,
     SmpsVoice,
+    TieRules,
+    TrackRules,
     VoiceField,
     compare_songs,
     effect_of,
@@ -176,3 +183,44 @@ class Played(unittest.TestCase):
         song.channels.append(SmpsChannel(SmpsChannelHeader("FM", "B"), [_note(duration=40)], rules=SONIC1_RULES))
         played_song(song)
         self.assertEqual(len(song.channels[0].events), 1)
+
+
+class DrumTie(unittest.TestCase):
+    """A tie on the drum track: Sonic 1 starts the sample again, Streets of Rage 2 lets it play on."""
+
+    @staticmethod
+    def _attacks(rules: PlaybackRules) -> list[bool]:
+        hit, tie = (SmpsEvent(SmpsNote(0x81, 8, is_dac=True, dac_name="kick", is_no_attack=t)) for t in (False, True))
+        song = _song(hit, tie, kind="DAC")
+        song.rules = song.channels[0].rules = rules
+        return [n.attack for n in played_song(song).channels["DAC"]]
+
+    def test_sonic_1_strikes_again(self):
+        self.assertEqual(self._attacks(SONIC1_RULES), [True, True])
+
+    def test_a_driver_can_let_it_play_on(self):
+        rules = dataclasses.replace(SONIC1_RULES, tracks={ChannelType.DAC: TrackRules(ties=TieRules(drum_restarts=False))})
+        self.assertEqual(self._attacks(rules), [True, False])
+
+
+class FixedRateNoise(unittest.TestCase):
+    """Noise at a fixed rate plays on the noise channel alone, whichever track starts it; noise
+    clocked by tone 3 stays its track's (Sonic 1's, Streets of Rage's)."""
+
+    _FIXED, _TONE3 = 0xE4, 0xE7      # white noise at rate 0; at tone 3's
+
+    def _played(self, form: int):
+        song = _song(_note(), SmpsEvent(effect=PsgForm(form)), _note(), SmpsEvent(effect=PsgForm(None)), _note(),
+                     kind="PSG")
+        return played_song(song).channels
+
+    def test_fixed_rate_notes_move_to_noise_a_rest_left(self):
+        channels = self._played(self._FIXED)
+        self.assertEqual([(n.tick, n.rest) for n in channels["PSG1"]], [(0, False), (8, True), (16, False)])
+        (noise,) = channels[NOISE_CHANNEL_NAME]
+        self.assertEqual((noise.tick, noise.noise, noise.note, noise.pitch), (8, self._FIXED, None, None))
+
+    def test_noise_clocked_by_tone3_stays_the_tracks(self):
+        channels = self._played(self._TONE3)
+        self.assertNotIn(NOISE_CHANNEL_NAME, channels)
+        self.assertEqual([n.noise for n in channels["PSG1"]], [None, self._TONE3, None])

@@ -23,7 +23,7 @@ import math
 from collections.abc import Iterator
 from dataclasses import dataclass
 
-from ...chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, freq_word_hz, psg_frequency_hz
+from ...chips import MD_FM_CLOCK, MD_PSG_CLOCK, fm_frequency_hz, freq_word_hz, noise_follows_tone3, psg_frequency_hz
 from ..chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_SILENT
 from ..frames import Frame, FrameLog
 from ..notes import DEFAULT_MOD_CENTS
@@ -101,10 +101,22 @@ def noise_mode(fl: FrameLog) -> bool:
     return any(f.psg[NOISE_CHANNEL].attenuation < PSG_SILENT for f in fl.frames)
 
 
-def psg_hits(fl: FrameLog, ch: int, psg_frequencies: tuple[int, ...], noise: bool = False) -> list[Hit]:
+def fixed_rate_noise(fl: FrameLog) -> bool:
+    """Whether the noise plays at a fixed rate where audible (not clocked by tone 3): a channel of
+    its own, whichever track starts it (Streets of Rage 2's), not PSG3's."""
+    for frame in fl.frames:
+        channel = frame.psg[NOISE_CHANNEL]
+        if channel.attenuation < PSG_SILENT and channel.noise is not None and not noise_follows_tone3(channel.noise):
+            return True
+    return False
+
+
+def psg_hits(fl: FrameLog, ch: int, psg_frequencies: tuple[int, ...], noise: bool = False,
+             fixed: bool = False) -> list[Hit]:
     """PSG track `ch`'s reads: a note at each period write that is not modulation, a rest where
     the channel is silenced without one.  `noise`: PSG3 in noise mode (its period goes to tone
-    channel 3, its attenuation to the noise channel)."""
+    channel 3, its attenuation to the noise channel); `fixed` too: noise at a fixed rate, read
+    from its attenuation alone (tone 3's period is another track's)."""
     period_ch, level_ch = (_NOISE_TONE, NOISE_CHANNEL) if noise else (ch, ch)
     hits = []
     before: Frame | None = None
@@ -118,7 +130,7 @@ def psg_hits(fl: FrameLog, ch: int, psg_frequencies: tuple[int, ...], noise: boo
         # A note where the level rises, or the period moves unlike vibrato (a write next to
         # another is modulation unless it jumps)
         written_before = before is not None and before.psg[period_ch].period_writes
-        moved = tone.period_writes and (not written_before or _jumps(prev_period, tone.period))
+        moved = not fixed and tone.period_writes and (not written_before or _jumps(prev_period, tone.period))
         if attack or moved:
             hits.append(Hit(frame.index, _psg_note(tone.period, psg_frequencies), attack))
         elif level.attenuations and level.attenuation >= PSG_SILENT and prev_level < PSG_SILENT:

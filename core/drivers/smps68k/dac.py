@@ -1,26 +1,17 @@
-"""Where an SMPS 68k driver keeps its DAC samples: the PCM table its Z80 player indexes (`ld iy,nn`)
-and the pitches the 68k writes into it.  The table and the samples' formats are the framework's
-(core/rom/pcm.py); each driver's dac.py lays them out (sonic1/, type1a/, mucom/).
+"""The pitches an SMPS 68k driver writes into its Z80 player's PCM table.  The table (`pcm_table`)
+and the samples' formats are the framework's (core/rom/pcm/); each driver's dac.py lays them out
+(sonic1/, type1a/, mucom/).
 """
 
 from __future__ import annotations
 
 from core.rom.image import RomError, RomImage
-from core.rom.z80 import Z80_RAM_BASE, z80_word
+from core.rom.z80 import Z80_RAM_BASE
 
 _LONG = 4
-_LD_IY = bytes.fromhex("FD21")            # ld iy,nn: the PCM table
 
 LEA_A0 = bytes.fromhex("41F9")                          # lea (xxx).l,a0: a pitch table read
 _SEARCH_BACK = 0x40                                     # how far before a pitch write its table is read
-
-
-def pcm_table(z80: bytes) -> int:
-    """The Z80 address of the player's PCM table."""
-    at = z80.find(_LD_IY)
-    if at < 0:
-        raise RomError("Z80 driver: no PCM table (ld iy,nn)")
-    return z80_word(z80, at + len(_LD_IY))
 
 
 def pitch_table(rom: RomImage, move: bytes, pitch_at: int, count: int, read: bytes) -> bytes:

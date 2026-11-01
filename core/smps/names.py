@@ -105,16 +105,22 @@ def parse_smps_note(name: str) -> int:
     Accepts the same identifiers used in _smps2asm_inc.asm without the leading
     'n' prefix — e.g. 'G5', 'Cs6', 'Ab6', 'C7'.
 
+    A pitch past the SMPS byte range (C8 up: a PSG table reaching B8, Streets of Rage 2's) reads as
+    parse_synth_note reads it.
+
     Returns:
-        Integer semitone (0–95 for the standard 8-octave SMPS range).
+        Integer semitone (0–95 for the standard 8-octave SMPS range, more past it).
 
     Raises:
         ValueError: if the name is not recognised.
     """
     key = 'n' + name
-    if key not in SMPS_NOTE_NAMES:
-        raise ValueError(f"Unknown SMPS note name: '{name}' (tried '{key}')")
-    return SMPS_NOTE_NAMES[key] - 0x81
+    if key in SMPS_NOTE_NAMES:
+        return SMPS_NOTE_NAMES[key] - 0x81
+    try:
+        return parse_synth_note(name)
+    except ValueError:
+        raise ValueError(f"Unknown SMPS note name: '{name}' (tried '{key}')") from None
 
 
 _ENHARMONIC_MAP = {
@@ -193,6 +199,7 @@ SFX_CHANNEL_IDS = {
 
 FM_CHANNEL_NAMES = ("FM1", "FM2", "FM3", "FM4", "FM5", "FM6")     # the YM2612's channels, in order
 PSG_CHANNEL_NAMES = ("PSG1", "PSG2", "PSG3")                          # the SN76489's tone channels
+NOISE_CHANNEL_NAME = "NOISE"                                          # its noise channel, played alone (fixed-rate noise)
 
 
 def source_names(song) -> list[str]:
@@ -243,6 +250,10 @@ _FLAG_MACROS = {
     CoordFlag.LEGATO: "smpsLegato",          # likewise
     CoordFlag.PITCH_ENVELOPE: "smpsPitchEnvelope",   # likewise
     CoordFlag.PAN_STEP: "smpsPanStep",       # likewise
+    CoordFlag.SOFT_RELEASE: "smpsSoftRelease",   # likewise
+    CoordFlag.ENVELOPE_PRESET: "smpsEnvelopePreset",   # likewise
+    CoordFlag.ADSR_ENVELOPE: "smpsAdsr",     # likewise
+    CoordFlag.NOISE_RATE: "smpsNoiseRate",   # likewise
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

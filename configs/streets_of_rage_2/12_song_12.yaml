@@ -1,0 +1,5 @@
+# Streets of Rage 2 - Song 12  ($02's (Never Return Alive) other version).  A minimal config: everything else is derived from the ROM
+# (docs/todo/done/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
+name: "Song 12"
+input_file: "input/roms/Streets of Rage 2 (USA).md"
+rom_song: "$12"

@@ -58,7 +58,7 @@ class ChannelWriter:
         self._is_dac = kind == ChannelType.DAC     # by the song: Type 0 FM's drums are FM3
         self._is_psg = kind == ChannelType.PSG
         self._track = channel.rules.track(kind)    # how its driver plays this kind
-        self._rest_plays_out = self._is_dac and not self._track.rest_cuts
+        self._rest_plays_out = self._is_dac and not self._track.key_off.rest_cuts
         self._col = chan_cfg.mod_channel           # the column the last note-on or rest wrote to
         self._cells = Cells(ctx)
         self._router = ColumnRouter(ctx, self._cells, chan_cfg.source, chan_cfg.mod_channel)
@@ -293,6 +293,10 @@ class ChannelWriter:
         """A drum hit: its dac_samples instrument and note.  DAC notes carry no other effect, so
         the slot is always free for EDx."""
         note, tick = event.note, event.tick_position
+
+        # A tie the driver lets the sample play on through (Streets of Rage 2's)
+        if note.is_no_attack and not self._track.ties.drum_restarts:
+            return True
 
         # A silent FM drum (its program a rest): the hit only stops the drum ringing, as FM3's key-off
         drum = self._ctx.song.fm_drums.get(note.dac_name)

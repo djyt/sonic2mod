@@ -21,7 +21,8 @@ from collections.abc import Mapping
 
 from core.rom.image import RomImage
 from core.rom.pattern import code_pattern
-from core.rom.pcm import Dpcm, Pcm, PcmEntry, PcmTable, SampleFormat, delta_table
+from core.rom.pcm import PcmEntry, PcmTable, SampleFormat
+from core.rom.pcm.smps import Dpcm, Pcm, delta_table
 from core.rom.variant import DacSample
 from core.rom.z80 import z80_word
 from core.smps import FIRST_NOTE

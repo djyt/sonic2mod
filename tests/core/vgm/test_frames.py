@@ -12,10 +12,17 @@ from core.vgm import (
     decode_vgm,
     frame_log,
 )
+from core.vgm.frames import DAC_OPENING
 from tests.vgm_build import FRAME as _FRAME
 from tests.vgm_build import fm as _fm
 from tests.vgm_build import vgm as _vgm
 from tests.vgm_build import wait as _wait
+
+
+def _played(bank: bytes, samples: dict[int, bytes]):
+    """`bank` played through from its start, a byte a sample, read with the driver's `samples`."""
+    block = b"\x67\x66\x00" + struct.pack("<I", len(bank)) + bank
+    return frame_log(decode_vgm(_vgm(block + b"\xE0" + struct.pack("<I", 0) + b"\x81" * len(bank))), dac_samples=samples)
 
 
 class Frames(unittest.TestCase):
@@ -55,6 +62,18 @@ class Frames(unittest.TestCase):
         dac = fl.frames[0].dac
         self.assertEqual([s.offset for s in dac.starts], [2, 4])
         self.assertEqual(dac.since_start, 2)
+
+    def test_known_samples_start_where_their_bytes_do(self):
+        # $82 cuts into $81 with no seek: the bank is the stream as heard
+        a, b = bytes(range(0x10, 0x38)), bytes(range(0x60, 0x88))
+        fl = _played(a[:20] + b, {0x81: a, 0x82: b})
+        self.assertEqual([(s.sound, s.offset) for s in fl.frames[0].dac.starts], [(0x81, 0), (0x82, 20)])
+
+    def test_a_samples_opening_in_its_own_body_is_no_start(self):
+        opening = bytes(range(0x10, 0x10 + DAC_OPENING))
+        sample = opening + b"pq" + opening + b"r"
+        fl = _played(sample, {0x81: sample})
+        self.assertEqual([s.offset for s in fl.frames[0].dac.starts], [0])
 
     def test_a_late_seek_belongs_to_the_burst_before_it(self):
         # Two bursts a frame apart; the Z80 starts a sample 600 samples after the first, in the

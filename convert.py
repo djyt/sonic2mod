@@ -5,11 +5,14 @@ Usage:
     python convert.py configs/song.yaml [--output output/song.mod]
     python convert.py configs/moonwalker/81_smooth_criminal.yaml --show-config   # a minimal config, completed
     python convert.py configs/sonic_1/02_green_hill_zone.yaml --variant lofi --merged    # its `variants: lofi` blocks applied
+    python convert.py configs/streets_of_rage_2          # every song config in a folder: a game, a line each
 """
 
 import argparse
 import os
+import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import yaml
@@ -38,6 +41,79 @@ def _tag_mod_branding(mod, version: str) -> None:
 _error = error_printer(console)
 
 
+# --- a folder: every song config in it ------------------------------------------------------------
+
+_PASSED_ON = ("merged", "variant", "settings", "player")   # the options each song is converted with
+_ONE_SONG = ("output", "input", "rom_song", "show_config", "write_config")
+_MERGE_KEYS = ("merge", "merge_patterns")
+_WIDE = "250"              # a song's report unwrapped: its error on one line
+
+
+def _song_configs(folder: Path) -> list[tuple[Path, dict]]:
+    """The song configs in `folder` and their data: its YAML files that name an input_file."""
+    out = []
+    for path in sorted(folder.glob("*.yaml")):
+        with open(path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if isinstance(data, dict) and "input_file" in data:
+            out.append((path, data))
+    return out
+
+
+def _skipped(data: dict, args: argparse.Namespace) -> str:
+    """Why a folder's run leaves a song out ("": it converts): a variant it has not, a merged
+    build it has no groups for."""
+    variants = data.get("variants") or {}
+    if args.variant and args.variant not in variants:
+        return f"no variant {args.variant}"
+    layered = {**data, **(variants.get(args.variant) or {})}
+    if args.merged and not any(layered.get(key) for key in _MERGE_KEYS):
+        return "no merge groups"
+    return ""
+
+
+def _convert_one(config: Path, args: argparse.Namespace) -> tuple[int, str]:
+    """convert.py on one config, as `args` say: (exit code, the reason it failed)."""
+    argv = [sys.executable, __file__, str(config)]
+    for name in _PASSED_ON:
+        value = getattr(args, name)
+        if value is True:
+            argv.append(f"--{name}")
+        elif value:
+            argv += [f"--{name}", value]
+    done = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False,
+                          env={**os.environ, "COLUMNS": _WIDE})
+    lines = [line.strip(" │") for line in done.stdout.splitlines() if line.strip(" │")]
+    why = next((line for line in lines if line.startswith("Error")), lines[-1] if lines else done.stderr.strip())
+    return done.returncode, why
+
+
+def _convert_folder(folder: Path, args: argparse.Namespace) -> None:
+    """Every song config in `folder`, converted in parallel: a line each; exit 1 if any failed."""
+    given = [f"--{name.replace('_', '-')}" for name in _ONE_SONG if getattr(args, name)]
+    if given:
+        _error(f"{' '.join(given)}: one song's option, not a folder's")
+    songs = _song_configs(folder)
+    if not songs:
+        _error(f"no song config (a YAML naming an input_file) in {folder}")
+    todo = [config for config, data in songs if not _skipped(data, args)]
+    with ThreadPoolExecutor(max(1, (os.cpu_count() or 2) - 1)) as pool:
+        done = dict(zip(todo, pool.map(lambda c: _convert_one(c, args), todo), strict=True))
+
+    # A line a song, in order: converted, left out (and why), or failed (and why)
+    failed = 0
+    for config, data in songs:
+        if config not in done:
+            console.print(f"  [dim]skipped  {config.stem}   {_skipped(data, args)}[/dim]", highlight=False)
+            continue
+        code, why = done[config]
+        failed += code != 0
+        console.print(f"  [green]ok[/green]       {config.stem}" if code == 0 else
+                      f"  [red]FAILED[/red]   {config.stem}   {why}", highlight=False)
+    console.print(f"\n{len(done) - failed} converted, {len(songs) - len(done)} skipped, {failed} failed")
+    sys.exit(1 if failed else 0)
+
+
 def _settings_path(config: str, stated: str | None) -> str | None:
     """The global settings file: `--settings` when given (it must exist), else core.config.find_settings."""
     if stated:
@@ -54,12 +130,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="Convert Sonic 1 SMPS assembly music to Amiga MOD format"
     )
-    parser.add_argument('config', nargs='?', help="YAML configuration file")
+    parser.add_argument('config', nargs='?', help="YAML configuration file, or a folder of them (a game: every song)")
     parser.add_argument('--output', '-o', help="Output MOD file path — overrides config output_file")
     parser.add_argument('--input', metavar='FILE',
                         help="Convert FILE instead of the config's input_file (a ROM: with --rom-song)")
     parser.add_argument('--rom-song', metavar='ID',
-                        help="With a ROM input: the sound to convert ($81, 0x81)")
+                        help="With a ROM input: the sound to convert, by its driver's ID ($81, 0x81; Streets of Rage 2: $00 ...)")
     parser.add_argument('--show-config', action='store_true',
                         help="Print the config as converted (a minimal one: with what was derived)")
     parser.add_argument('--write-config', metavar='PATH',
@@ -84,6 +160,8 @@ def main():
     if not args.config:
         parser.print_help()
         sys.exit(1)
+    if Path(args.config).is_dir():
+        _convert_folder(Path(args.config), args)
 
     try:
         config = ConversionConfig.from_yaml(args.config, args.variant)
@@ -150,7 +228,9 @@ def main():
         output_bytes=len(output_bytes), merged=bool(config.merge_active), verbose=args.verbose,
         synth=synth, psg_synth=psg_synth, bpm=prep.bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns),
         derived=derivation.derived if derivation else [], stale=derivation.stale if derivation else [],
-        folded=derivation.folded if derivation else {}))
+        folded=derivation.folded if derivation else {},
+        volumes_folded=derivation.volumes_folded if derivation else {},
+        windows_merged=derivation.windows_merged if derivation else {}))
 
 
 if __name__ == '__main__':

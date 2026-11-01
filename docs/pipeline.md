@@ -317,8 +317,8 @@ the end of their ring (after `smpsNoAttack` continuations: `_ring_ticks`).
 
 The driver (`smps_driver.md` § smpsModSet) has a steady cycle of `2 · speed · (steps + 1)` frames (a
 step at each turn adds nothing; a driver whose turn moves too, Streets of Rage's, `2 · speed · steps`:
-`TrackRules.modulation_turn_pause`) and a swing of `delta · steps / 2` units (a PSG that adds the sum
-`>> word_shift`: that many fewer) of the note's own frequency word — the YM2612 FNUM of its pitch class
+`TrackRules.modulation.turn_pause`; its first leg `modulation.first_leg_short`) and a swing of `delta · steps / 2` units (a PSG that adds the sum
+`>> pitch.word_shift`: that many fewer) of the note's own frequency word — the YM2612 FNUM of its pitch class
 in the song's table (Sonic 1's: 644 for C … 1148 for A#, B 606 in the block above: a B swings as wide
 as a C) or the PSG divider — so the same `smpsModSet` is deeper in cents on C than on A#.  ProTracker advances the vibrato by `x` on each of a row's `speed − 1` ticks and wraps at 64.
 `VibratoSpeed.speed` / `vibrato_depth`:
@@ -481,8 +481,8 @@ sounding in its column, which a stopping song's last row has none of.
 `smpsDetune` / `smpsAlterNote` ($E1) adds a raw offset to the frequency word (`FMUpdateFreq`), so its
 interval depends on the note: `$03` is +8 c on C (FNUM 644), +4.5 c on A# (1148).  It is not semitones
 and never affects range lookup.  A MOD retunes only a whole sample in 12.5 c finetune steps, so
-`core/plan/detune.py` (settings.yaml `fm_synthesis.detune_variants`, on by default; FM only) renders
-every detune an instrument plays into a sample of its own:
+`core/plan/detune.py` (settings.yaml `fm_synthesis.detune_variants`, on by default) renders every
+detune an instrument plays into a sample of its own:
 
 - the detune most of its notes play at is its **own**: its slot's sample is rendered with it (Title
   Screen's FM5 double takes no extra slot);
@@ -500,6 +500,12 @@ every detune an instrument plays into a sample of its own:
   note keeps its sample, so the tie's row gets `E1x` / `E2x` by the period difference (only a row of its
   own with a free slot; `--verbose` counts them);
 - a merged chip composite renders each layer at its own track's detune;
+- **PSG** tones the same: own and variants, a variant per detune (no pitch classes).  The detune is
+  added to the divider as the driver adds it (`core.smps.psg_render_divider`: as it is, Sonic 1's;
+  >> the note's octave, Streets of Rage 2's), so Sonic 1's +2 is a different interval on each note
+  of a window: Robotnik's PSG2 stays 15 c out.  Marble Zone's PSG2 went from 13.5 c to 2.5 c, Go
+  Straight's PSG1 from 16 c to 8 c (the rest: its vibrato swings below the note only, a MOD's is
+  centred);
 - **channel 3's special mode** (Streets of Rage's `$F7`: each operator at the note's word plus its own
   offset) is a copy of the voice that carries the offsets (`SmpsVoice.fnum_offsets`, made in the walk as
   `$FA` patches are), rendered on channel 3 with `$27` = `$40`.  Its offsets count in the intervals above
@@ -1061,11 +1067,18 @@ python tools/vgm/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # ev
   (`--infer-tempo` to judge the inference).  The divider is spelling: durations are ticks on both
   sides (a song's already multiplied by it), so it never moves a note; it sets how the converter counts
   rows (`ticks_per_row` × divider).
-- Aspects: by default what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects all` for
-  every one - a lifted note's pitch is its table word, no detune yet).  The lift matches a note to the
-  song's own FM table and holds at its phase (`lift_song(frames, song.rules, ...)`).
+- Aspects: what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects` a few of them).
+  The lift matches a note to the song's own FM table and holds at its phase (`lift_song(frames,
+  song.rules, ...)`); the song's FM notes are compared as it reads one, the table entry nearest the
+  pitch that sounds (detune and channel 3's offset in).  Pitch, level, voice, pan: `vgm_frames.py`.
 - A tie that changes nothing compared is one note on both sides: a rip shows a read only where the
-  driver writes the frequency on reads alone (Sonic 1); Type 0 FM writes it every frame.
+  driver writes the frequency on reads alone (Sonic 1); Type 0 FM writes it every frame.  An FM tie's
+  note is folded too: the lift reads a note at its key write, and a legato slide writes none.
+- The window ends at the rip's last whole frame (its last is often half written): past it the lifted
+  song is the log's loop again, not the game.
+- A ROM song's DAC starts are read by its samples' bytes (`SongSource.rip_frames`): a ripper's bank
+  is the stream as heard, so a drum cutting into another plays on with no seek or pause, and a seek
+  may land mid-sample.  An asm song's: by seeks and pauses.
 - Channels: those both sides play; `--channels` / `--skip` (prefixes) narrow it, and the ones only one
   side plays are named, not compared.  Ticks print with seconds into the song.
 - Verdict per kind, the song's (`channel_type`, not the name): `FM same · DAC onset 4 · PSG note 31

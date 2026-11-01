@@ -46,7 +46,7 @@ def check_device() -> None:
     # ------------------------------------------------------------------
     tone_idx = 24
     freq_hz  = 440.0 * (2.0 ** ((tone_idx - 45) / 12.0))
-    n_val    = note_to_psg_n(tone_idx, SONIC1_RULES.psg_frequencies, clock_rate)
+    n_val    = note_to_psg_n(tone_idx, SONIC1_RULES, clock_rate)
 
     print(f"\nTest 1: PSG tone  note_idx={tone_idx}  freq={freq_hz:.1f} Hz  N={n_val}")
 
@@ -128,7 +128,7 @@ def check_render() -> None:
     tone_idx = 24   # C3
 
     freq_hz = 440.0 * (2.0 ** ((tone_idx - 45) / 12.0))
-    n_val   = note_to_psg_n(tone_idx, SONIC1_RULES.psg_frequencies)
+    n_val   = note_to_psg_n(tone_idx, SONIC1_RULES)
     print(f"\nTone: note_idx={tone_idx}  freq={freq_hz:.1f} Hz  N={n_val}")
 
     mono_tone, rate_tone = render_psg_tone_raw(n_val, sustain_secs=0.5, release_secs=0.1)

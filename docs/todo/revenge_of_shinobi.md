@@ -75,7 +75,7 @@ a 4th, the noise track (§ 2.4).
 
 ### 2.3 Track code
 
-The same language as Streets of Rage (`mucom/grammar.py`): `d n` a note (`d` `$01`-`$7F` frames,
+The same language as Streets of Rage (`core/rom/grammar/mucom.py`): `d n` a note (`d` `$01`-`$7F` frames,
 `n` octave << 4 | semitone), `$80|d` a rest, `$00` the end, `$F0`-`$FF` a flag.  Flags:
 
 | Byte | FM | PSG | Drum track |
@@ -125,7 +125,7 @@ instructions, normalised for addresses and RAM base.  The load routine, track la
 update, vibrato, loops, voice load and volume table are the same code.  **The track language and
 the engine are shared; the header, about ten flag meanings, the PSG and the DAC are not.**
 
-| | Streets of Rage (`smps68k_mucom`) | The Revenge of Shinobi |
+| | Streets of Rage (`smps68k_streets_of_rage`) | The Revenge of Shinobi |
 |---|---|---|
 | sound RAM | `$FFF000` | `$FFF700` |
 | header | `voices.w fm.b psg.b`; FM `ptr.w vol.b`, PSG `ptr.w vol.b env.b` | + 2 bytes (song volume); FM 4 bytes, PSG 6 (Sonic 1's sizes) |
@@ -141,17 +141,16 @@ the engine are shared; the header, about ten flag meanings, the PSG and the DAC 
 | DAC | Kosinski player, run-DPCM, 5-byte entries | raw two-block copy, Sonic 1's DPCM, 12-byte entries with loops, `$85` pitched |
 | notes, rests, loops, `$F1` FM, `$F3`, `$F4` FM, `$F5` `$F6` `$FE`, `$F7` FM, `$FA` FM, `$FB`, `$FC`, `$FD`, voices, FM tables | | **same** |
 
-Streets of Rage 2's plan (`docs/todo/streets_of_rage_2.md` § 3.1.1) proposes moving the shared
-MUCOM track language out of `smps68k/mucom/grammar.py`.  Shinobi is the third reader of that
-language, and an argument for doing it.
+Streets of Rage 2's R1 (`docs/todo/done/streets_of_rage_2.md` § 3.2) moved the shared MUCOM track
+language to `core/rom/grammar/mucom.py`, a `MucomDialect` per driver.  Shinobi is its third reader.
 
 ---
 
 ## 4. The prototype (scratch, not kept)
 
 `mucom/variant.py`'s `MUCOM`, `dataclasses.replace`d with: § 2.2's header (a `music_header_reader`,
-the 4th PSG track on PSG3's name), § 2.3's flag tables, 1-based voices, `jump_clears_tie` False,
-`rest_cuts` False, no DAC.  Song code walked by the existing reader and compared with
+the 4th PSG track on PSG3's name), § 2.3's flag tables, 1-based voices, `ties.jump_clears` False,
+`key_off.rest_cuts` False, no DAC.  Song code walked by the existing reader and compared with
 `compare_with_rip` (`vgm_lift`'s comparison) on onsets.  Each rip was paired with the decoded song
 whose FM onsets it matches best.
 
@@ -194,8 +193,9 @@ names it (CLAUDE.md, "Scalable structure").
 
 ### 5.1 Refactors (behaviour unchanged, every baseline byte-identical)
 
-1. **The MUCOM track language shared** (with Streets of Rage 2: its 3.1.1).  What differs per driver
-   is data: the pan mapping, the flag table per kind, `$F2`'s length, PSG note rows.
+1. **The MUCOM track language shared**: done by Streets of Rage 2's R1 (`core/rom/grammar/mucom.py`).
+   Shinobi's is a `MucomDialect` (pan mapping, PSG note rows, vibrato steps) and its flag tables
+   (`$F2`'s length).
 2. **Header entries past a tempo byte pair that is not a tempo.**  `HeaderLayout.tempo=False` puts
    the entries at +4; Shinobi's start at +6 with no tempo.  Either a `HeaderLayout` field (bytes
    before the entries) or Shinobi's own `music_header_reader` (D2).
@@ -203,7 +203,8 @@ names it (CLAUDE.md, "Scalable structure").
    noise as PSG3's form.  A track on the noise channel alone (chip channel `NOISE`) through the walk,
    the planner and the PSG render: check what assumes three (D3).
 4. **`z80_loads`:** an uncompressed copy in two blocks (`lea $A00000,a1` / `lea src,a2` /
-   `move.w #n,d2` / `move.b (a2)+,(a1)+` / `dbra`), and the bytes the 68k pokes after it
+   `move.w #n,d2` / `move.b (a2)+,(a1)+` / `dbra`): read since Streets of Rage 2's 4.1 (copied
+   loads on any registers; both blocks found).  Left: the bytes the 68k pokes after it
    (`$1FF8`-`$1FFA`).
 
 ### 5.2 New concepts
@@ -214,12 +215,12 @@ names it (CLAUDE.md, "Scalable structure").
 | voices from 1 | `SetVoice(n - 1)`, 0 -> 0 | grammar | none |
 | pan 1 R / 2 L / 3 C / 0 none | `PAN` | grammar | 0 (both off): how the MOD plays a muted channel |
 | `$F8` FM / `$F9` PSG stop | `STOP` | flag tables | none |
-| PSG `$F2`: + 0 / 1 divider | `Detune(0 or 1)` with `word_shift` 0 | grammar, `TrackRules` | detune variants |
+| PSG `$F2`: + 0 / 1 divider | `Detune(0 or 1)` with `pitch.word_shift` 0 | grammar, `TrackRules` | detune variants |
 | no PSG vibrato | `$F4` dropped on PSG | flag table | none |
 | fixed-rate noise | `PsgForm($E4)` | grammar | psg render (rate 0 exists) |
 | noise track | a PSG track on `NOISE` (5.1.3) | header, walk | planner, render |
 | `$FA` carrier TL = v + song volume | a voice patch the next `$F1` / voice ends, or a level change (D4) | walk (`voice_patch.py`) | none |
-| jump keeps the tie, drum rests do not cut | `jump_clears_tie` / `rest_cuts` False (exist) | rules | none |
+| jump keeps the tie, drum rests do not cut | `ties.jump_clears` / `key_off.rest_cuts` False (exist) | rules | none |
 | DAC: Sonic 1's DPCM, looped, `$85` pitched by note | `DacSample`s; `$85` a pitched copy per note | `dac.py` | sample loops (exist) |
 
 ---
@@ -251,7 +252,7 @@ names it (CLAUDE.md, "Scalable structure").
 
 ### Phase 3: the walk
 - [ ] 3.1 FM: the song volume; `$FA` carrier TLs (`$8A` `$8B` `$8E`); the gate's tie rules
-  (`gate_sees_tie`, `gate_spares_tied`, `tied_rest_holds`: Streets of Rage's values to be checked
+  (`key_off.gate_sees_tie`, `key_off.gate_spares_tied`, `key_off.tied_rest_holds`: Streets of Rage's values to be checked
   against `$78BE2` / `$7921A`); ties across the jump; pan's direction from a rip.
 - [ ] 3.2 PSG: volume without header, envelopes, the `+1` detune, `$F7` fixed noise, the noise track.
   What is the PSG entry's `+A` byte (0 or 2)?
@@ -279,7 +280,7 @@ names it (CLAUDE.md, "Scalable structure").
 
 ## 7. Decisions (open, for the user)
 
-1. **Name and place.**  Proposed: `smps68k/shinobi` (`smps68k_shinobi`), a sibling of `smps68k/mucom`
+1. **Name and place.**  Proposed: `smps68k/shinobi` (`smps68k_shinobi`), a sibling of `smps68k/streets_of_rage`
    sharing the track language (5.1.1).  Alternative: one `mucom` package with two variants, since the
    engines are the same code.
 2. **The header:** a `HeaderLayout` field for the bytes before the entries (any driver), or Shinobi's

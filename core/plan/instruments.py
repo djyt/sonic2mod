@@ -248,6 +248,18 @@ def _add_detune_variants(cat: FmCatalogue, plan) -> None:
                                                pitch_envelope=plan.own_envelopes.get(inst, 0))]
 
 
+def _add_psg_detune_variants(out: dict[int, PsgInstrument], conv: ConversionPlan) -> None:
+    """core.plan.detune: a PSG tone's sample in every variant's slot at the variant's detune."""
+    if conv.detune is None:
+        return
+    for v in conv.detune.variants.values():
+        base = out.get(v.base)
+        if base is None or base.entry.type != TONE or v.inst in out:
+            continue
+        out[v.inst] = dataclasses.replace(base, inst=v.inst, entry=dataclasses.replace(base.entry, mod_instrument=v.inst),
+                                          detune=v.detune, context=f"{base.context} detune {v.detune:+d}")
+
+
 def free_slots(conv: ConversionPlan, song) -> list[int]:
     """Instrument slots nothing in the config, nor any row the conversion added, names."""
     used = set(conv.samples.rows())
@@ -266,6 +278,8 @@ class PsgInstrument:
     pitch: RenderPitch       # where it is rendered (core.plan.synth_roots; noise: as stated)
     context: str
     source: str = ""         # the smpsPSGvoice label (tone) or the smpsPSGform byte, "$E7" (noise)
+    detune: int = 0          # a tone's: the detune word most of its notes play at, rendered into its
+                             # sample (core.plan.detune); the driver's shift: core.smps.psg_render_divider
 
     @property
     def root_idx(self) -> int:
@@ -307,7 +321,8 @@ def psg_catalogue(conv: ConversionPlan, noise_envelopes: dict | None = None) -> 
 
     def add(entry: PsgInstrumentEntry, pitch: RenderPitch, context: str, source: str) -> None:
         if entry.root is not None and entry.mod_instrument not in out:
-            out[entry.mod_instrument] = PsgInstrument(entry.mod_instrument, entry, pitch, context, source)
+            detune = conv.detune.own.get(entry.mod_instrument, 0) if conv.detune is not None else 0
+            out[entry.mod_instrument] = PsgInstrument(entry.mod_instrument, entry, pitch, context, source, detune)
 
     for form, entry in config.psg_map.items():
         variants = [(entry.mod_instrument, noise_envelopes.get(entry.mod_instrument, entry.envelope), "")]
@@ -319,6 +334,7 @@ def psg_catalogue(conv: ConversionPlan, noise_envelopes: dict | None = None) -> 
     for label, entries in config.psg_voice_map.items():
         for i, entry in enumerate(entries):
             add(entry, conv.pitch(entry), f"psg_voice_map[{label}][{i}]", label)
+    _add_psg_detune_variants(out, conv)
     plan = conv.merge
     if plan is not None:
         # core.merge: nothing the merged build plays or mixes, and no slot a composite took over -

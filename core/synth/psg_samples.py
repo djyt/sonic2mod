@@ -29,6 +29,7 @@ from ..audio import (
     probe_secs,
 )
 from ..audio import trim_trailing_silence as _trim_trailing_silence
+from ..chips import psg_frequency_hz, psg_level_db
 from ..chips.sn76489.build import get_lib_path
 from ..config import PsgInstrumentEntry, PsgSynthesisSettings
 from ..mod import max_sustain_secs
@@ -84,6 +85,12 @@ def _resolve_envelope(entry: PsgInstrumentEntry, tables: Mapping[str, PsgEnvelop
     return PsgEnvelope(tuple(e))
 
 
+def _release_db_per_sec(envelope: PsgEnvelope, fps: float) -> float:
+    """How fast an envelope's release falls: from its held step to its last, over its frames."""
+    fall = psg_level_db(envelope.steps[-1]) - psg_level_db(envelope.release[-1])
+    return fall * fps / len(envelope.release)
+
+
 def _envelope_frames(envelope: PsgEnvelope | None, secs: float, fps: float) -> list[int] | None:
     """The steps a render of `secs` plays (a looping envelope unrolled; a held one as written,
     the renderer holding its last step)."""
@@ -103,10 +110,12 @@ class _PsgRenderer:
     whose envelope holds cut at a sustain loop (with loops), put in `loops_out`.  Noise never loops."""
 
     def __init__(self, synth: PsgSynthesisSettings, fps: float, cache: RenderCache, verbose: bool,
-                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None, rules: PlaybackRules):
+                 rate3_dividers: dict | None, loops: bool, loops_out: dict | None, rules: PlaybackRules,
+                 pitches_out: dict | None = None):
         self._synth = synth
+        self._pitches_out = pitches_out
         self._envelopes = rules.psg_envelopes
-        self._psg_frequencies = rules.psg_frequencies
+        self._rules = rules
         self._fps = fps
         self._cache = cache
         self._verbose = verbose
@@ -129,7 +138,7 @@ class _PsgRenderer:
 
         entry_type = entry.type.lower()
         if entry_type == _TONE:
-            mono, rate = self._tone(entry, spec.synth_idx, target_rate, envelope, env_info)
+            mono, rate = self._tone(entry, spec.synth_idx, target_rate, envelope, env_info, spec.detune)
         elif entry_type in (_WHITE_NOISE, _PERIODIC_NOISE):
             mono, rate = self._noise(entry, spec.synth_idx, entry_type == _WHITE_NOISE, target_rate, envelope, env_info)
         else:
@@ -153,9 +162,11 @@ class _PsgRenderer:
         return mono, rate
 
     def _tone(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: PsgEnvelope | None,
-              env_info: str) -> tuple[Sequence[float], int]:
+              env_info: str, detune: int = 0) -> tuple[Sequence[float], int]:
         synth, inst_num = self._synth, entry.mod_instrument
-        n_val = note_to_psg_n(note, self._psg_frequencies, synth.clock_rate)
+        n_val = note_to_psg_n(note, self._rules, synth.clock_rate, detune)
+        if self._pitches_out is not None:
+            self._pitches_out[inst_num] = psg_frequency_hz(n_val, synth.clock_rate)
         if self._verbose:
             freq_hz = 440.0 * (2.0 ** ((note - 45) / 12.0))
             print(f"  [psg synth] inst={inst_num} tone  "
@@ -268,7 +279,7 @@ class _PsgRenderer:
         dividers = self._rate3_dividers
         if entry.synth_root is None and dividers and entry.mod_instrument in dividers:
             return dividers[entry.mod_instrument]
-        return note_to_psg_n(note, self._psg_frequencies, self._synth.clock_rate)
+        return note_to_psg_n(note, self._rules, self._synth.clock_rate)
 
     def _render(self, render, inst_num: int, **kwargs) -> tuple[Sequence[float], int]:
         """render(**kwargs) through the render cache, shelved and centred (before any loop is found in it)."""
@@ -295,6 +306,8 @@ def generate_psg_samples(
     loops_out: dict[int, SustainLoop] | None = None,
     raw_out: dict[int, tuple] | None = None,
     cache_out: dict[str, int] | None = None,
+    release_out: dict[int, float | None] | None = None,
+    pitches_out: dict[int, float] | None = None,
 ) -> dict:
     """Render a PSG sample for every instrument in the config's catalogue.
 
@@ -310,6 +323,10 @@ def generate_psg_samples(
                    in `loops_out` ({instrument: SustainLoop}); noise is never looped.
         cache_out: filled with {"hits": n, "misses": n} of the render cache
                    (settings.yaml samples.render_cache; nothing when it is off).
+        release_out: filled with {instrument: dB per second the level falls after key-off} for
+                   each whose envelope releases (an ADSR's: core/smps/adsr.py); the others cut.
+        pitches_out: filled with {instrument: Hz} each tone is rendered at (its divider): what the
+                   converter holds to core.plan.rendered_pitches.
 
     Returns:
         {instrument_number: (pcm_bytes, sample_rate_hz)} — 8-bit signed mono PCM.
@@ -324,12 +341,15 @@ def generate_psg_samples(
     # envelope variants, then the psg_voice_map tone entries (core.plan.instruments.psg_catalogue).
     catalogue = psg_catalogue(conv, noise_envelopes or {})
     cache = RenderCache(psg_synth.render_cache, "sn76489", _render_salt() if psg_synth.render_cache else "")
-    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out, rules)
+    renderer = _PsgRenderer(psg_synth, fps, cache, verbose, rate3_dividers, loops, loops_out, rules, pitches_out)
     raw_data: dict[int, tuple[Sequence[float], int]] = {}   # inst_num -> (mono, rate)
     for spec in catalogue.values():
         rendered = renderer.render(spec)
         if rendered is not None:
             raw_data[spec.entry.mod_instrument] = rendered
+        envelope = _resolve_envelope(spec.entry, rules.psg_envelopes)
+        if release_out is not None and envelope is not None and envelope.release:
+            release_out[spec.entry.mod_instrument] = _release_db_per_sec(envelope, fps)
     if cache_out is not None and cache.enabled:
         cache_out.update(hits=cache.hits, misses=cache.misses)
     if raw_out is not None:                  # the unquantised renders, for the composite mixer

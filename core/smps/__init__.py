@@ -20,10 +20,12 @@ whatever driver or file the song came from.
                       parse_differences: where two readings of the same bytes differ
 """
 
+from .adsr import ADSR_ENVELOPES, Adsr, volume_family
 from .asm_writer import write_asm
 from .clock import REGIONS, VINT, TimerA, UpdateClock, VInt, update_hz
 from .code import (
     TRACK_BYTES,
+    FlagRead,
     Op,
     OpKind,
     SmpsCode,
@@ -45,6 +47,7 @@ from .driver_tables import (
     PsgTable,
     chip_pitch,
     fm_note_index,
+    fm_render_word,
     fm_table_index,
     noise_envelope_frames,
     psg_note_index,
@@ -53,6 +56,7 @@ from .driver_tables import (
     signed_byte,
 )
 from .effects import (
+    AdsrEnvelope,
     AlterVol,
     AlterVolumeStep,
     ChangeTransposition,
@@ -61,12 +65,14 @@ from .effects import (
     Detune,
     DetuneAdd,
     DriverEffect,
+    EnvelopePreset,
     Fm3Special,
     Gate,
     Lfo,
     ModOff,
     ModOn,
     ModSet,
+    NoiseRate,
     Nop,
     NoteFill,
     Pan,
@@ -81,6 +87,7 @@ from .effects import (
     SetVoice,
     SetVol,
     SmpsEffect,
+    SoftRelease,
     VoiceRegister,
     VolumeStep,
     effect_of,
@@ -89,6 +96,7 @@ from .effects import (
 )
 from .names import (
     FM_CHANNEL_NAMES,
+    NOISE_CHANNEL_NAME,
     PSG_CHANNEL_NAMES,
     SFX_CHANNEL_IDS,
     SMPS_DAC_NAMES,
@@ -106,8 +114,18 @@ from .names import (
 from .parser import SmpsParser
 from .percussion import ALL_OPERATORS, FmDrum, FmFrame, PsgDrumFrame
 from .pitch_envelope import PitchEnvelope
-from .playback import Aspect, PlayedNote, PlayedSong, played_song
-from .rules import OctaveWrap, PlaybackRules, TrackRules
+from .playback import Aspect, PlayedNote, PlayedSong, played_song, psg_render_divider
+from .rules import (
+    KeyOffRules,
+    ModulationRules,
+    OctaveWrap,
+    PitchRules,
+    PlaybackRules,
+    SoftReleaseLaw,
+    TieRules,
+    TrackRules,
+    VolumeRules,
+)
 from .song import (
     FIRST_FLAG,
     FIRST_NOTE,
@@ -131,6 +149,7 @@ from .tempo import NO_TEMPO_HOLDS, TempoSegment, frame_of_tick, tempo_schedule, 
 from .track import TrackState
 
 __all__ = [
+    "ADSR_ENVELOPES",
     "ALL_ASPECTS",
     "ALL_OPERATORS",
     "C1_SEMITONE",
@@ -141,6 +160,7 @@ __all__ = [
     "HW_FM_CHANNEL",
     "LAST_NOTE",
     "MAX_PSG",
+    "NOISE_CHANNEL_NAME",
     "NO_TEMPO_HOLDS",
     "PAN_VALUES",
     "PSG_CHANNEL",
@@ -155,6 +175,8 @@ __all__ = [
     "SMPS_OP_TO_REG_OFFSET",
     "TRACK_BYTES",
     "VINT",
+    "Adsr",
+    "AdsrEnvelope",
     "AlterVol",
     "AlterVolumeStep",
     "Aspect",
@@ -166,14 +188,19 @@ __all__ = [
     "Detune",
     "DetuneAdd",
     "DriverEffect",
+    "EnvelopePreset",
+    "FlagRead",
     "Fm3Special",
     "FmDrum",
     "FmFrame",
     "Gate",
+    "KeyOffRules",
     "Lfo",
     "ModOff",
     "ModOn",
     "ModSet",
+    "ModulationRules",
+    "NoiseRate",
     "Nop",
     "NoteDiff",
     "NoteFill",
@@ -183,6 +210,7 @@ __all__ = [
     "Pan",
     "PanStep",
     "PitchEnvelope",
+    "PitchRules",
     "PlaybackRules",
     "PlayedEffect",
     "PlayedNote",
@@ -209,9 +237,12 @@ __all__ = [
     "SmpsSong",
     "SmpsSongHeader",
     "SmpsVoice",
+    "SoftRelease",
+    "SoftReleaseLaw",
     "SongCode",
     "SongDiff",
     "TempoSegment",
+    "TieRules",
     "TimerA",
     "TrackRules",
     "TrackState",
@@ -219,6 +250,7 @@ __all__ = [
     "VInt",
     "VoiceField",
     "VoiceRegister",
+    "VolumeRules",
     "VolumeStep",
     "align_songs",
     "chip_pitch",
@@ -228,6 +260,7 @@ __all__ = [
     "flag_from_macro",
     "flag_name",
     "fm_note_index",
+    "fm_render_word",
     "fm_table_index",
     "frame_of_tick",
     "noise_envelope_frames",
@@ -240,6 +273,7 @@ __all__ = [
     "played_song",
     "prepare_song",
     "psg_note_index",
+    "psg_render_divider",
     "psg_tone2_divider",
     "psg_voice_name",
     "semitone_to_note_name",
@@ -253,5 +287,6 @@ __all__ = [
     "track_byte",
     "update_hz",
     "voice_field_from_macro",
+    "volume_family",
     "write_asm",
 ]

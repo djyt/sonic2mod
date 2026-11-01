@@ -44,6 +44,7 @@ from enum import StrEnum
 from ..chips import FEEDBACK_ALGORITHM_MASK, PSG_ATT_SILENT, freq_word, operator_bits
 from ..smps import (
     FM_CHANNEL_NAMES,
+    NOISE_CHANNEL_NAME,
     PSG_CHANNEL_NAMES,
     ChannelType,
     PlayedNote,
@@ -51,6 +52,7 @@ from ..smps import (
     PsgEnvelope,
     SmpsSong,
     frame_of_tick,
+    pan_side,
     played_song,
     prepare_song,
     source_map,
@@ -74,6 +76,7 @@ class FrameAspect(StrEnum):
     PITCH = "pitch"
     LEVEL = "level"
     VOICE = "voice"
+    PAN = "pan"                         # FM: B4's speakers, L R or C
 
 
 class Excuse(StrEnum):
@@ -130,6 +133,7 @@ def note_frames(song: SmpsSong, holds_early: bool = False, played: PlayedSong | 
     TempoWait holds a frame earlier than the song's phase)."""
     played = played or played_song(song)
     melodic = {name for name, ch in source_map(song).items() if ch.header.channel_type != ChannelType.DAC}
+    melodic.add(NOISE_CHANNEL_NAME)                 # fixed-rate noise, whichever track plays it
     schedule = tempo_schedule(played.modifier, played.tempo_changes, played.tempo_phase - holds_early)
     return {name: [(frame_of_tick(schedule, n.tick), n) for n in ns if not n.rest]
             for name, ns in played.channels.items() if name in melodic}
@@ -196,7 +200,7 @@ def _check_offset(song: SmpsSong, notes: NoteFrames, early: bool, offset: int, f
                   channels: ChannelChoice, excuses: _Excuses) -> FrameCheck:
     check = FrameCheck(offset, early)
     envelopes = song.rules.psg_envelopes
-    plays_on = not song.rules.track(ChannelType.PSG).tie_restarts_envelope
+    plays_on = not song.rules.track(ChannelType.PSG).ties.restarts_envelope
     for name, sounding in notes.items():
         if not channels.picks(name):
             continue
@@ -256,17 +260,18 @@ def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog
     frame = frames.frames[at]
     if name in FM_CHANNEL_NAMES:
         fm = frame.fm[FM_CHANNEL_NAMES.index(name)]
-        got = {FrameAspect.PITCH: freq_word(fm.fnum, fm.block), FrameAspect.LEVEL: tuple(sorted(fm.carrier_tls))}
+        got = {FrameAspect.PITCH: freq_word(fm.fnum, fm.block), FrameAspect.LEVEL: tuple(sorted(fm.carrier_tls)),
+               FrameAspect.PAN: pan_side(fm.pan)}
         levels = note.level if isinstance(note.level, tuple) else ()     # FM: the carriers' TLs
-        want = {FrameAspect.PITCH: note.pitch, FrameAspect.LEVEL: tuple(sorted(levels))}
+        want = {FrameAspect.PITCH: note.pitch, FrameAspect.LEVEL: tuple(sorted(levels)), FrameAspect.PAN: note.pan}
         if isinstance(note.voice, tuple):                                  # FM: (B0, ((register, byte) ...))
             feedback, timbre = note.voice
             want[FrameAspect.VOICE] = _chip_bits(feedback, dict(timbre))
             got[FrameAspect.VOICE] = _chip_bits(fm.feedback_algorithm, {r: fm.operator(r) for r, _ in timbre})
     else:
-        index = PSG_CHANNEL_NAMES.index(name)
-        noise = note.noise is not None
-        tone, level = frame.psg[_NOISE_TONE if noise else index], frame.psg[NOISE_CHANNEL if noise else index]
+        noise = note.noise is not None or name == NOISE_CHANNEL_NAME
+        index = _NOISE_TONE if noise else PSG_CHANNEL_NAMES.index(name)    # a fixed rate's: no pitch
+        tone, level = frame.psg[index], frame.psg[NOISE_CHANNEL if noise else index]
         got = {FrameAspect.PITCH: max(1, tone.period), FrameAspect.LEVEL: level.attenuation}
         level = note.level
         step = steps.step(note.voice)

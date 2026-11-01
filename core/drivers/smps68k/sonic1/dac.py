@@ -12,12 +12,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from core.rom.image import RomImage
-from core.rom.pcm import Dpcm, PcmEntry, PcmTable, delta_table, one_format
+from core.rom.pcm import PcmEntry, PcmTable, one_format, pcm_table
+from core.rom.pcm.smps import Dpcm, delta_table
 from core.rom.variant import DacSample
 from core.rom.z80 import z80_ram
 from core.smps import FIRST_NOTE
 
-from ..dac import pcm_table, pitch_table
+from ..dac import pitch_table
 
 _MOVE_D0_ABS = bytes.fromhex("13C0")                    # move.b d0,(xxx).l
 _MOVE_PC_INDEXED = bytes.fromhex("103B")                # move.b d8(pc,d0.w),d0

@@ -27,11 +27,11 @@ import dataclasses
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK
+from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK, noise_follows_tone3
 from .driver_tables import fm_note_index, psg_note_index
-from .names import source_names
-from .rules import OctaveWrap, PlaybackRules
-from .song import SmpsNote, SmpsSong, SmpsVoice
+from .names import NOISE_CHANNEL_NAME, source_names
+from .rules import PitchRules, PlaybackRules
+from .song import ChannelType, SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 from .track import TrackState
@@ -112,9 +112,36 @@ def played_song(song: SmpsSong) -> PlayedSong:
     end = song.end_tick()
     channels = {name: _played_channel(ch, voices, schedule, end)
                 for name, ch in zip(source_names(song), song.channels, strict=True)}
+    _fixed_noise_apart(channels)
     return PlayedSong(song.header.tempo_modifier, tuple(changes), song.loop_target_tick(), end, channels,
                       song.rules.tempo_phase)
 
+
+
+def _fixed_noise_apart(channels: dict[str, list[PlayedNote]]) -> None:
+    """Noise at a fixed rate (0-2) plays on the noise channel alone, whichever track starts it
+    (Streets of Rage 2's PSG1 and PSG3): its notes move to a NOISE channel, a rest left in their
+    place, and carry no table note or pitch.  Noise clocked by tone 3 stays its track's."""
+    moved = [n if n.rest else dataclasses.replace(n, note=None, pitch=None) for n in channels.get(NOISE_CHANNEL_NAME, ())]
+    for name, notes in channels.items():
+        if name == NOISE_CHANNEL_NAME or not any(_fixed_noise(n) for n in notes):
+            continue
+        kept: list[PlayedNote] = []
+        for note in notes:
+            if _fixed_noise(note):
+                moved.append(dataclasses.replace(note, note=None, pitch=None))
+                _rest(kept, note.tick, note.duration)
+            elif note.rest:
+                _rest(kept, note.tick, note.duration)
+            else:
+                kept.append(note)
+        channels[name] = kept
+    if moved:
+        channels[NOISE_CHANNEL_NAME] = sorted(moved, key=lambda n: n.tick)
+
+
+def _fixed_noise(note: PlayedNote) -> bool:
+    return note.noise is not None and not note.rest and not noise_follows_tone3(note.noise)
 
 
 def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[TempoSegment, ...],
@@ -140,7 +167,8 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
             note = dataclasses.replace(note, is_rest=False, is_retrigger=True)
         if note.is_dac:
             resting = False
-            played.append(PlayedNote(ev.tick_position, note.duration, rest=False, dac=note.dac_name))
+            strikes = not note.is_no_attack or channel.rules.track(channel.header.channel_type).ties.drum_restarts
+            played.append(PlayedNote(ev.tick_position, note.duration, rest=False, attack=strikes, dac=note.dac_name))
             continue
 
         # NoteTimeout ran out before this read: it keyed the channel off then
@@ -167,7 +195,7 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         if not note.is_retrigger or base is None:
             base = _table_word(note, st, channel.rules.fm_frequencies)
         sounded = _note(ev.tick_position, note, st, base, voices, attack, _first_step(st, channel.rules),
-                        channel.rules.track(channel.header.channel_type).octave_wrap)
+                        channel.rules.track(channel.header.channel_type).pitch)
 
         # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
         # read that way leaves it sounding (NoteTimeout is spent)
@@ -211,6 +239,16 @@ def _filled(note: PlayedNote, read: int, fill_off: int | None, schedule: tuple[T
     return played
 
 
+def psg_render_divider(rules: PlaybackRules, semitone: int, detune: int = 0) -> int:
+    """The divider a PSG sample of `semitone` (SMPS, C0 = 0) is rendered at: the driver's table's
+    (PsgTable.render_divider), its detune word added as the driver adds it (>> the note's octave:
+    Streets of Rage 2's, floored as the 68k's asr; as it is: Sonic 1's), within the chip's 10 bits.
+    The renderer, the pitch a sample is taken to sound and the converter's check read it here."""
+    table = rules.psg_table
+    shift = rules.track(ChannelType.PSG).pitch.shift(semitone - table.pitch)
+    return max(1, min(PSG_DIVIDER_MASK, table.render_divider(semitone) + (detune >> shift)))
+
+
 def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...]) -> int:
     """The frequency word the driver reads for a note byte at the track's transposition."""
     if st.is_psg:
@@ -226,20 +264,23 @@ def _first_step(st: TrackState, rules: PlaybackRules) -> int:
 
 
 def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int, SmpsVoice],
-          attack: bool, envelope_offset: int, wrap: OctaveWrap | None) -> PlayedNote:
+          attack: bool, envelope_offset: int, rules: PitchRules) -> PlayedNote:
     fm = voices.get(st.voice) if st.voice is not None and not st.is_psg else None
     if st.is_psg:
         voice, level = st.envelope, st.att
     else:
         voice, level = _fm_voice(fm, st.tl)
     # The word the chip takes: a detuned one past its bits wraps (Streets of Rage's $8F PSG1: divider
-    # 0); channel 3's own registers in special mode carry its offset (OP4's); the pitch envelope's
-    # first step sounds with the key-on
+    # 0), or the driver clamps it (Streets of Rage 2's); channel 3's own registers in special mode
+    # carry its offset (OP4's); the pitch envelope's first step sounds with the key-on
     special = fm.channel_fnum_offset if fm is not None else 0
     word = base + st.detune
-    if wrap is not None and not st.is_psg:
-        word = wrap.wrapped(word)                  # the driver's octave, before what it adds after
-    pitch = (word + special + envelope_offset) & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
+    if rules.octave_wrap is not None and not st.is_psg:
+        word = rules.octave_wrap.wrapped(word)     # the driver's octave, before what it adds after
+    word += special + envelope_offset
+    if st.is_psg and rules.divider_clamp:
+        word = min(max(word, 1), PSG_DIVIDER_MASK)
+    pitch = word & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
     return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
                       voice=voice, level=level, pan=st.pan,
                       modulation=st.modulation if st.modulation_on else None, fill=st.fill,

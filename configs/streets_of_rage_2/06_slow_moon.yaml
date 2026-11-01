@@ -1,0 +1,21 @@
+# Streets of Rage 2 - Slow Moon.  A minimal config: everything else is derived from the ROM
+# (docs/todo/done/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
+name: "Slow Moon"
+input_file: "input/roms/Streets of Rage 2 (USA).md"
+rom_song: "$06"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [4, "fm_v00_C1.raw", 8, 0]   # VGZ: +2.2 dB at 10
+  - [7, "fm_v00_C4.raw", 9, 0]   # VGZ: -3.8 dB at 6
+  - [9, "fm_v01_D3.raw", 10, 0]   # VGZ: +1.6 dB at 12
+  - [11, "fm_v01_Bb4.raw", 10, 0]   # VGZ: +1.7 dB at 12
+  - [12, "fm_v02_A2.raw", 9, 0]   # VGZ: -4.7 dB at 5
+  - [13, "fm_v02_G3.raw", 10, 0]   # VGZ: -3.3 dB at 7
+  - [15, "fm_v03_Bb3.raw", 15, 0]   # VGZ: +2.2 dB at 19
+  - [16, "fm_v03_C5.raw", 14, 0]   # VGZ: +1.1 dB at 16
+  - [17, "fm_v03_Bb5.raw", 13, 0]   # VGZ: +1.6 dB at 16
+  - [18, "fm_v04_C7.raw", 7, 0]   # VGZ: +1.2 dB at 8
+  - [19, "fm_v05_C4.raw", 45, 0]   # VGZ: -1.5 dB at 38
+  - [21, "fm_v07_Cs2.raw", 52, 0]   # VGZ: -2.8 dB at 38
+  - [22, "fm_v07_C3.raw", 50, 0]   # VGZ: -2.4 dB at 38
+  - [26, "psg_$00_G5.raw", 2, 0]   # VGZ: +1.8 dB at 3

@@ -48,7 +48,8 @@ def first_failure(rom: RomImage, index: SoundIndex, variant: SmpsVariant) -> str
     memory = variant.memory(rom)
     for sound_id, address in sorted(index.music.items()):
         try:
-            decode_tracks(memory, music_header(memory, address, variant).tracks, variant)
+            head = music_header(memory, address, variant)
+            decode_tracks(memory, head.tracks, variant, loops=head.loops)
         except RomError as e:
             return f"${sound_id:02X}: {e}"
     return None

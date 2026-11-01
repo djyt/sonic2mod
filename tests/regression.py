@@ -53,6 +53,7 @@ import argparse
 import contextlib
 import datetime
 import hashlib
+import io
 import json
 import os
 import shutil
@@ -68,7 +69,7 @@ sys.path.insert(0, str(ROOT))
 import yaml
 
 from core.config import apply_variant, load_settings, load_yaml
-from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
+from tests.selection import CaseRun, Ran, head_commit, report, run_recorded, save_record, select
 from tools.mod.mod_compare import compare_mods
 from tools.mod.mod_lint import lint_mod
 
@@ -81,7 +82,7 @@ LIVE_SETTINGS_FILE = ROOT / "configs" / "settings.yaml"  # the keys SETTINGS_FIL
 AMIGA_CLOCK = load_settings(str(SETTINGS_FILE))[0].amiga_clock    # the rate a period plays at, for mod_lint
 
 # The runner's own code: a change to it runs every case
-_RUNNER_FILES = ("tests/regression.py", "tests/selection.py", "tools/mod/mod_compare.py", "tools/mod/mod_lint.py")
+_RUNNER_FILES = ("tests/regression.py", "tests/selection.py", "tests/functions.py", "tools/mod/mod_compare.py", "tools/mod/mod_lint.py")
 
 _HASH_CHARS = 12
 _MANIFEST_HEADER = "# Written by tests/regression.py --generate-baselines: what each baseline was made with.\n"
@@ -241,12 +242,12 @@ def _write_manifest(manifest: dict) -> None:
 
 # --- converting ------------------------------------------------------------------------------
 
-def _convert(tc: dict, record: bool) -> tuple[bool, str, list[str]]:
+def _convert(tc: dict, record: bool) -> tuple[bool, str, Ran]:
     """Run convert.py for a case: (ok, failure text, the files it ran when `record`)."""
     run = _run(tc)
     _output_path(tc["name"]).unlink(missing_ok=True)      # not the last run's, if this one fails
     text = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace"}
-    result, files = None, []
+    result, files = None, Ran()
     for _attempt in range(2):          # a parallel first run can trip over the chip DLL builds: once more
         if record:
             result, files = run_recorded(run, **text)
@@ -273,7 +274,7 @@ def _ensure_native_libs() -> None:
     )
 
 
-def _convert_all(cases: list[dict], jobs: int, record: bool = False) -> dict[str, tuple[bool, str, list[str]]]:
+def _convert_all(cases: list[dict], jobs: int, record: bool = False) -> dict[str, tuple[bool, str, Ran]]:
     """Convert every case, up to `jobs` at a time; {name: (ok, failure text, files run)}."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     if jobs > 1:
@@ -357,21 +358,28 @@ def run_tests(cases: list[dict], jobs: int) -> bool:
     if not cases:
         print("\nNothing to run.")
         return True
-    all_passed = True
     results = _convert_all(cases, jobs)
     manifest = _load_manifest()
     settings = _content_hash(SETTINGS_FILE)
+    failed = []
     for tc in cases:
-        print(f"\n  [{tc['name']}] {tc['description']}")
-        all_passed &= _check(tc, results[tc["name"]], manifest, settings, _output_path(tc["name"]))
+        # A pass is counted; a failure prints its case and what _check found
+        log = io.StringIO()
+        with contextlib.redirect_stdout(log):
+            print(f"\n  [{tc['name']}] {tc['description']}")
+            passed = _check(tc, results[tc["name"]], manifest, settings, _output_path(tc["name"]))
+        if not passed:
+            failed.append(tc["name"])
+            print(log.getvalue(), end="")
 
-    print()
-    print("All tests PASSED." if all_passed else
-          f"Some tests FAILED.  Their outputs: {OUTPUT_DIR.relative_to(ROOT).as_posix()}/<case>.mod")
-    return all_passed
+    print(f"\n{len(cases) - len(failed)} of {len(cases)} passed")
+    print("All tests PASSED." if not failed else
+          f"Some tests FAILED.  Their outputs: {OUTPUT_DIR.relative_to(ROOT).as_posix()}/<case>.mod\n"
+          f"failed: {' '.join(failed)}")
+    return not failed
 
 
-def _check(tc: dict, result: tuple[bool, str, list[str]], manifest: dict, settings: str, tmp_path: Path) -> bool:
+def _check(tc: dict, result: tuple[bool, str, Ran], manifest: dict, settings: str, tmp_path: Path) -> bool:
     """One case's output against its baseline: printed, True when it passes."""
     baseline_path = ROOT / tc["baseline"]
     if not baseline_path.exists():

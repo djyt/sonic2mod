@@ -18,13 +18,14 @@ Each topic has one home; the others link to it.
 | `docs/yaml_config.md` | **Every config key** — song config (minimal configs, channels, the instrument maps, sample shaping, merge keys, variants) and `settings.yaml` (code default vs shipped value) |
 | `docs/smps_driver.md` | **Sonic 1 driver and hardware** — coord flags, detune vs transposition, TempoWait, modulation / note fill in frames, voice layout and operator order, DAC sample rates, PSG |
 | `docs/smps_format.md` | Assembly syntax and how the parser reads it |
+| `docs/mucom_drivers.md` | **MUCOM drivers** — Mucom-MD 0.85 (Streets of Rage 2): MUCOM88's song images on the 68k, its track code, how it plays (soft release, ADSR envelopes, noise on any track), DAC, against the rips |
 | `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM), Streets of Rage (68k, MUCOM-style track code), Space Harrier II (early Z80), OutRun (Z80 on Timer A): what each differs from Sonic 1 by, how it was found, how to add a variant |
 | `docs/fm_synthesis.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, `sustain_duration: auto`, render level and clipping, quantisation, OPN2, the device and core/synth API |
 | `docs/psg_synthesis.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, the device and core/synth API |
 | `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), `configs/sfx.yaml`'s keys, 8-bit Amiga export |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
-| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80), `streets_of_rage_2.md` (Mucom-MD: probe and plan, not started), `revenge_of_shinobi.md` (Streets of Rage's driver, an earlier version: probe and plan, not started); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `outrun.md` (SMPS Z80 on Timer A), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
+| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80), `revenge_of_shinobi.md` (Streets of Rage's driver, an earlier version: probe and plan, not started); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `streets_of_rage_2.md` (Mucom-MD; listening open), `outrun.md` (SMPS Z80 on Timer A), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
 | `docs/audits/` | Per-song accuracy audits vs VGZ (2026-09): `00_soundtrack_survey.md` overview, `01`–`09` per song |
 | `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
 | `3rdparty/` | Vendored C emulators the chip devices compile (in git): `nuked-opn2/` (cycle-accurate YM2612/YM3438), `sn76489/` (VGMPlay's PSG) |
@@ -64,7 +65,8 @@ sonic2mod/
     vgm/         against a rip: vgm_analyze, vgm_compare, vgm_pitch_audit, vgm_lift, vgm_frames, measure_volumes
     mod/         a written MOD: mod_audit, mod_lint, mod_compare, mod_render_diff
     config/      write or derive a song config: merge_survey, fold_csv, config_to_chip_space, make_credits_config
-    rom/         read a ROM: rom_import, song_dump
+    rom/         read a ROM: rom_import, song_dump, disasm (a driver's 68k / Z80 code, its jump tables),
+                 flag_census (every flag the songs hold, by its bytes and what it reads as)
     chips/       chip device smoke tests: validate_ym2612, validate_sn76489
     dev/         repo upkeep: check, release, hooks/
   tests/       regression suites; unit tests mirror the code (tests/core/vgm/test_reader.py tests core/vgm/reader.py)
@@ -80,6 +82,7 @@ sonic2mod/
 ```bash
 pip install numpy pyyaml rich   # external dependencies (or pip install -e .)
 pip install ruff pyright vulture import-linter coverage  # lint / types / dead code / layers / test selection (or pip install -e .[dev])
+pip install capstone z80dis       # tools/rom/disasm.py: a driver's 68k and Z80 code
 git config core.hooksPath tools/dev/hooks   # the pre-commit hook (per clone): tools/dev/check.py --fast
 ```
 
@@ -112,6 +115,11 @@ python convert.py configs/sonic_1/01_title_screen.yaml
 
 # Override output path
 python convert.py configs/sonic_1/01_title_screen.yaml --output output/sonic_1/title_screen.mod
+
+# Every song of a game: a config folder, converted in parallel, a line each (exit 1 if any fails);
+# --merged / --variant build only the songs that have merge groups / that variant (the rest skipped)
+python convert.py configs/streets_of_rage_2
+python convert.py configs/sonic_1 --variant lofi --merged
 
 # Also list every composite, bank sound, loop extension and synthesis pitch (and each sample's
 # release rate and share of the song)
@@ -146,6 +154,13 @@ python tools/rom/rom_import.py input/roms/sonic_rev01.bin --compare reference/sm
 python tools/rom/rom_import.py input/roms/sonic_rev01.bin --asm output/rom_asm --dac output/rom_dac
 # Every song of a ROM (or an asm folder) as read, walked and played, as text: what a reader change moved
 python tools/rom/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 81
+# A driver's code: a routine to its end, the Z80-bus / YM handshake folded to `; bus`; a jump table's
+# targets; the Z80 program as the 68k loads it (--raw: every instruction and its bytes)
+python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" 40E46
+python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --table 41B74 --entries 16 --first F0
+python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --z80 00EE
+# Every flag a ROM's songs hold, counted by its bytes and what it reads as, with the songs and first address
+python tools/rom/flag_census.py "input/roms/Streets of Rage 2 (USA).md" --flag FF FA --kind PSG
 
 # Render all 49 sound effects as configs/sfx.yaml says (format wav/raw, bits, rate, folder, level, dither):
 # shipped 16-bit stereo WAV → output/sonic_1/sfx/
@@ -181,16 +196,25 @@ python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --c
 python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/01 - Title Theme.vgz" --chip all --max-rows 0
 # The log frame by frame (core.vgm.frame_log): keys / fnum / carrier TLs, PSG attenuations, DAC sample starts (a seek, or bytes after a pause) per V-int
 python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --frames --chip all --channel FM1 PSG1
+# Every register write in order, decoded (TL op1, key on, pan, PSG tone / att), a run of one field a row:
+# what --frames folds away (a volume write rewriting every TL, a key-off before a key-on)
+python tools/vgm/vgm_analyze.py "reference/vgz/streets_of_rage_2/15 - Expander.vgz" --writes --channel FM3 --from 0 --to 3
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
 # "inst 8: synth_root is 1 octave too high (243 of 243 notes)" = fix that synth_root; "mixed" = a note problem.
 # vgm_compare.py prints the same verdict ("Pitch verdict"); its per-note vgm_c / mod_c columns are audio
 # cross-checks that still disagree on grace notes (todo item 3).
 python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --list
+# Every pair of a game, a line each, in parallel; --convert writes each MOD first (the audit reads the one on
+# disk: a stale MOD is the commonest false result).  A config alone finds its rip (rips.yaml)
+python tools/vgm/vgm_pitch_audit.py --all --configs configs/streets_of_rage_2 --convert
+# Why a note was judged so: each chip segment near a time, the MOD note it paired with, the running deviation
+python tools/vgm/vgm_pitch_audit.py configs/streets_of_rage_2/11_under_logic.yaml --trace PSG2 --at 29.9
 
 # The song as read (asm or ROM) against its rip, lifted (docs/todo/vgz_conversion.md Phase 1): differences per
-# channel and aspect, repeated ones grouped.  The lift takes the song's tempo; aspects default to what it reads
-# (onset length note; --aspects all).  Pairs by number or the rips.yaml beside the configs
+# channel and aspect, repeated ones grouped, up to the rip's last whole frame.  The lift takes the song's tempo;
+# it reads onset, length and note (a note as it sounds: detune in; pitch, level, voice: vgm_frames).  Pairs by
+# number or the rips.yaml beside the configs
 python tools/vgm/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 python tools/vgm/vgm_lift.py --all --aspects onset           # every rip, a line each (~4 s warm)
 python tools/vgm/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations
@@ -238,11 +262,14 @@ A case whose ROM is not in `input/roms/` is left out.
 A converter change is safe only once every case it can move still produces a byte-identical MOD —
 cells **and** the sample table and data (length, volume, finetune, loop, MD5).
 
-**Selection by what each case ran** (`tests/selection.py`): `--generate-baselines` records the
-project files each case executes (coverage.py, `pip install coverage`; render caches off, so
-generating is cold: ~30 s).  A plain run diffs the working tree with each case's baseline commit
-and runs only the cases a change can move: a driver's folder moves its game's cases, shared code
-(`core/smps`, `core/convert`, ...) moves every case that imports it.  `--all` runs everything.
+**Selection by what each case ran** (`tests/selection.py`, `tests/functions.py`): `--generate-baselines`
+records the project files and functions each case executes (coverage.py, `pip install coverage`;
+render caches off, so generating is cold).  A plain run diffs the working tree with each case's
+baseline commit and runs only the cases a change can move: a changed function moves the cases that
+ran it; code outside a function (a constant, an import, a class's fields) every case that loaded
+its file; a driver's folder its game's cases.  `--all` runs everything.  Regenerate every record
+now and then (both suites, `--generate-baselines`): a record's commit far behind makes every
+run diff more.
 
 Every case converts with **`tests/settings.yaml`** (`convert.py --settings`), never
 `configs/settings.yaml`, so tuning a song by ear does not move the baselines.  It states every key
@@ -274,8 +301,8 @@ python -m pytest tests/core/merge -q                   # one package's unit test
 
 **The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
 `vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD (against its own game's rips), `vgm_lift` (the Moonwalker
-pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's, Space Harrier II's and OutRun's pairs) and `read_<game>` — `tools/rom/song_dump.py`: every song of each game (Sonic's asm and ROM,
-Moonwalker, Golden Axe, Streets of Rage, Space Harrier II, OutRun) as read, walked and played, no rendering — byte for byte;
+pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's and its sequel's, Space Harrier II's and OutRun's pairs) and `read_<game>` — `tools/rom/song_dump.py`: every song of each game (Sonic's asm and ROM,
+Moonwalker, Golden Axe, Streets of Rage and its sequel, Space Harrier II, OutRun) as read, walked and played, no rendering — byte for byte;
 `--with-renders` adds `vgm_compare`.
 
 ```bash
@@ -334,7 +361,8 @@ One line each; the linked section has the cause and the detail.
 - One effect per cell; priority: `Cxx` > `4xy` > note cut > a loop's fall slide.
 - Layout order inside `convert()` is fixed: passes → pattern breaks → loop `Bxx` → trim → narrow →
   compact → trim tails → zero idle words.  Row-0 tempo `Fxx` is placed after every channel.
-- Noise mode is permanent once `smpsPSGform` runs; `psg_voice_map` is then never consulted.
+- Noise mode holds from `smpsPSGform` until a driver turns it off (`PsgForm(None)`, Streets of Rage 2's);
+  meanwhile `psg_voice_map` is never consulted.  Fixed-rate noise plays on a `NOISE` channel of its own.
 
 **Configs and settings** (`docs/yaml_config.md`)
 - settings.yaml values are used everywhere; code constants are only the fallback.

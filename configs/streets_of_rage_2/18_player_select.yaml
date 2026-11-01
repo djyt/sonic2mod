@@ -1,0 +1,16 @@
+# Streets of Rage 2 - Player Select.  A minimal config: everything else is derived from the ROM
+# (docs/todo/done/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
+name: "Player Select"
+input_file: "input/roms/Streets of Rage 2 (USA).md"
+rom_song: "$18"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 45, 5]   # VGZ: +3.0 dB at 64
+  - [2, "dac82.raw", 43, -2]   # VGZ: +3.4 dB at 64
+  - [5, "fm_v02_C7.raw", 24, 0]   # VGZ: -1.9 dB at 19
+  - [6, "fm_v03_E2.raw", 19, 0]   # VGZ: -1.5 dB at 16
+  - [8, "fm_v04_D4.raw", 14, 0]   # VGZ: -1.6 dB at 12
+  - [9, "fm_v04_C5.raw", 15, 0]   # VGZ: -1.7 dB at 12
+  - [10, "fm_v05_E2.raw", 8, 0]   # VGZ: +3.0 dB at 12
+  - [11, "fm_v05_D3.raw", 9, 0]   # VGZ: +2.9 dB at 12
+  - [12, "fm_v05_C4.raw", 8, 0]   # VGZ: +3.2 dB at 12

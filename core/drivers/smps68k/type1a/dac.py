@@ -22,12 +22,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from core.rom.image import RomError, RomImage
-from core.rom.pcm import Dpcm, PcmEntry, PcmTable, delta_table, one_format
+from core.rom.pcm import PcmEntry, PcmTable, one_format, pcm_table
+from core.rom.pcm.smps import Dpcm, delta_table
 from core.rom.variant import DacSample
 from core.rom.z80 import Z80_RAM_BASE, z80_ram
 from core.smps import FIRST_NOTE
 
-from ..dac import LEA_A0, pcm_table, pitch_table
+from ..dac import LEA_A0, pitch_table
 
 _LONG = 4
 _OPCODE = 2

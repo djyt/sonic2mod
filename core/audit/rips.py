@@ -36,7 +36,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..config import load_yaml
+from ..rom.pcm import SIGN
 from ..smps import SmpsSong, TimerA, update_hz
+from ..source import DacSample
 from ..vgm import FrameCut, FrameLog, VgmLog, decode_vgm, frame_log, is_vgm_path, realigned, retimed, vgm_bytes
 
 _PROJECT = Path(__file__).resolve().parents[2]
@@ -194,6 +196,12 @@ class RipShelf:
 
     def _rip_files(self) -> list[Path]:
         return sorted(p for p in self.rips.glob("*") if is_vgm_path(p))
+
+
+def dac_written(samples: Iterable[DacSample]) -> dict[int, bytes]:
+    """Each sample's bytes as its player writes them to $2A (a pitched copy's are its sample's):
+    what a rip's frame log finds DAC starts by (core.vgm.frame_log)."""
+    return {s.sound: bytes(b ^ SIGN for b in s.pcm) for s in samples if not s.is_pitched_copy}
 
 
 def frame_cut(song: SmpsSong) -> FrameCut:

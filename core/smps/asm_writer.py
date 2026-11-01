@@ -204,6 +204,8 @@ class _Writer:
 
         assert op.effect is not None
         flag, params = op.effect.flag, op.effect.values
+        if None in params:
+            raise ValueError(f"{op.effect}: no SMPS macro spells it")
         if flag == CoordFlag.PAN:
             return _macro(flag_name(flag), f"{_PAN_NAMES[params[0] & _PAN_SPEAKERS]}, {_hex(params[0] & _PAN_LFO)}")
         if flag == CoordFlag.PSG_VOICE:

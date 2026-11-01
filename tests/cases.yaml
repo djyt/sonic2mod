@@ -69,3 +69,11 @@ outrun:  # SMPS Z80 on Timer A, minimal configs; chosen by line coverage over it
   - {name: or_step_on_beat, config: outrun/85_step_on_beat, why: "the driver's common path (Timer A, DAC with its stall and pans, PSG tones, the octave wrap)"}
   - {name: or_passing_breeze, config: outrun/83_passing_breeze, why: "116 lines no other OutRun song runs (a tempo, voice $32's volume slots, sustain loops)"}
   - {name: or_last_wave, config: outrun/84_last_wave, why: "66 more (no DAC, no PSG, an SFX the song starts dropped)"}
+
+streets_of_rage_2:  # Mucom-MD 0.85, minimal configs; chosen by line coverage over its 26 songs (2026-11-01)
+  - {name: sor2_jungle_base, config: streets_of_rage_2/05_jungle_base, why: "the driver's common path (soft release, ADSR envelopes, slot fit: volumes, copies)"}
+  - {name: sor2_level_complete, config: streets_of_rage_2/0b_level_complete, why: "192 lines no other Streets of Rage 2 song runs (noise taken and given back, a song that ends)"}
+  - {name: sor2_too_deep, config: streets_of_rage_2/08_too_deep, why: "34 more (the LFO, vibrato)"}
+  - {name: sor2_song_12, config: streets_of_rage_2/12_song_12, why: "19 more (detune variants, loops)"}
+  - {name: sor2_go_straight, config: streets_of_rage_2/00_go_straight, why: "12 more (sustain plan, cells)"}
+  - {name: sor2_game_over, config: streets_of_rage_2/19_game_over, why: "9 more (a one-shot: no loop)"}

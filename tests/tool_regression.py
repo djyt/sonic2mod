@@ -56,13 +56,13 @@ import yaml
 
 from core.audit import RIPS_MAP, RipShelf
 from tests.regression import SETTINGS_FILE, TEST_CASES, variant_args
-from tests.roms import GAMES, MOONWALKER_RIPS, MOONWALKER_ROM, SONIC1_ASM, SONIC1_ROM
-from tests.selection import CaseRun, head_commit, report, run_recorded, save_record, select
+from tests.roms import GAMES, MOONWALKER_RIPS, MOONWALKER_ROM, SONIC1_ASM, SONIC1_ROM, STREETS_OF_RAGE_2_ROM
+from tests.selection import CaseRun, Ran, head_commit, report, run_recorded, save_record, select
 
 BASELINES_DIR = _HERE / "tool_baselines"
 MANIFEST_FILE = BASELINES_DIR / "manifest.yaml"
 COVERAGE_FILE = BASELINES_DIR / "coverage.yaml"
-_RUNNER_FILES = ("tests/tool_regression.py", "tests/selection.py")      # a change to either runs every case
+_RUNNER_FILES = ("tests/tool_regression.py", "tests/selection.py", "tests/functions.py")   # a change to one runs every case
 VGZ_DIR = ROOT / "reference" / "vgz" / "sonic_1"
 RENDER_DIR = ROOT / "output" / "compare" / "tool_regression"
 
@@ -106,7 +106,7 @@ class _Case:
     from_line: str | None = None                # compare from the first line starting with this
     renders: bool = False                       # needs VGMPlay + ffmpeg
     output: str = field(default="", repr=False)
-    files: list[str] = field(default_factory=list, repr=False)   # what it ran, when recorded
+    files: Ran = field(default_factory=Ran, repr=False)          # what it ran, when recorded
 
     @property
     def run(self) -> CaseRun:
@@ -125,6 +125,7 @@ def _analyze_cases(vgz: Path) -> list[_Case]:
         "psg0": ["--chip", "psg", "--psg-mod-cents", "0", "--max-rows", "0"],
         "volumes": ["--chip", "all", "--volumes"],
         "frames": ["--frames", "--chip", "all", "--max-rows", "0"],
+        "writes": ["--writes", "--chip", "all", "--to", "60", "--max-rows", "0"],
     }
     return [_Case(f"analyze_{n}_{mode}", tool + args, [vgz]) for mode, args in modes.items()]
 
@@ -149,7 +150,7 @@ def _lift_cases(vgzs: list[Path]) -> list[_Case]:
     cases = [_Case("lift_all", [*tool, "--all"], [*vgzs, *RipShelf.load(_SONIC1_CONFIGS, VGZ_DIR).config_files()])]
     detail = next((v for v in vgzs if v.name.startswith(_LIFT_DETAIL)), None)
     if detail is not None:
-        cases.append(_Case(f"lift_{_LIFT_DETAIL}", [*tool, str(detail.relative_to(ROOT)), "--aspects", "all",
+        cases.append(_Case(f"lift_{_LIFT_DETAIL}", [*tool, str(detail.relative_to(ROOT)),
                                                     "--diffs", _LIFT_DIFFS], [detail]))
     if not (MOONWALKER_ROM.exists() and MOONWALKER_RIPS.exists()):
         return cases
@@ -189,6 +190,21 @@ def _read_cases() -> list[_Case]:
     return cases
 
 
+# The ROM tools on Streets of Rage 2: disasm.py (a routine with its bus handshake folded, its FM
+# flag table, the Z80 player's sample loop) and flag_census.py (every flag, every row)
+_ROM_TOOLS = (("disasm_streets_of_rage_2_68k", ["tools/rom/disasm.py", "40E46", "--table", "41B74", "--entries", "16",
+                                                "--first", "F0"]),
+              ("disasm_streets_of_rage_2_z80", ["tools/rom/disasm.py", "--z80", "00EE"]),
+              ("census_streets_of_rage_2", ["tools/rom/flag_census.py", "--rows", "0"]))
+
+
+def _rom_tool_cases() -> list[_Case]:
+    if not STREETS_OF_RAGE_2_ROM.exists():
+        return []
+    rom = STREETS_OF_RAGE_2_ROM.relative_to(ROOT).as_posix()
+    return [_Case(name, [tool, rom, *args], [STREETS_OF_RAGE_2_ROM]) for name, (tool, *args) in _ROM_TOOLS]
+
+
 def _missing_sources() -> list[str]:
     """The ROMs, rips and asm some cases need that are not here."""
     wanted = {MOONWALKER_RIPS, *(source for _, source, _ in _READS), *(rips for _, _, rips, _ in _FRAMES)}
@@ -197,7 +213,7 @@ def _missing_sources() -> list[str]:
 
 def all_cases() -> list[_Case]:
     vgzs = _vgzs()
-    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases()
+    cases = [c for vgz in vgzs for c in _analyze_cases(vgz)] + _lift_cases(vgzs) + _frame_cases() + _read_cases() + _rom_tool_cases()
     shelves: dict[Path, RipShelf] = {}      # each game's: its configs' folder and its rips
     for tc in TEST_CASES:
         if "shares_baseline" in tc:          # a ROM case: its asm case's MOD, audited there
@@ -298,19 +314,19 @@ def generate(only: list[str] | None, with_renders: bool, jobs: int) -> None:
 
 def run(only: list[str] | None, with_renders: bool, jobs: int, every: bool) -> bool:
     manifest = _load_manifest()
-    failed = 0
+    failed: list[str] = []
     cases = _run_all(_select(only, with_renders, every), jobs)
     for case in cases:
         want = _read_baseline(case.name)
         if want is None:
             print(f"  {case.name}: no baseline (--generate-baselines --only {case.name})")
-            failed += 1
+            failed.append(case.name)
             continue
         if want == case.output:
             continue
 
         # A failure: which inputs moved since the baseline, then the diff
-        failed += 1
+        failed.append(case.name)
         print(f"  FAIL {case.name}")
         was = (manifest.get(case.name) or {}).get("inputs", {})
         moved = [k for k, v in _input_hashes(case).items() if was.get(k) != v]
@@ -326,8 +342,10 @@ def run(only: list[str] | None, with_renders: bool, jobs: int, every: bool) -> b
         if len(diff) > _DIFF_LINES:
             print(f"    ... {len(diff) - _DIFF_LINES} more diff lines")
 
-    print(f"{len(cases) - failed} of {len(cases)} passed" + ("" if with_renders else " (vgm_compare skipped: --with-renders)"))
-    return failed == 0
+    print(f"{len(cases) - len(failed)} of {len(cases)} passed" + ("" if with_renders else " (vgm_compare skipped: --with-renders)"))
+    if failed:
+        print(f"failed: {' '.join(failed)}")        # last, to rerun or accept: --only <these>
+    return not failed
 
 
 def _sections(text: str) -> dict[str, str]:

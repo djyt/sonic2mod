@@ -84,10 +84,23 @@ window's span: a sample played d semitones from the pitch it was rendered at run
 2^(d/12) times too fast or slow (`docs/todo/user_improvements.md` item 7).  A bass voice stays at E1; a lead moves
 up and its sample grows with its rate (§ 8).
 
-A MOD holds 31 instruments.  Where the windows need more, voice copies (channel 3's special mode,
-the hardware LFO: `docs/pipeline.md` § Hardware LFO) play as their plain voice on its windows, the
-least played first, until the song fits (`copy_no_slot`: Streets of Rage's Big Boss, 5 copies);
-a song that still does not fit is an error.
+A MOD holds 31 instruments.  Where the windows need more, these give way in turn, what sounds
+least changed first and, among copies, the one whose notes sound the fewest ticks (a long note
+weighs more than many short ones) until the song fits (`core/plan/slot_fit.py`; each one a warning):
+1. an envelope the volume shapes plays at its most played volume, `Cxx` the difference
+   (`volume_no_slot`: Streets of Rage 2's ADSR envelopes, an instrument per preset and volume);
+2. voice copies under the hardware LFO (`docs/pipeline.md` § Hardware LFO) play as their plain
+   voice on its windows (`copy_no_slot`);
+3. a voice's (an envelope's) neighbouring windows merge, the merge moving the fewest ticks first:
+   those notes play further from their sample's pitch (`window_no_slot`);
+4. copies with a register patch play as the voice they patch, one at a time with the windows merged
+   anew: a patch can change the sound wholly (Never Return Alive's `$1F` lets `$09`'s feedback
+   modulator decay; folded, its 5 s notes played 19 dB loud);
+5. copies in channel 3's special mode play as their plain voice: the operators' offsets are lost,
+   and with them the notes' pitch (Alien Power's FM3 300-400 c).
+
+A song that still does not fit is an error.  Banks (`9xx`) would hold one looped sound each, and
+these are looped or seconds long: the plain build does not bank.
 
 A stated item replaces only the derived item it names: one voice's `voice_map` list, one
 `psg_map` form, one `sample_list` row.  A row naming a derived sample's file (`fm_v04_C3.raw`,

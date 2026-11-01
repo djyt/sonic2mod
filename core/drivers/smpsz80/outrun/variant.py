@@ -43,7 +43,9 @@ from core.smps import (
     OctaveWrap,
     Op,
     OpKind,
+    PitchRules,
     PlaybackRules,
+    TieRules,
     TimerA,
     TrackRules,
     effect_from_bytes,
@@ -166,11 +168,11 @@ _PITCH_ENVELOPE_BYTES = EnvelopeBytes(restart=0x80, holds=frozenset({0x81, 0x83}
 
 # An FM track's word and detune kept within an octave as the update adds them (Z80 $0563): at or
 # under fnum $283 a block down, $285 up; over $508 a block up, $284 down
-_FM_TRACK = TrackRules(octave_wrap=OctaveWrap(low=0x283, high=0x508, drop=0x285, rise=0x284),
-                       tie_restarts_envelope=False)
+_FM_TRACK = TrackRules(pitch=PitchRules(octave_wrap=OctaveWrap(low=0x283, high=0x508, drop=0x285, rise=0x284)),
+                       ties=TieRules(restarts_envelope=False))
 
 # A tie skips the note's resets ($0391: bit 1 / ret nz): the PSG envelope plays on from the attack
-_PSG_TRACK = TrackRules(tie_restarts_envelope=False)
+_PSG_TRACK = TrackRules(ties=TieRules(restarts_envelope=False))
 
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:

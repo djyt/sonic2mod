@@ -6,12 +6,15 @@ from the driver's own table, not assumed to be Sonic 1's (C3 up, 69 notes).
 
 from __future__ import annotations
 
+import math
 import unittest
 
+from core.audio import semitone_to_hz
+from core.chips import MD_PSG_CLOCK, freq_word_hz, psg_divider_for_hz, psg_frequency_hz
 from core.drivers.reference import SONIC1_RULES
-from core.smps import PsgTable, chip_pitch
+from core.smps import ChannelType, PsgTable, chip_pitch, fm_render_word, fm_table_index, psg_render_divider
 from core.source import read_song
-from tests.roms import SPACE_HARRIER_2_ROM, needs_space_harrier_2
+from tests.roms import SPACE_HARRIER_2_ROM, STREETS_OF_RAGE_2_ROM, needs_space_harrier_2, needs_streets_of_rage_2
 
 _A2, _C3 = 33, 36           # SMPS semitones (C0 = 0)
 
@@ -38,6 +41,24 @@ class OtherTables(unittest.TestCase):
         self.assertEqual((table.pitch, table.notes), (_A2, len(dividers)))
         self.assertEqual(table.semitone(3), _C3)
 
+    def test_a_sample_renders_at_the_tables_divider_from_its_own_pitch(self):
+        # Streets of Rage 2's PSG was rendered three entries down, read as a table from C3
+        dividers = (1016, 959, 905, 854, 806, 761, 718, 678, 640, 604, 570, 538, 508, 479)
+        table = PsgTable.of(dividers, dividers)
+        self.assertEqual(table.render_divider(_C3), 854)
+        self.assertAlmostEqual(table.divider_cents(_C3), 1200 * math.log2(psg_frequency_hz(854, MD_PSG_CLOCK)
+                                                                         / semitone_to_hz(_C3)))
+
+    def test_off_the_run_a_sample_renders_at_equal_temperament(self):
+        table = PsgTable.of(SONIC1_RULES.psg_frequencies, SONIC1_RULES.psg_read)
+        self.assertEqual(table.render_divider(_A2), psg_divider_for_hz(semitone_to_hz(_A2)))
+        self.assertLess(abs(table.divider_cents(_A2)), 2)
+
+    def test_an_fm_sample_renders_at_the_tables_word_else_equal_temperament(self):
+        frequencies = SONIC1_RULES.fm_frequencies
+        self.assertEqual(fm_render_word(_C3, frequencies), frequencies[fm_table_index(_C3)])
+        self.assertLess(abs(1200 * math.log2(freq_word_hz(fm_render_word(-12, frequencies)) / semitone_to_hz(-12))), 3)
+
     def test_a_table_that_is_not_chromatic_is_an_error(self):
         with self.assertRaisesRegex(ValueError, "not a chromatic table"):
             PsgTable.of((854, 806, 700, 678), (854, 806, 700, 678), "test")
@@ -52,3 +73,14 @@ class SpaceHarrier2(unittest.TestCase):
         table = read_song(SPACE_HARRIER_2_ROM, rom_song=0x81).rules.psg_table
         self.assertEqual((table.pitch, table.notes), (_A2, 72))
         self.assertEqual(table.semitone(0), _A2)           # was read as C3: 3 semitones sharp
+
+
+@needs_streets_of_rage_2
+class StreetsOfRage2(unittest.TestCase):
+    def test_a_detune_renders_shifted_by_the_notes_octave(self):
+        # Go Straight's PSG1 at detune -2: A#4's divider 240, the detune >> its octave (3): -2 >> 3 is
+        # -1, floored as the 68k's asr does
+        rules = read_song(STREETS_OF_RAGE_2_ROM, rom_song=0x00).rules
+        a_sharp_4 = _A2 + 25
+        self.assertEqual(rules.track(ChannelType.PSG).pitch.shift(a_sharp_4 - rules.psg_table.pitch), 3)
+        self.assertEqual((psg_render_divider(rules, a_sharp_4), psg_render_divider(rules, a_sharp_4, -2)), (240, 239))

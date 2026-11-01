@@ -1,0 +1,441 @@
+# Streets of Rage 2: Mucom-MD, MUCOM88 songs on the 68k
+
+Planned 2026-10-10; reviewed against the code (to `faf3913`) and the rips 2026-11-01; done
+2026-11-01 but 5.5 (listening: the user).  `convert.py` reads Streets of Rage 2's songs from the
+ROM, as it reads Streets of Rage.  The driver as built: `docs/mucom_drivers.md`; this is the probe,
+the plan and what each step found.
+
+Status key: `[ ]` open, `[x]` done.  Four parts: what the driver is (1), how close it is to
+Streets of Rage's (2), what the code must change - its bottlenecks, refactors, new concepts (3),
+the plan (4).  The user's decisions: § 5.
+
+---
+
+## 1. Analysis (probe 2026-10-10)
+
+`Streets of Rage 2 (USA).md`, `GM MK-1054 -00`, 2 MB, SHA-1 `8b656eec9692d88bbbb84787142aa732b44ce0be`
+(in `input/roms/`, SHA-1 checked 2026-11-01).  Read with capstone (68k) and z80dis (Z80) in scratch;
+every song walked by a scratch reader of the grammar below.  Today `rom_import.py` stops with "no
+single driver reads this ROM's songs" (Streets of Rage's driver: none of its PSG-row anchor).
+
+Rips: VGMRips' pack 1.11 in `reference/vgz/streets_of_rage_2/`, 24 tracks: 21 heard in the game, two
+unused bonus tracks (22 Go Straight (Beatmix), 24 Little Money Avenue) and 23 Walking Bottom from the
+beta (it may have no song in this ROM).  The pack notes the hi-hats play at twice their rate (recorded
+at 22 kHz).  `vgm_analyze` reads them.  Not yet paired with songs; nothing below is checked against them.
+
+**It is not SMPS.**  `$40010`: `"  MUSIC DRIVER  Mucom-MD Ver0.85Programmed by T.Maruyama(M.N.M Software)"`.
+A 68k port of MUCOM88 (the PC-88 MML driver): its songs are MUCOM88's compiled images, byte for
+byte (header `00 C2` = the PC-88's load address `$C200`), on an engine of its own.  Streets of Rage
+1's driver is SMPS 68k's engine reading the same track language (§ 2).
+
+### 1.1 Where things are
+
+| What | ROM | Note |
+|---|---|---|
+| Entry points | `$40000` | `bra`s: `$40000` music update, `$40004` SFX update (both from V-int, `$794`; PAL: again when `$FCFF` reaches 5), `$40008` a command (d0 word), `$4000C` init |
+| Commands | `$40192` | `$00nn`: 0 stop, 1-6 fades / pause, `$E0`+ a channel's mute; `$01nn` song nn (`$40488`); `$02nn` a voice clip (Z80 sound `$8A + nn`); `$03`-`$06nn` SFX |
+| Sound index | `$429CE` | longs relative to the table: `$00`-`$1B` music (28), `$1C`-`$1F` empty, `$20`-`$56` SFX (55) |
+| Track RAM | `$FFA014` | `$A0` bytes each: FM1 FM2 FM3 (`$FFA014`/`0B4`/`154`, part I), PSG1-3 (`$FFA1F4`/`294`/`334`), FM4 FM5 (`$FFA3D4`/`474`, part II), the drum track (`$FFA514`, on FM6); SFX: FM `$FFA5B4`/`654`, PSG `$FFA6F4`/`794` |
+| FM update | `$40E46` | note read `$40F06`; flags `$41B4C`, table `$41B74`; `$FF` prefix `$41B94`, table `$41BA8` |
+| PSG update | `$42030` | flags `$423C4`, table `$423E8`; envelope `$422F8` |
+| Drum update | `$4262E` | flags `$42836`, table `$4285A`; `$FF` prefix table `$4288E`; trigger `$427B2` |
+| Voice load | `$416B0` | `$41646` first sets the four D1L/RR to `$FF`; voice = bank + 25 n |
+| Volume -> TL | `$41A9A` | carrier masks `$41A88` (`01 01 01 01 03 07 07 0F`) |
+| FM volume | `$4291A` | 20 TLs, `36 33 30 2D 2A 28 ... 05 02` |
+| FM octave | `$4293E` | 12 words C-B, `$284`-`$4C0`: **Streets of Rage's table, byte-equal** |
+| PSG octave | `$42956` | 12 words C-B, `$D5C`-`$714` (dividers × 8): a note's divider = word >> octave |
+| PSG envelopes | `$4296E` | 16 presets × 6 bytes (MUCOM's SSG soft envelope: AL AR DR SL SR RR) |
+| Z80 player | `$559C2` | 8 KB, copied raw to Z80 RAM (`$40D80`, no compression) |
+
+### 1.2 Song header (MUCOM88's image, `$40488`)
+
+```
++0  $C200.w  end.w (LE: the PC-88 load address and end; end - $C200 = the image's size)
++4  $00
++5  voices.w        LE, relative to +5: the voice bank (25-byte voices)
++7  ?.w             LE (not read by the 68k)
++9  $00             the base the track pointers are relative to
++10 11 entries, MUCOM88's channels A-K: ptr.w loop.w (LE, relative to +9; loop 0 = none)
+    A B C = FM1-3, D E F = PSG1-3 (tone 1-3), G = rhythm (skipped), H I = FM4-5,
+    J = FM6 (skipped: every song's is empty), K = ADPCM -> the drum track (FM6 as DAC)
+```
+
+No tempo, no per-track volume or transposition.  A track's `$00` jumps to its own loop pointer (the
+header's), or stops it (`$41CA4`).  All 28 songs' 10 tracks walk to their `$00` without a desync;
+song `$19` has no loop pointer at all (a one-shot), `$0C` and `$10` are empty (every track one `$00`).
+
+### 1.3 Track code
+
+`d n` a note (`d` `$01`-`$7F` frames, `n` octave << 4 | semitone; FM octave o = block o, C4 = o4),
+`$80|d` a rest, `$00` the end, `$F0`-`$FF` a flag.  The driver runs once a V-int: a tick is a frame.
+
+| Byte | FM | PSG | Drum track | Uses (bytes: FM / PSG / drums) |
+|---|---|---|---|---|
+| `$F0 n` | voice n | envelope preset n (`$4245C`) | sample `$80 + n` | 981 / 176 / 586 |
+| `$F1 v` | volume: step = v - 2, clamped 0-19, TL = table[step] | volume 0-15 (att = v ^ 15) | (FM's) | 871 / 183 / 39 |
+| `$F2 lo hi m` | detune word, m 0 sets, else adds | same; `>> octave` as it plays | skipped | 584 / 96 / 0 |
+| `$F3 q` | gate: key off q frames before the end | same | (no effect) | 600 / 125 / 23 |
+| `$F4 s ...` | vibrato: 0 set (delay speed depth.w count), 1 off, 2 on, 3-6 one field | same, depth × 266 / 256 | ignored | 588 / 284 / 0 |
+| `$F5 o.w` / `$F6 x n back.w` / `$FE o.w` | loop start / end (n passes) / leave on the last pass | same | same | 1192 loops, 283 exits |
+| `$F7 a b c d` / `$F7 n` | FM3 special mode, OP4 OP3 OP2 OP1 offsets | n ≠ 8: this track takes the noise channel; 8: gives it back | 4 bytes skipped | 44 / 179 / 0 |
+| `$F8 n` | pan: `ror.b #2` -> 1 R, 2 L, 3 C, 0 none | noise rate: n 0-11 -> 0, 12-22 -> 1, else 2 | pan (FM6) | 928 / 4 / 0 |
+| `$F9 x` | skipped | skipped | skipped | 0 |
+| `$FA r v` / `$FA` × 6 | YM register write (up to 8 queued, `$41C74`) | envelope, 6 bytes direct | YM write, part I | 561 / 4 / 5 |
+| `$FB n` | volume step += n, clamped 0-19 | volume += n, clamped 0-15 | (FM's) | 2177 / 981 / 4 |
+| `$FC f p a` | LFO: `$22` = f \| 8, B4 FMS p AMS a | **no operands** (`rts`) | no operands | 22 / 0 / 0 |
+| `$FD` | tie (read after the note: the note ties into the next) | same | same | 356 / 135 / 4 |
+| `$FF s ...` | prefix ($41B94): `F3 n` soft release level, `F5 x` soft release off (x 0) or on, `F4 x` rest key-off, `F0` `F1` (1 byte) `F2` (2) skipped | the same handler | skipped ($4287A; 1 or 2 bytes) | 105 / 33 / 0 |
+
+Loops: the driver keeps them on a stack (`$41DEC`, `$41E0C`, `$41E50`) and reads neither `$F5`'s nor
+`$F6`'s offset; the offsets are still exact in every song (1192 `$F6` backs to their `$F5`, 283 `$FE`
+offsets past their `$F6`), so SoR1's `loop_end` / `loop_exit` read them as they are.  Depth ≤ 4.
+No loop pointer lands inside a loop body.
+
+### 1.4 How it plays
+
+- **FM volume:** `$F1 v` keeps step (v - 2) as a byte, 19 at most (`$41C02`: v 0 and 1 keep 19; the
+  `tst.b` before its `bcc` clears the carry, so the clamp to 0 never runs); TL = table[step] on the
+  carriers (the voice's own carrier TLs never play).  `$FB n` adds to the step kept, clamped 0-19
+  (`$41DC0`).  Songs use v `$04`-`$13` (`$10` most).  The volume write (`$41A9A`) rewrites all four
+  TLs, a modulator's from the voice.
+- **Gate:** FM: a note no longer than q keys off after **1 frame** (`$40F72`: `d ≤ q -> 1`); PSG:
+  it plays whole (`$4213C`); 75 FM and 146 PSG note bytes are no longer than their gate.  The gate
+  spares a note the next byte ties (`$40E64`: the tie bit read with the note).
+- **Soft release** (`$FF $F3 n` on at level n, `$FF $F5 x` on / off; levels 0-15; 18 songs): nothing
+  keys off.  At the gate (or the note's end, with no gate) the FM note drops to TL =
+  table[(step + n) >> 1] (`$40EE0`, a volume write) and rings through the rests (`$41020`); the next
+  note keys off, then on (`$4156C`), the volume written again (`$40F94`).  PSG: att = ((v - n) >> 1) ^ 15
+  (`$42076`).  `$FF $F5 0` ends it and writes the volume (`$41BCC`); a note still ringing then is
+  keyed on alone (`$415E0`): the next note slides on, no attack.  An FM voice set keys the
+  ringing note off if soft release is still on as the read ends (the voice loads after the read,
+  `$410F4` / `$416BA`).
+- **Ties:** every note keys off at its end, the next keys on; a note followed by `$FD` is not keyed
+  off and the next one slides legato (frequency only).  A `$FD` after a flag sets the tie bit after
+  the note's end keyed it off (`$41C9C`): the next note attacks (but keeps its vibrato, below).  The
+  tie bit survives the loop jump and `$FE` (none of the 28 songs ends a track tied).
+- **Vibrato** (`$40E08`): after the delay, every `speed` frames a step of `depth`; the counter starts
+  at count / 2 and a half cycle is count steps, the turn moving too (SoR1: count + 1).  Restarted on
+  each note unless it is a tied note of the same pitch (`$40F3C`, a late `$FD`'s tie bit too); `$F2`
+  forces the restart.
+- **FM3 special mode, LFO:** as Streets of Rage's (`$42002`: `$1A` = `$40` on FM3 when an offset is
+  nonzero; `$41F0E`).  Data: `$F7 64 00 00 00` / `00 00 00 00`, `$FC` with FMS 2-7.
+- **`$FA` writes:** TL `$4x` 464, AM/D1R 29, D2R 8, D1L/RR 38, KS/AR 2, `$26` 20 (Timer B: inert, the
+  driver runs on V-int).  Queued, written after the volume (`$41112`), so any TL's holds until the
+  next volume write, which rewrites all four (a modulator's from the voice, `$41A9A`).
+- **PSG pitch:** divider = table[s] >> octave, clamped 1-1023; octave o plays C(o+1) (o3 = C4, one
+  octave above FM's o3).  Dividers differ from Sonic 1's by ±1 (C3: 855 vs 854).  The playable run is
+  o1 A (1016, A2) to o7 B (14, B8), 75 notes: a table that starts at A2, as Space Harrier II's
+  (`PsgTable`).  o1 C-G# (and o0) clamp to 1023, 12 c under A2: one note, `$10`, of the 6 in octave 1
+  (songs `$05`, `$15`).
+- **PSG detune and vibrato:** (detune + vibrato) >> octave added to the divider: a constant
+  interval across octaves (SoR1: a fixed `>> 4`).
+- **PSG envelope** (`$422F8`, on from `$F0`/`$FA`): level 0-255 from AL; attack + AR to 255, decay − DR
+  to SL, sustain − SR to 0; at the gate release − RR a frame.  att = ((level × (v + 1)) >> 8) ^ 15.
+  Presets used: 0 (flat: no envelope), 1-4.
+- **PSG noise:** `$F7 n` (n ≠ 8) moves the track onto the noise channel (`$E4 | rate`, white, fixed
+  rate 0-2; never clocked by tone 3), its tone left unwritten; `$F7 8` moves it back.  Used on PSG1
+  and PSG3 (18 notes); every rate is 0 (`$F8 0`, `$F8 10`).
+- **Drum track:** a note plays sample `$80 + n` (`$F0 n`), its note byte unread; a tie skips the
+  trigger.  **Rests and gates do not cut** (SoR1 wrote the empty `$85`).  Songs use n 1-3 only.
+- **DAC** (the Z80 player, SoR1's descendant: 160 of its 439 code windows of 8 bytes are SoR1's):
+  table at Z80 `$01BF`, 5 bytes (start.w size.w pitch.b, LE); `$81` `$1D3`/`$5A5`, `$82` `$778`/`$82B`,
+  `$83` `$FA3`/`$831` (pitch 4), `$84` `$17D4`/`$71D` (pitch 18); `$85` reads the first sample's bytes
+  (unused).  Format as SoR1's (the sample's own 16-byte delta table, nibble 0 a run), new samples.
+  From `$86`: ROM banks (`$0010` sounds per bank, `$1FF8`/`$1FFA`): voice clips (music never).
+
+---
+
+## 2. How close it is to Streets of Rage
+
+**The track language is the same; the engine, the container and the PSG are not.**  SoR1 is SMPS
+68k's engine taught MUCOM's track bytes (its songs converted to an SMPS-like header); SoR2 runs
+MUCOM88's own model on the 68k with MUCOM88's own song images.
+
+| | Streets of Rage (`smps68k_streets_of_rage`) | Streets of Rage 2 (Mucom-MD 0.85) |
+|---|---|---|
+| engine | SMPS 68k: RAM `$FFF000`, `$30`-byte tracks, Sonic 1's queue | Mucom-MD: RAM `$FFA000`, `$A0`-byte tracks, command words via `jsr $40008` |
+| index | 17 absolute longs from `$81` | relative longs from 0: 28 songs, 55 SFX |
+| header | `voices.w fm.b psg.b`, entries with volume (PSG: envelope) | MUCOM88 image: 11 channels × (ptr, loop), no volumes |
+| loop | `$FF w` jump (clears an FM tie) | `$00` + the header's loop pointer (keeps the tie) |
+| notes, rests, `$00`, `$FD` | | **same** |
+| `$F0` `$F2` `$F3` `$F4` `$F5` `$F6` `$F7` (FM) `$FA` `$FB` `$FC` (FM) `$FE` | | **same bytes and operands** |
+| `$F1` FM | TL = table[v] + header volume (steps to −4) | table[clamp(v − 2, 0, 19)]; the same 24-byte table, 4 entries later |
+| `$F8` pan | 1 L, 2 R (table `$7353A`) | 1 R, 2 L (`ror.b #2`); check with a rip |
+| `$F9` | pause toggle (FM) / PSG voice | skipped (1 byte) |
+| `$FF` | jump | prefix: soft release |
+| FM gate, d ≤ q | plays whole | 1 frame |
+| voices | 25 bytes, register order, FB/ALG last, carrier TL from volume | **same** |
+| FM octave | `$284`-`$4C0`, block = octave | **same table** |
+| FM3 special, LFO | | **same** |
+| vibrato | half cycle count + 1 | starts at count / 2, half cycle count; PSG depth × 266/256 |
+| PSG pitch | Sonic 1's table rows 2-6, detune `>> 4` | one octave `>> octave`, own dividers, detune `>> octave` |
+| PSG level | SMPS envelopes (`$81` hold, `$80` restart, `$83` mute), att additive | MUCOM ADSR (AL AR DR SL SR RR) with a release, att = level × volume |
+| PSG noise | `$F7`: PSG3 white at tone 3's rate | `$F7 n`: any tone track takes the noise channel, fixed rates |
+| drum track | rests and gates cut (`$85`) | they do not |
+| DAC | Kosinski Z80 program; `$81`-`$84` | raw copy; same format, new samples `$81`-`$83` used; banked clips |
+
+Reuse: every walk feature Phases 2 and 5 of SoR1 built (volume steps, detune add, gate as note +
+rest, voice patches, `LOOP_EXIT`, FM3 special mode, LFO, `modulation_slides`, unequal loops,
+`replay_tie`) and its loop / detune / vibrato / register-write readers.  New: the container (§ 3.1.2),
+soft release, the PSG model, noise takeover, the vibrato count.
+
+---
+
+## 3. What the code must change
+
+Rules: `agents.md`; `docs/smps_variants.md` § Adding a variant; nothing outside the driver's folder
+names it (CLAUDE.md, "Scalable structure").
+
+### 3.1 Bottlenecks (review 2026-11-01)
+
+What in today's architecture Streets of Rage 2 runs into, and The Revenge of Shinobi
+(`docs/todo/revenge_of_shinobi.md`) with it.  The answer column names the refactor (3.2) or phase.
+
+| # | Bottleneck | Where | Also | Answer |
+|---|---|---|---|---|
+| B1 | Code two families share has no home: the contracts "drivers: none imports another" and "the families independent" keep SoR1's MUCOM language, run-DPCM format and PCM-table finder (`smps68k/streets_of_rage/`, `smps68k/dac.py`) from a driver outside `smps68k` | `pyproject.toml` | RoS | R1, R2 |
+| B2 | A track ends at `$00`; where it goes is the header's.  `decode_tracks` knows no track's end target | `core/rom/tracks.py` | | R3 |
+| B3 | `TrackRules`: 12 flat switches, each a branch in `DriverTrack` / `code.py`; SoR2 adds ~6 (gate floor, soft release, vibrato phase, PSG depth scale, word shift by octave, volume clamp) | `core/smps/rules.py` | every driver | R4 |
+| B4 | The key-off yields notes only (`DriverTrack.cut`): soft release is a level change inside a ringing note, and rests that do not cut | `core/smps/driver_track.py` | | R5 |
+| B5 | Noise is PSG3's mode, permanent: `Track.in_noise_mode`, `DriverState`, `noise_derive`, `synth_roots`, CLAUDE.md's rule; the lift (`noise_mode`: PSG3 the whole song) and `frame_check` (pitch from tone 3).  SoR2: any tone track, and back, at a fixed rate | `core/smps`, `core/plan`, `core/vgm/lift`, `core/audit` | RoS: a 4th track | R6 |
+| B6 | `PsgEnvelope`: attenuation steps added to the volume, no release.  SoR2: ADSR, level × volume, a release after the gate.  Downstream PSG notes keep their cuts; release slides are FM's (`Fades.release`) | `core/smps/driver_tables.py`, `core/convert/channel_writer/fades.py` | | Phase 3.3 (new concept) |
+| B7 | 31 instruments: SoR1 already hit `copy_no_slot` / `detune_no_slot`; envelope × volume and soft-release tails add more | `core/plan`, `core/merge` | | 2.7: register copies now fold (`SmpsVoice.unpatched`); 4 songs still over: 5.3 |
+| B8 | Framework names say SMPS (`SmpsVariant`, `SmpsDriver`, `HeaderLayout`); Mucom-MD is the first engine that is not | `core/rom/variant.py`, `core/drivers/names.py` | | no rename: it fits through the hooks (`grammar`, `music_header_reader`, `voice_reader`, `rules_from_rom`, `dac`); a line in the docs.  Revisit at a third engine |
+| B9 | Z80 program loads are enumerated shapes; SoR2's raw copy (`lea $559C2.l,a1` / `move.w #$1FFF,d0`) may be a sixth | `core/rom/z80.py` | | 2.1 |
+| B10 | `vgm_analyze`'s "smps" column names PSG notes by Sonic 1's table (nC0 = C3) | `tools/vgm/` | | cosmetic: read the real-pitch column |
+
+Already scales, no change: the lazy registry and SHA-1 pinning (`registry.py`, `games.py`), trial
+detection held by the driver contract (`tests/core/drivers/test_contract.py`), coverage-selected
+regression (`tests/selection.py`), the driver's own PSG table (`PsgTable`, `6117df7`: the old
+3.1.4), sound IDs below `$81` (R7: checked).
+
+### 3.2 Refactors (behaviour unchanged, every baseline byte-identical)
+
+1. **R1 Track languages as a package, MUCOM's in the framework** (D1).  `grammar.py` splits; the
+   decoder stays one, for every language:
+
+   ```
+   core/rom/
+     tracks.py          the decoder: follows code with any grammar (unchanged)
+     grammar/
+       __init__.py      Instruction, track_label: what every language yields
+       smps.py          SMPS: $81-$DF notes, $E0+ flags (today's grammar.py)
+       mucom.py         MUCOM: d n notes, $F0+ flags, loops, MucomDialect
+     flags.py           FlagSpec vocabulary (both languages)
+   core/drivers/
+     smps68k/streets_of_rage/     SoR1: its dialect and departures
+     mucom/md/          SoR2: its dialect, header, memory
+   ```
+
+   MUCOM's language: `d n` notes, rests, `$00`, `$F5` / `$F6` / `$FE` loops, `$F2` detune, `$F4`
+   vibrato, `$FA` writes, `$FD`.  What differs per driver is data, a `MucomDialect`: the pan table,
+   PSG note decoding, the vibrato count's bias, `$FF` (jump or prefix).  SoR1's `grammar.py` keeps
+   its departures.  RoS's 5.1.1 is this step.  `core/rom`'s layer contract names the package.
+2. **R2 Z80 PCM to the framework: `core/rom/pcm/`** (a package: the table in `__init__`, the formats by
+   player, `smps.py` and `sor.py`) gains SoR1's `_RunDpcm` (as `sor.RunDpcm`) and
+   `smps68k/dac.py`'s `pcm_table` (`ld iy,nn`); the 68k family keeps its pitch tables.
+3. **R3 Header loops.**  `RomHeader.loops`: each track's start -> its loop target (none: `STOP`
+   stays).  `decode_tracks` carries each instruction's track start and turns a `STOP` reached from
+   it into a `JUMP`; code two tracks share up to a `$00` with different targets is an error.
+   No driver sets it yet.
+4. **R4 `TrackRules` grouped by concern** (D9): volume (steps, clamp), gate (floor, spares tied,
+   sees tie, tied rest holds), ties (jump clears, envelope restart), modulation (turn pause, phase,
+   depth scale), PSG (word shift, noise writes tone 3).  `_REVIEWED` compares the nested departures.
+5. **R5 Key-off as events.**  `DriverTrack.cut` returns events (notes and level changes);
+   `code.py` emits them as they come.
+6. **R6 Noise reversible, on any PSG track.**  A `PsgForm` with no form: tone again.
+   `Track.in_noise_mode` by the current form; `DriverState` back on `psg_voice_map`'s routing;
+   `noise_derive` and `synth_roots` by note, not channel; `frame_check`: a fixed-rate noise note
+   has no tone-3 pitch; the lift: noise by the track that owns it.  CLAUDE.md's "Noise mode is
+   permanent" becomes "until the driver turns it back".  RoS's noise track (5.1.3) builds on it.
+7. **R7 Sound IDs from 0.**  Checked: `:02X` formatting, `parse_number`, `read_index(first_id)`,
+   music and SFX IDs disjoint.  Left: help and messages that say "$81 ..."; a test reading ID 0.
+
+Order: R1, R2, R7 before Phase 2; R3 with 2.2; R4, R5, R6 before Phase 3.  One commit each.
+
+### 3.3 New concepts
+
+| Fact | IR | Resolved in | Downstream |
+|---|---|---|---|
+| header loop pointers | R3: `JUMP` at the track's end | header reader, `decode_tracks` | none |
+| FM volume `v − 2`, clamped 0-19 | `volume.kept` (the step a byte keeps), `volume.step_range` (`$FB`'s clamp) | walk | none |
+| PSG volume 0-15, `$FB` clamped | `SET_VOL` / `ALTER_VOL` with a clamp per kind | walk | none |
+| soft release (`$FF F3 n`, `F5`) | `SoftRelease`; `key_off.soft_release` (`SoftReleaseLaw`): gate -> note, level change, tied tail through the rests; off: the next note slides | walk | `Cxx` on a tie (exists) |
+| FM gate d ≤ q -> 1 frame | `key_off.gate_floor` | walk | none |
+| vibrato count / 2 start, count per half | `modulation.first_leg_short` (SoR1 1, SoR2 0) | `modulation_offset` | none |
+| a late `$FD` (after a flag) | `ties.late_keys_off` | walk | none |
+| PSG detune and vibrato `>> octave`, depth × 266/256 | R4's word shift by octave, depth scale | walk | none |
+| PSG pitch | the driver's table, A2-B8 (§ 1.4); o1 C-G# -> index 0 in the grammar (D8) | variant, grammar | none |
+| PSG ADSR envelope with release | `PsgEnvelope` gains a release; resolved per (preset, volume) in the walk (D2) | walk | PSG render: attack / decay / sustain; PSG release slides beside FM's (B6) |
+| noise takeover, fixed rate | R6: `PsgForm($E4 \| rate)` and back | walk | psg render (rates 0-2 exist) |
+| pan 1 R / 2 L | `PAN` | dialect (R1) | none |
+| drum rests do not cut | `key_off.rest_cuts` False (exists) | rules | none |
+| `$FA` TL writes | `volume.tl_writes_hold`: a voice patch the next volume write undoes (D4; RoS's too) | walk (`voice_patch.py`) | none |
+| tie survives the loop and `$FE` | `ties.jump_clears` False (exists), `ties.exit_clears` False | rules | none |
+
+---
+
+## 4. Plan
+
+Each step a commit on branch `streets_of_rage_2` (in the main checkout, while no other session
+commits there).  Gate for every refactor: `python tools/dev/check.py --regress` (regression, tool
+regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchanged.
+
+### Phase 0: before code
+- [x] 0.1 The ROM in `input/roms/`; rips in `reference/vgz/streets_of_rage_2/` (2026-11-01).
+- [x] 0.2 Decisions § 5 (2026-11-01).
+- [x] 0.3 The branch, off `9823118`; both suites' baselines from `d4522d7` (byte-identical commits
+  since), the tree passing them.
+- [x] 0.4 Snapshot (scratch, not kept): every game's songs are `tool_regression`'s `read_` cases;
+  Streets of Rage's derived configs (`--show-config`, 16 songs) dumped to scratch.
+
+### Phase 1: refactors for reading (3.2)
+- [x] 1.1 R1: `core/rom/grammar/` (`smps.py`, `mucom.py`), SoR1 a dialect.
+- [x] 1.2 R2: `RunDpcm`, `pcm_table` to `core/rom/pcm/` (a package by player: `smps.py`, `sor.py`).
+- [x] 1.3 R7: sound IDs from 0 (messages, a test).
+
+### Phase 2: read the ROM
+- [x] 2.1 The driver `mucom_md` in `core/drivers/mucom/md/` (D1): `names.py`, `registry.py`,
+  `games.py` (SHA-1), `pyproject.toml`'s three driver contracts (registry-only, families
+  independent, drivers independent), `tests/roms.py` `GAMES`, `_REVIEWED`.  Located by the code that
+  reads each table: the ID string `Mucom-MD Ver0.85`; `lea $429CE(pc),a0` after the song command's
+  bus request (`$404F8`); the volume, octave, PSG and preset tables (`lea (pc)` at `$41C28`,
+  `$40F5A`, `$42118`, `$42464`); the Z80 copy (B9).
+- [x] 2.2 Memory (LE words, relative to the image's +9) and the header reader (§ 1.2): the 9 tracks
+  on their chip channels (G and J checked empty); loop targets with R3.  Voices: SoR1's
+  `VoiceLayout`.  Index: relative longs, songs `$00`-`$1B`, SFX listed, not read (D6).
+- [x] 2.3 Flag tables per kind (§ 1.3) and its dialect (R1).  Dropped and reported until Phase 3:
+  soft release, PSG envelopes, noise.  Refused: `$F4` 3-6, `$FF F4`, `$FC` on PSG / drums (none used).
+  D4 done here (every song must walk): `$FA` queues up to 8 writes, written after the volume each
+  frame (`$41996`), so a carrier's TL holds until the next volume change or voice
+  (`TrackRules.tl_writes_hold`; `SmpsVoice.level_fixed`; a volume change in the same read is
+  refused, none happens).  `$02` `$12` `$13` make 18 such voice copies each (slots: 2.7).
+- [x] 2.4 `rom_import.py` lists the 28 songs; `song_dump.py` reads, walks and plays each; tool case
+  `read_streets_of_rage_2`.
+- [x] 2.5 Tests: the dialect on hand-built bytes; with the ROM: tables, every song on its channels,
+  loop targets, what is dropped.  The driver contract passes.
+- [x] 2.6 `configs/streets_of_rage_2/`: a minimal config per song with notes (26); `rips.yaml`: each
+  rip paired with the song its FM onsets match best (2-264 wrong of 80-3529; the next song 10x
+  worse).  23 Walking Bottom (the beta's) matches none (431 of 567 at best: D10, left out).  No rip:
+  `$04` (`$03`'s other version), `$12` (`$02`'s), `$17`.  The yardstick, `vgm_lift --aspects onset
+  length --channels FM` as read: onsets 2-264 wrong a song, lengths 6-2314 (soft release, the gate
+  floor and ties not yet modelled): 0 of 23 play as their song.
+- [x] 2.7 Slot census: every song converted as read.  12 of 26 needed 33-96 instruments: `$FA`'s
+  register copies (Spin on the Bridge plays 138 voices: 18 of its own, 120 copies, 62 under the LFO)
+  had no fallback when slots ran out.  Generic fix: a register-patched copy folds onto the voice it
+  patches (`SmpsVoice.unpatched`), after the special-mode / LFO copies (`plain`), as before.  Now
+  4 over: `$01` 33, `$0D` 33, `$05` 41, `$07` 43 (5.3: banking, D2).  Also: a config could not
+  name a pitch past B7 (`parse_smps_note`; SoR2's PSG reaches B8): it reads them now.
+
+### Phase 3: the walk
+- [x] 3.0 R4, R5, R6, a commit each.  R4 done: `TrackRules` holds `volume`, `key_off`, `ties`,
+  `modulation`, `pitch` (and `byte_durations`).  R5 done: `DriverTrack.cut` returns the notes and effects a key-off
+  leaves, in time order (an effect where the note before it ends).  R6 done: `PsgForm(None)` turns
+  noise off (Track, DriverTrack, DriverState route back to the tone instrument); fixed-rate noise
+  plays on a `NOISE` channel in `played_song`, the lift and the frame check; `core/chips/psg.py`
+  holds the noise register's facts.  3.4 wires `$F7` to it.
+- [x] 3.1 FM, every mechanism a rule (§ 3.3), SoR2's facts in its variant: volume law (the step
+  kept, `$FB`'s clamp), the gate's 1-frame floor (D3: the rips agree), soft release (with `$FF $F5`,
+  the voice set's key-off and the slide after it), late ties, `$FE` keeping a tie, the vibrato's
+  first leg, every `$FA` TL write held to the next volume write (D4).  Against the rips: FM onsets
+  and lengths exact in 17 of 23 (2.6's yardstick: 0); every FM attack's level, voice and pan
+  exact in all 23, its pitch in 21.  Left, known: a gate or soft release the loop's jump carries
+  into the replay (Go Straight and its Beatmix: FM5's 12 opening loop notes 2 frames long; a
+  second pass would double 17 songs); a late `$FD` that keeps a same-pitch note's vibrato running
+  (Wave 131 FM3, 16 notes); the rest only where a rip ends mid-note.
+- [x] 3.2 PSG: its table (D8: o1 C-G# read as A2, 3 notes 12 c sharp), (detune + vibrato) >> the
+  note's octave (`pitch.octave_shift_from`; `$4226C`), the divider clamped 1-1023
+  (`pitch.divider_clamp`), vibrato depth x 266 / 256 (the dialect's PSG `$F4`, `$41F00`), volume
+  (kept 0-15, `$FB` clamped; a track starts at 8: `volume.initial_step`, `$40940`), soft release
+  (sign -1; cleared by an envelope's note: `envelope_clears`, `$420FE`).
+- [x] 3.3 PSG envelopes (D2): `core/smps/adsr.py`; `$F0 n` an `EnvelopePreset` (the ROM's 16 at
+  `$4296E`, `PlaybackRules.adsr_presets`), `$FA` six bytes an `AdsrEnvelope` ($03 / $04's
+  `c8 32 ff dc 01 0a`).  The walk names the (envelope, volume) a `PsgVoice` (a flat one `$00`), again
+  at each volume change; `ADSR_ENVELOPES` makes each named one.  Rendered as any PSG envelope (held:
+  a sustain loop); the release (RR a frame from SL) a slide: the PSG renderer reports its rate as
+  FM's does.  Slots: 8 songs now over 31 (`$01` 34, `$02` 38, `$05` 53, `$07` 43, `$09` 33, `$0D` 38,
+  `$12` 39; 2.7's 4 + the envelopes): 5.3 (D2: banking, then the per-preset fallback).
+- [x] 3.4 Noise: `$F7 n` `PsgForm($E4)` (white, rate 0, n ignored), `$F7 8` `PsgForm(None)`, `$F8 n`
+  a `NoiseRate` (n 0-11 / 12-22 / more: 0 / 1 / 2) that only plays in noise mode.  The tone channel
+  is left unwritten (`noise_writes_tone3` False).  Level Complete and Game Over: every noise note
+  exact against the rips.
+- [x] 3.5 Against the rips (`vgm_frames`; lift FM): every FM attack's level, voice, pan exact in 23
+  of 23, pitch in 21; 19 of 23 songs play every attack (FM, PSG, noise) exactly.  Left: Wave 131's
+  late-tie vibrato (16), D8's clamped note (3), Go Straight's and its Beatmix's PSG2 sweep and the
+  detune their loop carries (5, 4), Jungle Base's FM3 (1).  The PSG lift stays
+  "unfinished": it merges repeated same-pitch attacks and reads vibrato sweeps as notes.  Left,
+  known: state the loop's jump carries into the replay (a gate, a soft release, a detune word).
+
+### Phase 4: DAC
+- [x] 4.1 The sample reader: R2's `RunDpcm` on Z80 `$01BF`'s table (`core/rom/pcm/sor.py`
+  `player_samples`, both games' drivers on it); `$81`-`$83` byte-equal to the rips' banks (in 20, 6,
+  10 of 24), `$84` in none (no song plays it).  Its loop (`$00EE`-`$0185`): a nibble 186 / 246, a
+  run's step 219, a run's entry 19 / 79, + 13 a pitch step (SoR1's: 190 / 242, 219, 23 / 75).  The Z80 load (B9) was the "copied" shape on other registers (`$40DA2`: `lea $559C2.l,a1` /
+  `lea $A00000.l,a2` / `move.w #$1FFF,d0` / `move.b (a1)+,(a2)+` / `dbra`): `z80.py`'s copied loads
+  are now read on any registers, either lea first (The Revenge of Shinobi's two blocks found too).
+- [x] 4.2 Rates: 4.1's count stands (a nibble 186 + 13 × pitch, `$00EE`-`$0132` recounted).  The
+  rips play `$81`-`$83` at it, 0.2-0.5 % under between stalls (Sonic 1's rips ran 2-3 % fast); the
+  pack's "hi-hats at twice their rate" shows nowhere in the stream.  The 68k's stall 1.5-3.1 % by
+  song (`vgm_analyze.py --dac-stall`): `RUN_DPCM.stall` the median, 1.8 % (pitch 4: 12894-13040 Hz).
+- [x] 4.3 Rests and gates leave the sample playing (`key_off.rest_cuts` False); a tie asks for no
+  sample (`$4277A`: `ties.drum_restarts` False; SOR Super Mix's 69).  The rips' banks are the stream
+  as heard: a drum cutting into another shows no seek, so the frame log finds starts by the ROM's
+  samples' bytes (`frame_log(dac_samples=)`).  DAC onsets and lengths same in all 23 rips.
+
+### Phase 5: convert
+- [x] 5.1 `configs/streets_of_rage_2/`: a minimal config per song with notes (26; 2.6).
+- [x] 5.2 `vgm_pitch_audit`: 14 of 23 clean, after fixing what it misread (a PSG note's attenuation
+  written before its tone; a rip-only start read as a tempo step) and what the slot fit broke (a
+  special-mode copy folded: its pitch; an instrument whose first entry routes no notes: no rendering
+  pitch).  Left: modulation sweeps no 4xy plays (depth -150 ... 598), PSG detune on high notes (no
+  PSG detune variants: -37 c, 29 notes), Wave 131.  `measure_volumes.py`, one pass: 376 volumes.
+- [x] 5.3 Slots: 7 songs needed 33-53 (Jungle Base: 3 drums, 18 voices in 32 windows, an envelope at 7
+  volumes in 18).  D2 amended (the user, 2026-11-01): no banks (one looped sound a bank; these
+  presets sustain or fade over ~3 s), so `core/plan/slot_fit.py`: envelopes at their most played
+  volume, then copies, then windows merged.  All 26 fit.  Left, warned: copies and detune variants
+  played as their voice where the slots are gone (`copy_no_slot` / `detune_no_slot`: 16 songs;
+  Spin on the Bridge 114 register-patched copies).
+- [x] 5.4 Six cases by line coverage (`tests/cases.yaml` `streets_of_rage_2`); `tool_regression`:
+  `read_`, `frames_`, `glitches_` (no glitch in any rip), `pitch_` of the five with a rip.
+- [ ] 5.5 Listen in the FT2 clone (the user).
+
+### Phase 6: close
+- [x] 6.1 The analysis (§ 1-2, with what the phases found) to its home (D1: a doc of its own,
+  `docs/mucom_drivers.md`, since `smps_variants.md` names SMPS variants); `docs/architecture.md`;
+  CLAUDE.md's index; this plan to `done/`.
+
+---
+
+## 5. Decisions (the user, 2026-11-01)
+
+1. **Name and place:** `mucom_md` (Mucom-MD 0.85) in a new family, `core/drivers/mucom/md/`; SoR1
+   stays `smps68k/streets_of_rage` (its engine is SMPS's).  The shared MUCOM language in the framework, with a
+   clear split from the decoder: `core/rom/grammar/` a package, `smps.py` and `mucom.py` in it,
+   `tracks.py` the one decoder (R1's tree).
+2. **PSG envelopes: exact**, an instrument per (preset, volume), identical curves sharing one,
+   release rendered; **banked** where a song runs out of slots, the per-preset fallback (its
+   commonest volume, `Cxx` elsewhere) only after that.  *Amended at 5.3: no banks; the per-preset
+   fallback first, then FM windows merged.*  The size, from the ROM (scratch walk of
+   every PSG track, loops unrolled, one play; `$FA` = a song's own envelope):
+
+   | Envelope instruments (preset ≠ 0) | Songs |
+   |---|---|
+   | 0 | `$07` `$08` `$0A` `$14` `$15` `$16` `$17` `$19` |
+   | 1 | `$00` `$01` `$0E` `$0F` `$13` `$18` `$1B` |
+   | 2-3 | `$03` `$04` `$06` `$11` `$1A` |
+   | 4-5 | `$02` `$09` `$0B` `$0D` `$12` |
+   | 7 | `$05` (preset 3 at volumes 7-13) |
+
+   Preset 0 (flat) is one instrument a song, its levels `Cxx`; noise one or two (`$0B` `$12` `$19`).
+   35 distinct curves over the game.  So 1-8 PSG instruments a song, against SoR1's few: the slots
+   that matter are FM's (2.7).
+3. **FM gate floor: as heard**, a note no longer than its gate plays one frame; checked on a rip first.
+4. **`$FA` carrier TL writes: modelled**, a voice patch the next volume change ends (RoS's too).
+5. **Song numbering:** the driver's own, `$00`-`$1B` (`rom_song: '$05'`).
+6. **Music only:** the 55 SFX listed, not read.
+7. **Regression:** a few cases by coverage (soft release, a PSG envelope, noise takeover).
+8. **PSG octave 1 C-G#** (one note, `$10`): read as A2, the table's first note: the clamp as heard
+   (divider 1023; A2's 1016 is 12 c sharp of it).
+9. **`TrackRules` grouped** by concern (R4) before SoR2's switches.
+10. **Rips without a song** (23 Walking Bottom, beta; maybe the two bonus tracks): paired if a ROM
+   song matches by FM onsets, else left out of `rips.yaml` (named in its comment).

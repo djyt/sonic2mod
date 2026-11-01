@@ -9,7 +9,9 @@ import unittest
 
 from core.chips import MD_PSG_CLOCK
 from core.rom import RomError
-from core.rom.pcm import Dpcm, Pcm, PcmEntry, PcmTable, SampleFormat, one_format
+from core.rom.pcm import PcmEntry, PcmTable, SampleFormat, one_format, pcm_table
+from core.rom.pcm.smps import Dpcm, Pcm
+from core.rom.pcm.sor import RunDpcm
 
 _BANK = 0x8000               # the Z80's bank window: the table at its start, the samples after it
 _ENTRY = PcmEntry(6, size_at=2, pitch_at=4)
@@ -54,3 +56,28 @@ class Table(unittest.TestCase):
         memory = bytes(_BANK) + _entry(_BANK, 0, 1, 0)
         with self.assertRaisesRegex(RomError, r"\$81"):
             PcmTable(memory, _BANK, _ENTRY, one_format(_DPCM), _NAMES).sample(0x81)
+
+
+class RunFormat(unittest.TestCase):
+    # A delta table (byte 0: a run's length, 2) and its nibbles: +1 (n 2), a run (0), -2 (n 15)
+    _DELTAS = bytes([2, 0, 1, 2, 4, 8, 16, 32, 64, 128, 0xF0, 0xF8, 0xFC, 0xFE, 0xFF, 0xFE])
+    _FORMAT = RunDpcm(nibble=(10, 20), run_step=5, run_entry=(1, 3), per_pitch=2, stall=0.0)
+
+    def test_a_nibble_adds_its_delta_and_0_runs_the_last(self):
+        pcm = self._FORMAT.decode(self._DELTAS + bytes([0x20, 0xF0]))
+        self.assertEqual([b ^ 0x80 for b in pcm], [0x81, 0x82, 0x83, 0x81, 0x7F, 0x7D])
+
+    def test_a_sample_that_starts_with_a_run_is_refused(self):
+        with self.assertRaisesRegex(RomError, "starts with a run"):
+            self._FORMAT.decode(self._DELTAS + bytes([0x02]))
+
+    def test_cycles_per_output_by_path(self):
+        # Pitch 1: a high nibble 10 + 2, then a run of 2 entered from the low nibble: 2 x (5 + 2) + 3
+        self.assertAlmostEqual(self._FORMAT.cycles(self._DELTAS + bytes([0x20]), 1), (12 + 17) / 3)
+
+
+class Locate(unittest.TestCase):
+    def test_the_table_is_ld_iys(self):
+        self.assertEqual(pcm_table(bytes([0x00, 0xFD, 0x21, 0x9B, 0x01])), 0x019B)
+        with self.assertRaisesRegex(RomError, "ld iy"):
+            pcm_table(bytes(8))

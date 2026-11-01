@@ -1,0 +1,19 @@
+# Streets of Rage 2 - Good Ending.  A minimal config: everything else is derived from the ROM
+# (docs/todo/done/streets_of_rage_2.md); python convert.py <this> --show-config prints it.
+name: "Good Ending"
+input_file: "input/roms/Streets of Rage 2 (USA).md"
+rom_song: "$1B"
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "dac81.raw", 52, 5]   # VGZ: +1.9 dB at 64
+  - [2, "dac82.raw", 51, -2]   # VGZ: +1.9 dB at 64
+  - [3, "fm_v00_C7.raw", 25, 0]   # VGZ: -2.2 dB at 19
+  - [5, "fm_v02_C7.raw", 27, 0]   # VGZ: -3.1 dB at 19
+  - [6, "fm_v03_Eb3.raw", 8, 0]   # VGZ: +2.1 dB at 10
+  - [7, "fm_v03_Cs4.raw", 12, 0]   # VGZ: +2.5 dB at 16
+  - [8, "fm_v03_C5.raw", 9, 0]   # VGZ: +1.7 dB at 11
+  - [9, "fm_v03_Bb5.raw", 11, 0]   # VGZ: +2.3 dB at 14
+  - [13, "fm_v05_E2.raw", 49, 0]   # VGZ: -2.2 dB at 38
+  - [14, "fm_v05_Eb3.raw", 50, 0]   # VGZ: -2.4 dB at 38
+  - [15, "fm_v06_Ab4.raw", 12, 0]   # VGZ: +2.8 dB at 16
+  - [16, "fm_v06_G5.raw", 12, 0]   # VGZ: +2.3 dB at 16

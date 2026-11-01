@@ -49,6 +49,7 @@ from .reader import (
     vgm_bytes,
 )
 from .realign import realigned
+from .writes import DecodedWrite, decoded_writes
 
 __all__ = [
     "DAC_CHANNEL",
@@ -67,6 +68,7 @@ __all__ = [
     "ChangeKind",
     "ChipState",
     "DacFrame",
+    "DecodedWrite",
     "FmFrame",
     "Frame",
     "FrameCut",
@@ -83,6 +85,7 @@ __all__ = [
     "VgmOp",
     "VgmWrite",
     "decode_vgm",
+    "decoded_writes",
     "frame_log",
     "is_vgm_path",
     "lift_song",

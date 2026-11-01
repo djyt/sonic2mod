@@ -15,7 +15,7 @@ sfx_header_reader); music_header / sfx_header ask it first.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ..smps import NO_TEMPO_HOLDS, ChannelType, SmpsChannelHeader, SmpsSongHeader, psg_voice_name, signed_byte
 from .grammar import track_label
@@ -41,6 +41,9 @@ class RomHeader:
     header: SmpsSongHeader
     voices: int | None         # the voice bank's address; None: the song has none (smpsHeaderVoiceNull)
     tracks: dict[int, ChannelType]     # each track's first byte -> the kind of track it starts
+    # Where a track's end jumps, by its first byte: a driver that loops a track by its header
+    # (Streets of Rage 2's); a track not here stops at its end
+    loops: dict[int, int] = field(default_factory=dict)
 
 
 _Plausible = Callable[[SoundMemory, int], bool]

@@ -175,7 +175,7 @@ def check_amiga() -> None:
 
 
 def check_level() -> None:
-    print("\nOne gain: reference and over")
+    print("\nOne gain: reference, over and gain_db")
     from dataclasses import replace
 
     from core.audio import DEFAULT_TAPS
@@ -203,6 +203,16 @@ def check_level() -> None:
     clipped = export_all(renders, replace(out, over=OVER_CLIP), taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)[2]
     check("clip keeps the gain and clips", clipped.clipped > 0 and clipped.limited_db == 0.0,
           f"{clipped.clipped} clipped")
+
+    # gain_db moves one effect from the composed balance; a raise past the rails still meets over
+    gained = replace(out, effects={0xA0: {"gain_db": 6.0206}, 0xAC: {"gain_db": -6.0206}})
+    quiet_up, common_down, _ = export_all(renders, gained, taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)
+    check("gain_db turns one effect down", abs(common_down.peak - 127 / 2) <= 1, f"peak {common_down.peak}")
+    check("gain_db raises one", abs(quiet_up.peak - 0.8 * 127) <= 1, f"peak {quiet_up.peak}")
+    over = export_all(renders, replace(out, effects={0xAC: {"gain_db": 6.0}}), taps=DEFAULT_TAPS,
+                      clock=PAL_AMIGA_CLOCK)[1]
+    check("a raise past the rails still meets over", over.peak == 127 and over.clipped == 0,
+          f"peak {over.peak}, {over.limited_db:+.2f} dB")
 
     alone = export_all(renders[:1], out, taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)[0]
     check("no reference effect rendered: the set's own loudest", alone.peak == 127, f"peak {alone.peak}")

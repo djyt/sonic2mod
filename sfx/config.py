@@ -40,8 +40,8 @@ OVERS = (OVER_CLIP, OVER_LIMIT)
 PSG_EXTEND, PSG_CLAMP = "extend", "clamp"
 TAIL_OFF = "off"
 
-# What an `effects:` entry may set: how much of one effect is kept, and its pitch
-EFFECT_KEYS = frozenset({"trim_lead", "tail_db", "transpose"})
+# What an `effects:` entry may set: how much of one effect is kept, its pitch and level
+EFFECT_KEYS = frozenset({"trim_lead", "tail_db", "transpose", "gain_db"})
 PSG_PAST_TABLE = (PSG_EXTEND, PSG_CLAMP)
 
 
@@ -77,6 +77,8 @@ class OutputSettings:
     tail_db: float | None = None            # cut where the effect stays this far under its own peak
     transpose: int = 0                      # semitones on every track's notes: a high effect moved
                                             # into a low rate's band
+    gain_db: float = 0.0                    # global: dB on the effect's composed level (-2: a loud one
+                                            # turned down), before over
     effects: dict[int, dict] = field(default_factory=dict)   # sound id -> its own EFFECT_KEYS
 
     @property
@@ -87,6 +89,10 @@ class OutputSettings:
         """These settings as one effect has them: its `effects:` entry laid over them."""
         own = self.effects.get(sound_id) if sound_id is not None else None
         return replace(self, **own) if own else self
+
+    def gains(self) -> bool:
+        """Whether any effect's level is moved by gain_db."""
+        return bool(self.gain_db) or any(own.get("gain_db") for own in self.effects.values())
 
     def transpose_for(self, sound_id: int | None) -> int:
         """The semitones one effect is rendered at, its `effects:` entry's if it has one."""
@@ -144,6 +150,7 @@ def _output(data: dict, where: str) -> OutputSettings:
         trim_lead=_flag(data, "trim_lead", d.trim_lead, where),
         tail_db=_tail_db(data.get("tail_db", d.tail_db), where),
         transpose=_semitones(data.get("transpose", d.transpose), where),
+        gain_db=_db(data.get("gain_db", d.gain_db), where),
         effects=_effects(data.get("effects") or {}, f"{where}: effects"),
     )
     _check_paula(out, where)
@@ -162,9 +169,9 @@ def _check_paula(out: OutputSettings, where: str) -> None:
 
 
 def _check_global(out: OutputSettings, where: str) -> None:
-    """reference and over pick and keep one gain for the set: normalise has none."""
-    if out.level != LEVEL_GLOBAL and (out.reference or out.over != OVER_CLIP):
-        raise ValueError(f"{where}: reference and over need level: global")
+    """reference, over and gain_db move one gain for the set: normalise has none."""
+    if out.level != LEVEL_GLOBAL and (out.reference or out.over != OVER_CLIP or out.gains()):
+        raise ValueError(f"{where}: reference, over and gain_db need level: global")
 
 
 def _sound_ids(value, where: str) -> tuple[int, ...]:
@@ -190,6 +197,13 @@ def _semitones(value, where: str) -> int:
     return value
 
 
+def _db(value, where: str) -> float:
+    """A gain in dB (-2: turned down)."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{where}: gain_db must be dB (-2) (got {value!r})")
+    return float(value)
+
+
 def _effects(data: dict, where: str) -> dict[int, dict]:
     """`effects:` - a sound id ($CC, 0xCC or CC) to the EFFECT_KEYS it sets for that effect alone."""
     out = {}
@@ -205,6 +219,8 @@ def _effects(data: dict, where: str) -> dict[int, dict]:
             own["tail_db"] = _tail_db(entry["tail_db"], ctx)
         if "transpose" in entry:
             own["transpose"] = _semitones(entry["transpose"], ctx)
+        if "gain_db" in entry:
+            own["gain_db"] = _db(entry["gain_db"], ctx)
         out[parse_number(key, ctx, base=16)] = own
     return out
 

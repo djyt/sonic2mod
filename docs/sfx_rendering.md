@@ -52,7 +52,8 @@ error.
 | `output.trim_lead` | `false` | Start at the first sample that rounds to a step (§ Lead and tail).  Plays a frame earlier than the Mega Drive |
 | `output.tail_db` | `off` | Cut where the effect stays this many dB under its own peak (`-30`), the last frame faded |
 | `output.transpose` | `0` | Semitones on every track's notes, rendered so (§ Transpose).  The manifest gains `transpose` |
-| `output.effects` | `{}` | One effect's own `trim_lead` / `tail_db` / `transpose`, by sound id: `{CC: {tail_db: -24}}` (`$CC`, `0xCC` too) |
+| `output.gain_db` | `0` | `global`: dB on the composed level, before `over` (`-2`: a loud effect turned down).  The manifest gains `gain_db` |
+| `output.effects` | `{}` | One effect's own `trim_lead` / `tail_db` / `transpose` / `gain_db`, by sound id: `{CC: {tail_db: -24}}` (`$CC`, `0xCC` too) |
 
 Variants:
 
@@ -74,6 +75,8 @@ Variants:
     Collapse −4.6, Get Continue, Wall Smash, Drown Death −1.5, Rumbling, Fireball, Flamethrower −0.2.
     The tail cut is each effect's own peak's, so it falls where it did; the lead trim's first
     audible step moves with the gain (a sample or two).
+  - **Break Item (`$C1`) −2.5 dB** (`effects:` `gain_db`): its attack (FM5 + PSG3 noise, three
+    frames near the rails) clipped the mix.
   - Voices near the rails overflow an 8-bit sum when two overlap: the mixer should saturate.
 
 ### The manifest (`format: raw`)
@@ -90,6 +93,7 @@ Variants:
 | `clipped` | Samples the gain pushed past the rails (`over: clip`) |
 | `limited_db` | `over: limit`: how far the effect was turned down to fit (0 when it fits) |
 | `transpose` | The semitones the effect was rendered from its own pitch (§ Transpose); absent at 0 |
+| `gain_db` | How far the effect was moved from its composed level; absent at 0 |
 
 ## Module map
 

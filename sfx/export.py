@@ -176,6 +176,7 @@ def _quantise(s: _Shaped, out: OutputSettings, loudest: float) -> SfxExport:
     limited_db = 0.0
     if out.level == LEVEL_GLOBAL:
         gain = full * 10.0 ** (out.peak_dbfs / 20.0) / loudest if loudest > 0.0 else 1.0
+        gain *= 10.0 ** (out.gain_db / 20.0)
         volume = VOLUME_MAX
         if out.over == OVER_LIMIT and s.peak * gain > full:
             # turned down to just fit: quieter than composed, never clipped (the tail cut is the
@@ -306,6 +307,8 @@ def _manifest_note(out: OutputSettings) -> str:
         slots += "'limited_db': how far an effect past the rails was turned down to fit. "
     if out.transpose or any('transpose' in own for own in out.effects.values()):
         slots += "'transpose': the semitones an effect was rendered from its own pitch. "
+    if out.gains():
+        slots += "'gain_db': how far an effect was moved from its composed level. "
     repeat = ("'repeat_offset'/'repeat_length' point at a trailing silent word so "
               "a non-looping sample does not buzz after it finishes.")
     return ((pitch if out.paula else "") + volume + slots + (repeat if out.paula else "")).strip()
@@ -334,4 +337,7 @@ def _manifest_entry(e: SfxExport, out: OutputSettings) -> dict:
     transpose = out.transpose_for(sound_id(e.name))
     if transpose:
         entry['transpose'] = transpose
+    gain_db = out.for_effect(sound_id(e.name)).gain_db
+    if gain_db:
+        entry['gain_db'] = gain_db
     return entry

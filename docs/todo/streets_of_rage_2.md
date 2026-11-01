@@ -323,7 +323,9 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
 
 ### Phase 4: DAC
 - [ ] 4.1 The sample reader: R2's `RunDpcm` on Z80 `$01BF`'s table; `$81`-`$84` byte-equal to the
-  rips' banks.
+  rips' banks.  The Z80 load (B9, checked: `z80_loads` finds none) is the "copied" shape on other
+  registers (`$40DA2`: `lea $559C2.l,a1` / `lea $A00000.l,a2` / `move.w #$1FFF,d0` / `move.b (a1)+,(a2)+`
+  / `dbra`): generalise it over the address registers.
 - [ ] 4.2 Rates: recount the loop's cycles (SoR1's counts as the start; this player's `$1FFD` writes
   and bank code moved), the 68k's stall from the rips (their hi-hats play 2× fast: pack notes).
 - [ ] 4.3 Rests and gates leave the sample playing (`rest_cuts` False); onsets against the rips.

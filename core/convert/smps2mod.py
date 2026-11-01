@@ -135,14 +135,16 @@ class SmpsToModConverter:
         self.song = song
         self._timeline = Timeline(song, self.config)
         self._vibrato = VibratoSpeed(self._timeline, self.config, self._diag)
-        self._noise: dict[int, NoiseEnvelope] | None = None   # _noise_envelopes(), once per song
+        self._noise: dict[bool, dict[int, NoiseEnvelope]] = {}   # _noise_envelopes(): {merged: envelopes}
 
     def _noise_envelopes(self) -> dict[int, NoiseEnvelope]:
         """The envelope each noise instrument plays with (core.plan.derive_noise_envelopes), read
-        once from the song as it is now."""
-        if self._noise is None:
-            self._noise = derive_noise_envelopes(self.song, self._conv)
-        return self._noise
+        once before the merge plan and once after it: its solo notes, spliced onto another chip's
+        primary, vote there (Green Hill's noise 14: 262 notes before, 238 after)."""
+        merged = self._conv.merge is not None
+        if merged not in self._noise:
+            self._noise[merged] = derive_noise_envelopes(self.song, self._conv)
+        return self._noise[merged]
 
     def plan_instruments(self) -> ConversionPlan:
         """This pass's first decisions: every rooted entry's rendering pitch from the song and the

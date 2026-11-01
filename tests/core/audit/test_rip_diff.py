@@ -146,15 +146,20 @@ class Ties(unittest.TestCase):
     def test_a_tie_at_the_same_note_merges_unless_it_changes_what_is_compared(self):
         fade = self._song(PlayedNote(0, 10, False, True, note=0x232D, level=(16,)),
                           PlayedNote(10, 10, False, False, note=0x232D, level=(17,)))
-        merged = _merge_ties(fade, frozenset({Aspect.ONSET, Aspect.LENGTH, Aspect.NOTE}))
+        merged = _merge_ties(fade, frozenset({Aspect.ONSET, Aspect.LENGTH, Aspect.NOTE}), set())
         self.assertEqual([(p.tick, p.duration) for p in merged.channels["FM1"]], [(0, 20)])
-        kept = _merge_ties(fade, frozenset({Aspect.LENGTH, Aspect.LEVEL}))     # the level is compared: two notes
+        kept = _merge_ties(fade, frozenset({Aspect.LENGTH, Aspect.LEVEL}), set())     # the level is compared: two notes
         self.assertEqual(len(kept.channels["FM1"]), 2)
 
     def test_a_tie_to_another_note_or_an_attack_stays(self):
         song = self._song(PlayedNote(0, 10, False, True, note=1), PlayedNote(10, 10, False, False, note=2),
                           PlayedNote(20, 10, False, True, note=2))
-        self.assertEqual(len(_merge_ties(song, frozenset({Aspect.NOTE})).channels["FM1"]), 3)
+        self.assertEqual(len(_merge_ties(song, frozenset({Aspect.NOTE}), set()).channels["FM1"]), 3)
+
+    def test_on_fm_a_tie_to_another_note_merges(self):
+        # The lift reads an FM note at its key write: a legato slide's new pitch writes none
+        song = self._song(PlayedNote(0, 10, False, True, note=1), PlayedNote(10, 10, False, False, note=2))
+        self.assertEqual(len(_merge_ties(song, frozenset({Aspect.NOTE}), {"FM1"}).channels["FM1"]), 1)
 
 
 @needs_moonwalker_rips

@@ -24,11 +24,13 @@ holds a channel for a while are set aside, counted (RipDiff.foreign).
 from __future__ import annotations
 
 import dataclasses
+import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
+from ..chips import freq_word_hz
 from ..config import ConversionConfig
 from ..smps import (
     Aspect,
@@ -45,6 +47,7 @@ from ..smps import (
     played_song,
     source_map,
     tempo_schedule,
+    tick_at_frame,
 )
 from ..source import SmpsDriver, is_vgm_path, read_song
 from ..vgm import LIFTED_ASPECTS, FrameLog, LiftOptions, VgmLiftError, lift_song
@@ -164,7 +167,8 @@ def compare_with_rip(song: SmpsSong, frames: FrameLog, aspects: frozenset[Aspect
     # The channels both play, as chosen, less those another sound holds throughout; ties that
     # change nothing compared merged
     played = played_song(lifted)
-    want, got = _merge_ties(played_song(song), aspects), _merge_ties(played, aspects)
+    fm = _fm_channels(song)
+    want, got = _merge_ties(_as_lifted(played_song(song), song), aspects, fm), _merge_ties(played, aspects, fm)
     playing_want, playing_got = _playing(want, channels), _playing(got, channels)
     foreign = (playing_want | playing_got) & faults.foreign_throughout()
     shared = (playing_want & playing_got) - foreign
@@ -172,7 +176,7 @@ def compare_with_rip(song: SmpsSong, frames: FrameLog, aspects: frozenset[Aspect
 
     offset = align_songs(want, got)
     kinds = {name: channel.header.channel_type for name, channel in source_map(song).items() if name in shared}
-    diff = compare_songs(want, got, aspects, offset)
+    diff = compare_songs(want, got, aspects, offset, _recorded_end(played, frames, offset))
     aside = _set_aside(diff, faults, _rip_frame(played, frames, offset)) if faults.foreign else {}
     return RipDiff(diff, offset, tempo, sorted(playing_want - shared - foreign), sorted(playing_got - shared - foreign),
                    kinds=kinds, schedule=tempo_schedule(want.modifier, want.tempo_changes, want.tempo_phase),
@@ -180,12 +184,25 @@ def compare_with_rip(song: SmpsSong, frames: FrameLog, aspects: frozenset[Aspect
 
 
 def _rip_frame(lifted: PlayedSong, frames: FrameLog, offset: int) -> Callable[[int], int]:
-    """A song tick's frame in the (realigned) rip: the lift's ticks from its first note, which
-    plays on the rip's first frame that writes anything."""
+    """A song tick's frame in the (realigned) rip."""
+    schedule, start = _rip_clock(lifted, frames)
+    return lambda tick: start + frame_of_tick(schedule, max(tick - offset, 0))
+
+
+def _rip_clock(lifted: PlayedSong, frames: FrameLog) -> tuple[tuple[TempoSegment, ...], int]:
+    """The lift's tick schedule, and the rip frame its tick 0 is on: its first note plays on the
+    rip's first frame that writes anything."""
     schedule = tempo_schedule(lifted.modifier, lifted.tempo_changes, lifted.tempo_phase)
     first = min((n.tick for notes in lifted.channels.values() for n in notes if not n.rest), default=0)
-    start = next((f.index for f in frames.frames if f.active), 0) - frame_of_tick(schedule, first)
-    return lambda tick: start + frame_of_tick(schedule, max(tick - offset, 0))
+    return schedule, next((f.index for f in frames.frames if f.active), 0) - frame_of_tick(schedule, first)
+
+
+def _recorded_end(lifted: PlayedSong, frames: FrameLog, offset: int) -> int:
+    """The song tick of the rip's last frame, which it may have caught half written (a frequency
+    and no key): nothing from it on is compared.  Past it the lifted song is the log's loop played
+    again, not the game."""
+    schedule, start = _rip_clock(lifted, frames)
+    return tick_at_frame(schedule, len(frames.frames) - 1 - start) + offset
 
 
 def _set_aside(diff: SongDiff, faults: RipFaults, rip_frame: Callable[[int], int]) -> dict[str, int]:
@@ -237,14 +254,43 @@ def _playing(song: PlayedSong, channels: ChannelChoice) -> set[str]:
     return {name for name, notes in song.channels.items() if channels.picks(name) and any(not p.rest for p in notes)}
 
 
-# What a tie is, not what it changes: when it starts and how long it lasts
+# What a tie is, not what it changes: when it starts and how long it lasts; and on FM its note, which
+# the lift reads only where a key write marks the tie (a legato slide writes a frequency alone; the
+# PSG lift reads each period write)
 _TIE_ASPECTS = frozenset({Aspect.ONSET, Aspect.LENGTH})
+_FM_TIE_ASPECTS = _TIE_ASPECTS | {Aspect.NOTE}
 
 
-def _merge_ties(song: PlayedSong, aspects: frozenset[Aspect]) -> PlayedSong:
-    """Each channel with every tie that changes none of `aspects` folded into the note it continues."""
-    kept = aspects - _TIE_ASPECTS
-    return dataclasses.replace(song, channels={name: _merged(notes, kept) for name, notes in song.channels.items()})
+def _as_lifted(played: PlayedSong, song: SmpsSong) -> PlayedSong:
+    """The song's FM notes as the lift reads a note: the table entry nearest the pitch that sounds,
+    its detune and channel 3's offset in (Streets of Rage 2's $F2 transposes), not the one the
+    song names."""
+    fm = _fm_channels(song)
+    table = song.rules.fm_frequencies[1:]                    # entry 0 is no note
+    if not table:
+        return played
+    hz = [math.log2(freq_word_hz(word)) for word in table]
+
+    def nearest(note: PlayedNote) -> PlayedNote:
+        if note.rest or note.pitch is None or note.pitch == note.note or freq_word_hz(note.pitch) <= 0:
+            return note
+        at = math.log2(freq_word_hz(note.pitch))
+        return dataclasses.replace(note, note=table[min(range(len(hz)), key=lambda i: abs(hz[i] - at))])
+
+    return dataclasses.replace(played, channels={name: [nearest(n) for n in notes] if name in fm else notes
+                                                 for name, notes in played.channels.items()})
+
+
+def _merge_ties(song: PlayedSong, aspects: frozenset[Aspect], fm: set[str]) -> PlayedSong:
+    """Each channel with every tie that changes none of `aspects` folded into the note it continues
+    (an FM tie's note aside: `fm`, those channels)."""
+    return dataclasses.replace(song, channels={
+        name: _merged(notes, aspects - (_FM_TIE_ASPECTS if name in fm else _TIE_ASPECTS))
+        for name, notes in song.channels.items()})
+
+
+def _fm_channels(song: SmpsSong) -> set[str]:
+    return {name for name, ch in source_map(song).items() if ch.header.channel_type == ChannelType.FM}
 
 
 def _merged(notes: list[PlayedNote], kept: frozenset[Aspect]) -> list[PlayedNote]:

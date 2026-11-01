@@ -73,10 +73,10 @@ class SongDiff:
 
 
 def compare_songs(expected: PlayedSong, got: PlayedSong, aspects: frozenset[Aspect] = ALL_ASPECTS,
-                  offset: int = 0) -> SongDiff:
+                  offset: int = 0, end: int | None = None) -> SongDiff:
     """Where `got` plays other than `expected`, in the given aspects only, `got` shifted by
-    `offset` ticks."""
-    window = (max(offset, 0), min(expected.end_tick, got.end_tick + offset))
+    `offset` ticks, up to `end` (None: where either ends; a rip's recording: its last whole frame)."""
+    window = (max(offset, 0), min(expected.end_tick, got.end_tick + offset, *(() if end is None else (end,))))
     song = _compare_song(expected, got, offset, window) if Aspect.ONSET in aspects else []
 
     # Channels that play anything, on either side

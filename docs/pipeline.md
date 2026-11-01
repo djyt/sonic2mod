@@ -1061,11 +1061,15 @@ python tools/vgm/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # ev
   (`--infer-tempo` to judge the inference).  The divider is spelling: durations are ticks on both
   sides (a song's already multiplied by it), so it never moves a note; it sets how the converter counts
   rows (`ticks_per_row` × divider).
-- Aspects: by default what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects all` for
-  every one - a lifted note's pitch is its table word, no detune yet).  The lift matches a note to the
-  song's own FM table and holds at its phase (`lift_song(frames, song.rules, ...)`).
+- Aspects: what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects` a few of them).
+  The lift matches a note to the song's own FM table and holds at its phase (`lift_song(frames,
+  song.rules, ...)`); the song's FM notes are compared as it reads one, the table entry nearest the
+  pitch that sounds (detune and channel 3's offset in).  Pitch, level, voice, pan: `vgm_frames.py`.
 - A tie that changes nothing compared is one note on both sides: a rip shows a read only where the
-  driver writes the frequency on reads alone (Sonic 1); Type 0 FM writes it every frame.
+  driver writes the frequency on reads alone (Sonic 1); Type 0 FM writes it every frame.  An FM tie's
+  note is folded too: the lift reads a note at its key write, and a legato slide writes none.
+- The window ends at the rip's last whole frame (its last is often half written): past it the lifted
+  song is the log's loop again, not the game.
 - Channels: those both sides play; `--channels` / `--skip` (prefixes) narrow it, and the ones only one
   side plays are named, not compared.  Ticks print with seconds into the song.
 - Verdict per kind, the song's (`channel_type`, not the name): `FM same · DAC onset 4 · PSG note 31

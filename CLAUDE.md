@@ -198,8 +198,9 @@ python tools/vgm/vgm_analyze.py "reference/vgz/streets_of_rage_2/15 - Expander.v
 python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --list
 
 # The song as read (asm or ROM) against its rip, lifted (docs/todo/vgz_conversion.md Phase 1): differences per
-# channel and aspect, repeated ones grouped.  The lift takes the song's tempo; aspects default to what it reads
-# (onset length note; --aspects all).  Pairs by number or the rips.yaml beside the configs
+# channel and aspect, repeated ones grouped, up to the rip's last whole frame.  The lift takes the song's tempo;
+# it reads onset, length and note (a note as it sounds: detune in; pitch, level, voice: vgm_frames).  Pairs by
+# number or the rips.yaml beside the configs
 python tools/vgm/vgm_lift.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 python tools/vgm/vgm_lift.py --all --aspects onset           # every rip, a line each (~4 s warm)
 python tools/vgm/vgm_lift.py --all --aspects onset length note --channels FM   # the FM note bytes and durations

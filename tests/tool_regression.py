@@ -150,7 +150,7 @@ def _lift_cases(vgzs: list[Path]) -> list[_Case]:
     cases = [_Case("lift_all", [*tool, "--all"], [*vgzs, *RipShelf.load(_SONIC1_CONFIGS, VGZ_DIR).config_files()])]
     detail = next((v for v in vgzs if v.name.startswith(_LIFT_DETAIL)), None)
     if detail is not None:
-        cases.append(_Case(f"lift_{_LIFT_DETAIL}", [*tool, str(detail.relative_to(ROOT)), "--aspects", "all",
+        cases.append(_Case(f"lift_{_LIFT_DETAIL}", [*tool, str(detail.relative_to(ROOT)),
                                                     "--diffs", _LIFT_DIFFS], [detail]))
     if not (MOONWALKER_ROM.exists() and MOONWALKER_RIPS.exists()):
         return cases

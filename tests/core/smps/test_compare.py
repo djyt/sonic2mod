@@ -79,6 +79,13 @@ class Compare(unittest.TestCase):
         self.assertEqual(compare_songs(want, got).counts(), {Aspect.NOTE: 1, Aspect.PITCH: 1})
         self.assertTrue(compare_songs(want, got, frozenset({Aspect.ONSET, Aspect.LENGTH})).ok)
 
+    def test_nothing_from_the_end_on_is_compared(self):
+        # A rip's recording stops at its last whole frame: the note after it, and the length past it, unknown
+        want = played_song(_song(_note(), _note(_C4 + 1), _note(_C4 + 2)))
+        got = played_song(_song(_note(duration=12), _note(_C4 + 2, duration=12)))
+        self.assertTrue(compare_songs(want, got, frozenset({Aspect.ONSET, Aspect.LENGTH}), end=8).ok)
+        self.assertFalse(compare_songs(want, got, frozenset({Aspect.ONSET, Aspect.LENGTH}), end=16).ok)
+
     def test_a_detune_is_pitch_not_note(self):
         want = played_song(_song(_note()))
         got = played_song(_song(_flag(CoordFlag.DETUNE, 3), _note()))

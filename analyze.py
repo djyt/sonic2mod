@@ -512,7 +512,7 @@ def main():
         description="Analyse a Sonic 1 SMPS assembly file and display structured info"
     )
     parser.add_argument('song', help="Path to the .asm file, a ROM (with --rom-song), or a .vgm / .vgz rip")
-    parser.add_argument('--rom-song', metavar='ID', help="With a ROM: the sound to analyse ($81, 0x81)")
+    parser.add_argument('--rom-song', metavar='ID', help="With a ROM: the sound to analyse, by its driver's ID ($81, 0x81)")
     parser.add_argument('--config', '-c', help="Optional YAML config to diff against")
     add_variant_argument(parser)
     parser.add_argument('--version', action='version',

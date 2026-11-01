@@ -32,7 +32,7 @@ def dac_samples(rom: RomImage, variant: SmpsVariant | None = None) -> list[DacSa
 
 def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
                   fix_data_bugs: bool = True, variant: SmpsVariant | None = None) -> SongCode:
-    """Sound `sound_id` ($81 GHZ ... $93; SFX from $A0) before the walk.  `index`: the ROM's,
+    """Sound `sound_id` (its driver's ID: Sonic 1's $81 GHZ ... $93, SFX from $A0) before the walk.  `index`: the ROM's,
     when already located.  fix_data_bugs: the fixes known for this exact ROM (fixes.py), as the
     asm parser applies the disassembly's; False reads the game as shipped."""
     variant = variant or detect_variant(rom)

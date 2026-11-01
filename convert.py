@@ -59,7 +59,7 @@ def main():
     parser.add_argument('--input', metavar='FILE',
                         help="Convert FILE instead of the config's input_file (a ROM: with --rom-song)")
     parser.add_argument('--rom-song', metavar='ID',
-                        help="With a ROM input: the sound to convert ($81, 0x81)")
+                        help="With a ROM input: the sound to convert, by its driver's ID ($81, 0x81; Streets of Rage 2: $00 ...)")
     parser.add_argument('--show-config', action='store_true',
                         help="Print the config as converted (a minimal one: with what was derived)")
     parser.add_argument('--write-config', metavar='PATH',

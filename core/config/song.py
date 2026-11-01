@@ -94,7 +94,7 @@ def _channel_list(data: dict, key: str) -> list[str]:
 class ConversionConfig:
     name: str = "Untitled"
     input_file: str = ""
-    rom_song: int | None = None   # a ROM input_file: the sound ID to convert ($81 ...)
+    rom_song: int | None = None   # a ROM input_file: the sound ID to convert, its driver's ($81 ...; $00 ...)
     # The `variants:` entry the config was read as (convert.py --variant; None: the base build)
     variant: str | None = None
     _data: dict = field(default_factory=dict, repr=False)   # the YAML it was read from

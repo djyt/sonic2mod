@@ -209,7 +209,7 @@ def main() -> None:
     add_shelf_arguments(ap)
     ap.add_argument("--only", nargs="+", metavar="NAME", help="with --all: rips or configs whose name holds one (02, 88_)")
     ap.add_argument("--input", "--compare", metavar="FILE", help="the song: an asm or a ROM (default: the rip's config's input_file)")
-    ap.add_argument("--rom-song", metavar="ID", help="with a ROM --input: its sound ($81 ...)")
+    ap.add_argument("--rom-song", metavar="ID", help="with a ROM --input: its sound, by its driver's ID ($81 ...)")
     ap.add_argument("--aspects", nargs="+", choices=[*(a.value for a in Aspect), _EVERY_ASPECT],
                     help=f"compare these (default: what the lift reads, {' '.join(sorted(LIFTED_ASPECTS))}; {_EVERY_ASPECT}: every one)")
     ap.add_argument("--channels", nargs="+", default=(), metavar="NAME",

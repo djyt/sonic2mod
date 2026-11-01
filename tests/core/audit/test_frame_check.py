@@ -9,9 +9,11 @@ import unittest
 from pathlib import Path
 
 from core.audit import Excuse, ForeignSound, FrameAspect, FrameCheck, RipFaults, RipShelf, check_frames
+from core.audit.frame_check import _judge_path
 from core.drivers import read_rom_song
 from core.rom import RomImage
-from core.vgm import load_frames
+from core.smps.playback import PlayedNote
+from core.vgm import DacFrame, FmFrame, Frame, FrameLog, PsgFrame, load_frames
 from tests.roms import (
     GOLDEN_AXE_RIPS,
     GOLDEN_AXE_ROM,
@@ -91,3 +93,46 @@ class GoldenAxe(unittest.TestCase):
         check = check_frames(song, load_frames(GOLDEN_AXE_RIPS / "01 - The Battle.vgz"))
         self.assertNotIn("FM3", {name for name, _, _ in check.checked})
         self.assertTrue(check.ok)
+
+
+class NotePath(unittest.TestCase):
+    """A note's path (PlayedNote.pitch_path / level_path) judged on every frame it spans."""
+
+    @staticmethod
+    def _frames(words: list[int], tls: list[int]) -> FrameLog:
+        """FM1 holding words[i] and carrier TL tls[i] on frame i; the rest silent."""
+        silent_fm = FmFrame(0, 0, 0, (), 0, bytes(28), 0, (0x7F,), 0xC0)
+        silent_psg = PsgFrame(0, 15, (), 0, None)
+        dac = DacFrame((), 0, 0, ())
+        frames = []
+        for i, (word, tl) in enumerate(zip(words, tls, strict=True)):
+            fm1 = FmFrame(word & 0x7FF, word >> 11, 0xF0, (), 1, bytes(28), 0, (tl,), 0xC0)
+            frames.append(Frame(i, i * 735, (fm1,) + (silent_fm,) * 5, (silent_psg,) * 4, dac, False, 0, 0))
+        return FrameLog(frames, 735, 0, 0, None, b"", len(frames) * 735)
+
+    def _judge(self, note: PlayedNote, frames: FrameLog) -> FrameCheck:
+        check = FrameCheck(0)
+        _judge_path(check, "FM1", note, frames, 0, len(frames.frames), RipFaults())
+        return check
+
+    def test_a_glide_frame_by_frame(self):
+        frames = self._frames([0x2000, 0x2010, 0x2020, 0x2030], [10] * 4)
+        note = PlayedNote(0, 4, rest=False, pitch=0x2000, level=(10,),
+                          pitch_path=((1, 0x2010), (2, 0x2020), (3, 0x2030)), level_path=())
+        check = self._judge(note, frames)
+        self.assertEqual(check.misses, [])
+        self.assertEqual(check.checked["FM1", FrameAspect.PITCH_PATH, False], 1)
+        self.assertEqual(check.checked["FM1", FrameAspect.LEVEL_PATH, False], 1)
+
+    def test_the_first_frame_off_is_the_miss(self):
+        frames = self._frames([0x2000, 0x2000, 0x2008, 0x2010], [10, 12, 14, 14])
+        note = PlayedNote(0, 4, rest=False, pitch=0x2000, level=(10,), pitch_path=((2, 0x2010),),
+                          level_path=((1, (12,)), (2, (16,))))
+        misses = {m.aspect: m for m in self._judge(note, frames).misses}
+        self.assertEqual((misses[FrameAspect.PITCH_PATH].after, misses[FrameAspect.PITCH_PATH].got), (2, 0x2008))
+        self.assertEqual((misses[FrameAspect.LEVEL_PATH].after, misses[FrameAspect.LEVEL_PATH].want), (2, (16,)))
+
+    def test_no_path_is_not_judged(self):
+        frames = self._frames([0x2000, 0x2400], [10, 10])
+        check = self._judge(PlayedNote(0, 2, rest=False, pitch=0x2000, level=(10,)), frames)
+        self.assertEqual((check.misses, sum(check.checked.values())), ([], 0))

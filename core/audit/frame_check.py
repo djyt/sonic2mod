@@ -16,6 +16,14 @@ Attacking notes and tied ones are counted apart: vibrato runs on through a tie, 
 pitch is the song's and the vibrato so far, its level the envelope's step so far.  A silent PSG
 note's pitch is not judged (the driver need not write it, and nothing hears it).
 
+A note whose walk models what happens after its first frame (PlayedNote.pitch_path / level_path:
+Time Trax's glides and volume envelopes) is judged on every frame it spans too, as its own aspect
+(pitch path, level path): its first frame that differs is the note's miss, `after` frames in.
+
+    frame   0     1     2     3     4         (the note's)
+    path    C     .     D     .     .         pitch_path ((2, D),): C until frame 2, then D
+    rip     C     C     C#    D     D    ->   pitch path miss, after 2: D -> C#
+
 Where the rip's song began is the rip's: the offset is near the commonest difference, over the FM
 channels (whichever are checked), between a channel's first attack in the song and its first key-on
 in the rip - within _OFFSET_REACH of it, the one that matches the most notes (a rip may key a
@@ -59,7 +67,7 @@ from ..smps import (
     source_names,
     tempo_schedule,
 )
-from ..vgm import NOISE_CHANNEL, FrameLog
+from ..vgm import NOISE_CHANNEL, Frame, FrameLog
 from .rip_diff import ChannelChoice
 from .rips import RipFaults
 
@@ -70,6 +78,8 @@ _OFFSET_REACH = 2                                   # frames either side of the 
 
 # Each channel's notes on the song's frames: name -> [(frame, note) ...], rests left out
 NoteFrames = dict[str, list[tuple[int, PlayedNote]]]
+# ... with the frame each ends on: name -> [(frame, end, note) ...]
+NoteSpans = dict[str, list[tuple[int, int, PlayedNote]]]
 
 
 class FrameAspect(StrEnum):
@@ -77,6 +87,12 @@ class FrameAspect(StrEnum):
     LEVEL = "level"
     VOICE = "voice"
     PAN = "pan"                         # FM: B4's speakers, L R or C
+    PITCH_PATH = "pitch path"           # pitch on each later frame of a note that models it
+    LEVEL_PATH = "level path"           # level alike
+
+
+# A path aspect -> the aspect its frames read (and rips.yaml's unlogged name for it)
+_PATH_OF = {FrameAspect.PITCH_PATH: FrameAspect.PITCH, FrameAspect.LEVEL_PATH: FrameAspect.LEVEL}
 
 
 class Excuse(StrEnum):
@@ -98,6 +114,7 @@ class FrameMiss:
     aspect: FrameAspect
     want: object                        # the song's
     got: object                         # the rip's
+    after: int = 0                      # frames after the note's first: a path's miss
 
 
 @dataclass
@@ -124,19 +141,30 @@ def check_frames(song: SmpsSong, frames: FrameLog, channels: ChannelChoice = _EV
     frames = faults.realign(frames)
     played = played_song(song)
     excuses = _Excuses(faults, _re_entries(song), frames)
-    checks = [_check_at(song, note_frames(song, early, played), early, frames, channels, excuses) for early in (False, True)]
+    checks = [_check_at(song, _note_spans(song, early, played), early, frames, channels, excuses)
+              for early in (False, True)]
     return min(checks, key=_attack_misses)
 
 
 def note_frames(song: SmpsSong, holds_early: bool = False, played: PlayedSong | None = None) -> NoteFrames:
     """Every FM and PSG channel's notes, each on the song's frame it plays on (`holds_early`: the
     TempoWait holds a frame earlier than the song's phase)."""
+    return _starts(_note_spans(song, holds_early, played))
+
+
+def _note_spans(song: SmpsSong, holds_early: bool = False, played: PlayedSong | None = None) -> NoteSpans:
+    """note_frames with the frame each note ends on."""
     played = played or played_song(song)
     melodic = {name for name, ch in source_map(song).items() if ch.header.channel_type != ChannelType.DAC}
     melodic.add(NOISE_CHANNEL_NAME)                 # fixed-rate noise, whichever track plays it
     schedule = tempo_schedule(played.modifier, played.tempo_changes, played.tempo_phase - holds_early)
-    return {name: [(frame_of_tick(schedule, n.tick), n) for n in ns if not n.rest]
+    return {name: [(frame_of_tick(schedule, n.tick), frame_of_tick(schedule, n.tick + n.duration), n)
+                   for n in ns if not n.rest]
             for name, ns in played.channels.items() if name in melodic}
+
+
+def _starts(spans: NoteSpans) -> NoteFrames:
+    return {name: [(frame, note) for frame, _, note in notes] for name, notes in spans.items()}
 
 
 def first_key_offset(notes: NoteFrames, frames: FrameLog) -> int:
@@ -186,17 +214,17 @@ def _attack_misses(check: FrameCheck) -> int:
     return sum(not m.tied for m in check.misses)
 
 
-def _check_at(song: SmpsSong, notes: NoteFrames, early: bool, frames: FrameLog, channels: ChannelChoice,
+def _check_at(song: SmpsSong, notes: NoteSpans, early: bool, frames: FrameLog, channels: ChannelChoice,
               excuses: _Excuses) -> FrameCheck:
     """At one hold phase: the offset near the first key-ons' that matches the most notes (the
     nearest of equals)."""
-    estimate = first_key_offset(notes, frames)
+    estimate = first_key_offset(_starts(notes), frames)
     nearest_first = sorted(range(estimate - _OFFSET_REACH, estimate + _OFFSET_REACH + 1), key=lambda o: abs(o - estimate))
     checks = [_check_offset(song, notes, early, offset, frames, channels, excuses) for offset in nearest_first]
     return min(checks, key=_attack_misses)
 
 
-def _check_offset(song: SmpsSong, notes: NoteFrames, early: bool, offset: int, frames: FrameLog,
+def _check_offset(song: SmpsSong, notes: NoteSpans, early: bool, offset: int, frames: FrameLog,
                   channels: ChannelChoice, excuses: _Excuses) -> FrameCheck:
     check = FrameCheck(offset, early)
     envelopes = song.rules.psg_envelopes
@@ -205,7 +233,7 @@ def _check_offset(song: SmpsSong, notes: NoteFrames, early: bool, offset: int, f
         if not channels.picks(name):
             continue
         attacked: int | None = None                  # the frame the note a tie plays on attacked
-        for frame, note in sounding:
+        for frame, end, note in sounding:
             if note.attack:
                 attacked = frame
             at = frame - check.offset
@@ -216,6 +244,7 @@ def _check_offset(song: SmpsSong, notes: NoteFrames, early: bool, offset: int, f
                 continue
             since = frame - attacked if plays_on and attacked is not None else 0
             _judge(check, name, note, frames, at, _PsgSteps(envelopes, since), excuses)
+            _judge_path(check, name, note, frames, at, end - frame, excuses.faults)
     return check
 
 
@@ -255,13 +284,57 @@ def _judge(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at:
         check.excused[name, excuse] += 1
 
 
+def _judge_path(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at: int, length: int,
+                faults: RipFaults) -> None:
+    """The frames after `note`'s first (frame `at`, `length` in all), each against the value its
+    path holds there; the first that differs is the note's miss.  Another sound or the log's end
+    stops the reading."""
+    tied = not note.attack
+    for aspect, path, first in ((FrameAspect.PITCH_PATH, note.pitch_path, note.pitch),
+                                (FrameAspect.LEVEL_PATH, note.level_path, note.level)):
+        base = _PATH_OF[aspect]
+        if path is None or faults.unlogged_aspect(name, base):
+            continue
+        changes, value, miss = dict(path), first, None
+        for after in range(1, length):
+            value = changes.get(after, value)
+            here = at + after
+            if here >= len(frames.frames) or faults.foreign_at(name, here):
+                break
+            want, got = _as_read(name, base, value), _got(frames.frames[here], name, note)[base]
+            if want != got:
+                miss = FrameMiss(name, note.tick, tied, aspect, want, got, after)
+                break
+        check.checked[name, aspect, tied] += 1
+        if miss is not None:
+            check.misses.append(miss)
+
+
+def _as_read(name: str, aspect: FrameAspect, value: object) -> object:
+    """A song's pitch or level as _got reads the chip's: FM's carrier TLs sorted, a divider of 0 as 1."""
+    if name in FM_CHANNEL_NAMES:
+        return tuple(sorted(value)) if aspect is FrameAspect.LEVEL and isinstance(value, tuple) else value
+    return max(1, value) if aspect is FrameAspect.PITCH and isinstance(value, int) else value
+
+
+def _got(frame: Frame, name: str, note: PlayedNote) -> dict[FrameAspect, object]:
+    """What the rip's `frame` holds on `note`'s channel: FM pitch, level and pan; PSG pitch and level."""
+    if name in FM_CHANNEL_NAMES:
+        fm = frame.fm[FM_CHANNEL_NAMES.index(name)]
+        return {FrameAspect.PITCH: freq_word(fm.fnum, fm.block), FrameAspect.LEVEL: tuple(sorted(fm.carrier_tls)),
+                FrameAspect.PAN: pan_side(fm.pan)}
+    noise = note.noise is not None or name == NOISE_CHANNEL_NAME
+    index = _NOISE_TONE if noise else PSG_CHANNEL_NAMES.index(name)    # a fixed rate's: no pitch
+    tone, level = frame.psg[index], frame.psg[NOISE_CHANNEL if noise else index]
+    return {FrameAspect.PITCH: max(1, tone.period), FrameAspect.LEVEL: level.attenuation}
+
+
 def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog, at: int,
                 steps: _PsgSteps, faults: RipFaults = _NO_FAULTS) -> None:
     frame = frames.frames[at]
+    got = _got(frame, name, note)
     if name in FM_CHANNEL_NAMES:
         fm = frame.fm[FM_CHANNEL_NAMES.index(name)]
-        got = {FrameAspect.PITCH: freq_word(fm.fnum, fm.block), FrameAspect.LEVEL: tuple(sorted(fm.carrier_tls)),
-               FrameAspect.PAN: pan_side(fm.pan)}
         levels = note.level if isinstance(note.level, tuple) else ()     # FM: the carriers' TLs
         want = {FrameAspect.PITCH: note.pitch, FrameAspect.LEVEL: tuple(sorted(levels)), FrameAspect.PAN: note.pan}
         if isinstance(note.voice, tuple):                                  # FM: (B0, ((register, byte) ...))
@@ -269,10 +342,6 @@ def _check_note(check: FrameCheck, name: str, note: PlayedNote, frames: FrameLog
             want[FrameAspect.VOICE] = _chip_bits(feedback, dict(timbre))
             got[FrameAspect.VOICE] = _chip_bits(fm.feedback_algorithm, {r: fm.operator(r) for r, _ in timbre})
     else:
-        noise = note.noise is not None or name == NOISE_CHANNEL_NAME
-        index = _NOISE_TONE if noise else PSG_CHANNEL_NAMES.index(name)    # a fixed rate's: no pitch
-        tone, level = frame.psg[index], frame.psg[NOISE_CHANNEL if noise else index]
-        got = {FrameAspect.PITCH: max(1, tone.period), FrameAspect.LEVEL: level.attenuation}
         level = note.level
         step = steps.step(note.voice)
         if isinstance(level, int) and step is not None:

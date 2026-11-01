@@ -51,6 +51,7 @@ class Aspect(StrEnum):
     FILL = "fill"               # smpsNoteFill frames
     NOISE = "noise"             # the noise register byte (smpsPSGform)
     DAC = "dac"                 # the DAC sample
+    PATH = "path"               # pitch and level frame by frame within a note, where the walk models them
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +69,11 @@ class PlayedNote:
     fill: int = 0
     noise: int | None = None
     dac: str = ""
+    # What the driver writes after the note's first frame, where the walk models it (Time Trax's
+    # glides and volume envelopes): (frames after the first, value) at each change, a value holding
+    # to the next.  None: not modelled; (): it holds the note's pitch / level throughout
+    pitch_path: tuple[tuple[int, int], ...] | None = None
+    level_path: tuple[tuple[int, object], ...] | None = None
 
     @property
     def onset(self) -> bool:
@@ -85,6 +91,7 @@ _ASPECT_FIELDS = {
     Aspect.PITCH: ("pitch",),
     Aspect.VOICE: ("voice",), Aspect.LEVEL: ("level",), Aspect.PAN: ("pan",),
     Aspect.MODULATION: ("modulation",), Aspect.FILL: ("fill",), Aspect.NOISE: ("noise",), Aspect.DAC: ("dac",),
+    Aspect.PATH: ("pitch_path", "level_path"),
 }
 
 

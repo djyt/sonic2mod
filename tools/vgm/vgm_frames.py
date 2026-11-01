@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Check a song against its rip's frame log, note by note, with no lift: the chip's pitch, level,
-voice registers and FM pan on each note's frame (core/audit/frame_check.py).  For any driver; what the
-lift (vgm_lift.py) cannot read - a detune, a voice, a slide that writes no key - this sees.
+voice registers and FM pan on each note's frame (core/audit/frame_check.py), and every later frame
+of a note whose walk models them ("pitch path", "level path": a glide, a volume envelope).  For any
+driver; what the lift (vgm_lift.py) cannot read - a detune, a voice, a slide that writes no key -
+this sees.
 
 Attacking notes are judged; tied ones are counted apart (vibrato runs on through a tie).  The
 rip may start late: the offset is found from the FM channels' first key-ons; and its TempoWait
@@ -155,7 +157,8 @@ def _print_misses(check: FrameCheck, faults: RipFaults, limit: int, tied: bool =
     for (channel, aspect), misses in sorted(groups.items()):
         print(f"  {channel} {aspect}: {len(misses)}")
         for miss in misses[:limit]:
-            print(f"    tick {miss.tick:>6}  {miss.want} -> {miss.got}")
+            into = f" +{miss.after} frames" if miss.after else ""          # a path's miss: where in the note
+            print(f"    tick {miss.tick:>6}{into}  {miss.want} -> {miss.got}")
 
 
 def main() -> None:

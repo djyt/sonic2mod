@@ -1455,7 +1455,7 @@ pitch_title_screen:
     tests/baselines/title_screen_baseline.mod: 25257e55e372
     tests/settings.yaml: 1be2c231bd5e
 read_golden_axe:
-  commit: 86831cf-dirty
+  commit: 113d28d
   date: '2026-11-01'
   inputs:
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
@@ -1579,7 +1579,7 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: 4de87d5
+  commit: 113d28d
   date: '2026-11-01'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
@@ -1589,7 +1589,7 @@ read_streets_of_rage:
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
 read_streets_of_rage_2:
-  commit: 4de87d5
+  commit: 113d28d
   date: '2026-11-01'
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9

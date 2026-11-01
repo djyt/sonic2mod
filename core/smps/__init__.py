@@ -20,7 +20,7 @@ whatever driver or file the song came from.
                       parse_differences: where two readings of the same bytes differ
 """
 
-from .adsr import ADSR_ENVELOPES, Adsr
+from .adsr import ADSR_ENVELOPES, Adsr, volume_family
 from .asm_writer import write_asm
 from .clock import REGIONS, VINT, TimerA, UpdateClock, VInt, update_hz
 from .code import (
@@ -284,5 +284,6 @@ __all__ = [
     "track_byte",
     "update_hz",
     "voice_field_from_macro",
+    "volume_family",
     "write_asm",
 ]

@@ -199,6 +199,7 @@ keeps its own loop on purpose: it describes a song with no config.
 | `noise_derive.py` | `derive_noise_envelopes`, `derive_rate3_dividers` |
 | `timeline.py` | `Timeline`: tempo segments, ticks per frame, BPM, tick → (pattern, row), seconds |
 | `derive.py` | Minimal configs: `derive_config`, `complete_config` (convert.py), `load_config` (the tools), `starting_volume` |
+| `slot_fit.py` | A minimal config fitted to 31 slots: `windows` (a voice's pitches cut, merges applied), `fold_volumes` (an envelope at its most played volume), `merge_windows` (the cheapest merges until it fits) |
 
 ---
 

@@ -383,10 +383,14 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
   samples' bytes (`frame_log(dac_samples=)`).  DAC onsets and lengths same in all 23 rips.
 
 ### Phase 5: convert
-- [ ] 5.1 `configs/streets_of_rage_2/`: a minimal config per song with notes (26).
+- [x] 5.1 `configs/streets_of_rage_2/`: a minimal config per song with notes (26; 2.6).
 - [ ] 5.2 `vgm_pitch_audit` clean; `measure_volumes.py --configs configs/streets_of_rage_2`, one pass.
-- [ ] 5.3 Slots against 2.7's census: `copy_no_slot` / `detune_no_slot` none; where short, envelope
-  instruments banked (D2), then the per-preset fallback.
+- [x] 5.3 Slots: 7 songs needed 33-53 (Jungle Base: 3 drums, 18 voices in 32 windows, an envelope at 7
+  volumes in 18).  D2 amended (the user, 2026-11-01): no banks (one looped sound a bank; these
+  presets sustain or fade over ~3 s), so `core/plan/slot_fit.py`: envelopes at their most played
+  volume, then copies, then windows merged.  All 26 fit.  Left, warned: copies and detune variants
+  played as their voice where the slots are gone (`copy_no_slot` / `detune_no_slot`: 16 songs;
+  Spin on the Bridge 114 register-patched copies).
 - [ ] 5.4 Regression cases chosen by coverage (D7); `tool_regression`: `read_`, `frames_`, `glitches_`.
 - [ ] 5.5 Listen in the FT2 clone (the user).
 
@@ -405,7 +409,8 @@ regression, pytest, ruff, pyright, vulture, layers) and the 0.4 snapshot unchang
    `tracks.py` the one decoder (R1's tree).
 2. **PSG envelopes: exact**, an instrument per (preset, volume), identical curves sharing one,
    release rendered; **banked** where a song runs out of slots, the per-preset fallback (its
-   commonest volume, `Cxx` elsewhere) only after that.  The size, from the ROM (scratch walk of
+   commonest volume, `Cxx` elsewhere) only after that.  *Amended at 5.3: no banks; the per-preset
+   fallback first, then FM windows merged.*  The size, from the ROM (scratch walk of
    every PSG track, loops unrolled, one play; `$FA` = a song's own envelope):
 
    | Envelope instruments (preset ≠ 0) | Songs |

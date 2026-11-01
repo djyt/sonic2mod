@@ -93,6 +93,14 @@ def _step(level: int, volume: int) -> int:
     return (((level * (volume + 1)) >> _LEVEL_SHIFT) ^ _SILENT) - (volume ^ _SILENT)
 
 
+def volume_family(name: str) -> str | None:
+    """The envelope a PSG envelope's name plays at one of its volumes (an ADSR's: its six bytes,
+    adsr_ffffffc8000a_v12 -> adsr_ffffffc8000a); None: one the volume does not shape."""
+    if not name.startswith(_PREFIX) or _VOLUME_MARK not in name:
+        return None
+    return name.rpartition(_VOLUME_MARK)[0]
+
+
 class AdsrEnvelopes(Mapping[str, PsgEnvelope]):
     """Every ADSR envelope at every volume, by name (Adsr.name), made as asked for: a driver's
     PlaybackRules.psg_envelopes where its tracks name them (no listing)."""

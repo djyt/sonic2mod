@@ -150,7 +150,9 @@ def main():
         output_bytes=len(output_bytes), merged=bool(config.merge_active), verbose=args.verbose,
         synth=synth, psg_synth=psg_synth, bpm=prep.bpm, mod_channels=mod.CHANNELS, patterns=len(mod.patterns),
         derived=derivation.derived if derivation else [], stale=derivation.stale if derivation else [],
-        folded=derivation.folded if derivation else {}))
+        folded=derivation.folded if derivation else {},
+        volumes_folded=derivation.volumes_folded if derivation else {},
+        windows_merged=derivation.windows_merged if derivation else {}))
 
 
 if __name__ == '__main__':

@@ -11,6 +11,9 @@ An override replaces the item it names (one voice's entries, one envelope's, one
 one sample_list row), never the whole section.
 
 Instruments, in slot order:  DAC samples · FM voices · PSG tones · PSG noise
+    over 31     what gives way, in order (core.plan.slot_fit): an envelope at a volume plays at its
+                most played volume; a voice copy as its voice (FM3 special mode, LFO, then a
+                register patch); a voice's neighbouring windows merge, the cheapest first
     FM / PSG tone   an entry per window of the chip pitches a voice / envelope plays: its lowest
                     on the first MOD note keeping samples.root_harmonics harmonics (never under
                     E1, the 5 kHz line), its top at most samples.top_note (A3), its span at most
@@ -29,7 +32,7 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter, defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import NamedTuple
@@ -66,9 +69,11 @@ from ..smps import (
     source_map,
     synth_note_name,
     update_hz,
+    volume_family,
 )
 from .conversion import ConversionPlan
 from .driver_state import walk_channel
+from .slot_fit import fold_volumes, merge_windows, windows
 
 MAX_INSTRUMENTS = 31
 _MOD_SPAN = 35               # C1 ... B3
@@ -141,6 +146,9 @@ class Derivation:
                                                             # cut (another max_window's, or stale): left out
     folded: dict[int, tuple[int, int]] = field(default_factory=dict)   # {voice copy: (the voice it plays
                                                             # as, its notes)}: no slot for it
+    volumes_folded: dict[str, tuple[str, int]] = field(default_factory=dict)   # {envelope at a volume:
+                                                            # (the volume it plays as, its notes)}: no slot
+    windows_merged: dict[str, int] = field(default_factory=dict)   # {voice / envelope: windows merged}
 
 
 def load_config(path: str | Path, settings_path: str | None = None, variant: str | None = None) -> ConversionConfig:
@@ -204,6 +212,7 @@ class _Deriver:
         # (kind, voice / label / form) -> {(chip pitch, level): notes}; noise and DAC: pitch None
         self._levels: dict[tuple, Counter] = defaultdict(Counter)
         self._group: dict[int, _Window] = {}  # slot -> the voice window it holds
+        self._merges: dict[tuple, int] = {}   # (kind, voice / envelope) -> its windows merged to fit
 
     def run(self, config_path: Path) -> None:
         self._default("name", config_path.stem)
@@ -217,10 +226,11 @@ class _Deriver:
 
         fm, tone, noise, dac_names = self._notes(sources)
         self._dac_samples(dac_names)
-        fm = self._fold_copies(fm, MAX_INSTRUMENTS - (self._next - 1) - self._psg_slots(tone, noise))
+        fm, tone = self._fit(fm, tone, MAX_INSTRUMENTS - (self._next - 1) - sum(len(e) for e in noise.values()))
         voice_map = self._windows(fm, ChannelType.FM, _FM_STEM.format)
         self._items("voice_map", voice_map | {copy: voice_map[self._folded_to(copy)] for copy in self._out.folded})
-        self._items("psg_voice_map", self._windows(tone, "tone", _TONE_STEM.format))
+        envelopes = self._windows(tone, "tone", _TONE_STEM.format)
+        self._items("psg_voice_map", envelopes | {label: envelopes[head] for label, (head, _) in self._out.volumes_folded.items()})
         self._items("psg_map", {form: self._noise(form, noise[form]) for form in sorted(noise)})
         self._sample_list()
         if self._next - 1 > MAX_INSTRUMENTS:
@@ -338,13 +348,34 @@ class _Deriver:
         out = {}
         for key in sorted(notes, key=str):
             entries = []
-            for lo, hi in _windows(list(notes[key]), self._max_span):
+            for lo, hi in self._cut(kind, key, notes[key]):
                 inst = self._take(kind, _WINDOW_FILE.format(file_stem(key), _pitch_name(lo)), key, (lo, hi))
                 root = min(self._lowest_root(lo), self._top - (hi - lo))
                 entries.append({"low": _pitch_name(lo), "high": _pitch_name(hi),
                                 "mod_instrument": inst, "root": synth_note_name(C1_SEMITONE + root)})
             out[key] = entries
         return out
+
+    def _fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> tuple[dict, dict]:
+        """`fm` and `tone` fitted to `slots`, as far as they go (core.plan.slot_fit): envelopes at
+        their most played volume, voice copies as their voices, then windows merged."""
+        tone, self._out.volumes_folded = fold_volumes(tone, slots - self._fm_slots(fm), volume_family, self._tone_slots)
+        fm = self._fold_copies(fm, slots - self._tone_slots(tone))
+        groups: dict[tuple, Counter] = {(ChannelType.FM, key): p for key, p in fm.items()}
+        groups |= {("tone", key): p for key, p in tone.items()}
+        self._merges = merge_windows(groups, self._max_span, self._widest, slots)
+        self._out.windows_merged = {(f"${key:02X}" if kind == ChannelType.FM else key): n
+                                    for (kind, key), n in self._merges.items()}
+        return fm, tone
+
+    def _cut(self, kind: str, key, pitches: Counter) -> list[tuple[int, int]]:
+        """The windows a voice's (envelope's) `pitches` are cut into, merged as _fit chose."""
+        return windows(pitches, self._max_span, self._merges.get((kind, key), 0), self._widest)
+
+    @property
+    def _widest(self) -> int:
+        """The widest window a sample may play: the floor to top_note."""
+        return self._top - self._floor
 
     def _fold_copies(self, fm: dict[int, Counter], slots: int) -> dict[int, Counter]:
         """`fm` with copies folded onto their voices while its windows outnumber `slots`: the least
@@ -373,12 +404,10 @@ class _Deriver:
         return copy
 
     def _fm_slots(self, fm: dict[int, Counter]) -> int:
-        return sum(len(_windows(list(pitches), self._max_span)) for pitches in fm.values())
+        return sum(len(windows(pitches, self._max_span)) for pitches in fm.values())
 
-    def _psg_slots(self, tone: dict[str, Counter], noise: dict[int, Counter]) -> int:
-        """The slots the PSG's windows and noise forms take (each envelope a noise form plays with)."""
-        return sum(len(_windows(list(pitches), self._max_span)) for pitches in tone.values()) + \
-            sum(len(envelopes) for envelopes in noise.values())
+    def _tone_slots(self, tone: Mapping[str, Counter]) -> int:
+        return sum(len(windows(pitches, self._max_span)) for pitches in tone.values())
 
     def _lowest_root(self, pitch: int) -> int:
         """First MOD note (0 = C1) from the floor keeping root_harmonics harmonics of `pitch` below
@@ -534,19 +563,6 @@ def _plain_voice(voice: SmpsVoice) -> int | None:
 
 def _unpatched_voice(voice: SmpsVoice) -> int | None:
     return voice.unpatched
-
-
-def _windows(pitches: list[int], max_span) -> list[tuple[int, int]]:
-    """Distinct pitches cut into runs, each spanning at most `max_span(its lowest pitch)`."""
-    ps = sorted(set(pitches))
-    out, start = [], 0
-    while start < len(ps):
-        end, span = start, max_span(ps[start])
-        while end + 1 < len(ps) and ps[end + 1] - ps[start] <= span:
-            end += 1
-        out.append((ps[start], ps[end]))
-        start = end + 1
-    return out
 
 
 def _output_path(config_path: Path) -> str:

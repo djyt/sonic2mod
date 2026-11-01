@@ -10677,6 +10677,81 @@ analyze_19_writes:
   - tools/vgm/vgm_analyze.py
   inputs:
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
+census_streets_of_rage_2:
+  argv:
+  - tools/rom/flag_census.py
+  - input/roms/Streets of Rage 2 (USA).md
+  - --rows
+  - '0'
+  commit: 8d4562f
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/chips/__init__.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/mucom/__init__.py
+  - core/drivers/mucom/md/__init__.py
+  - core/drivers/mucom/md/dac.py
+  - core/drivers/mucom/md/grammar.py
+  - core/drivers/mucom/md/header.py
+  - core/drivers/mucom/md/locate.py
+  - core/drivers/mucom/md/memory.py
+  - core/drivers/mucom/md/variant.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/registry.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/mucom.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
+  - core/rom/pcm/sor.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - tools/rom/flag_census.py
+  inputs:
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
 disasm_streets_of_rage_2_68k:
   argv:
   - tools/rom/disasm.py

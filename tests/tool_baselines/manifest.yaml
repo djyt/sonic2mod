@@ -474,6 +474,11 @@ analyze_19_writes:
   date: '2026-11-01'
   inputs:
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
+census_streets_of_rage_2:
+  commit: 8d4562f
+  date: '2026-11-01'
+  inputs:
+    input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
 compare_chaos_emerald:
   commit: 0bda3fa-dirty
   date: '2026-10-08'

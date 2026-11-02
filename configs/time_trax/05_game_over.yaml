@@ -11,3 +11,9 @@ window_root: highest      # each window's root as high as its range and the 64 K
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [1, "fm_v01_E4.raw", 46, 0]   # VGZ: +2.9 dB at 64
   - [3, "fm_v0a_Cs2.raw", 33, 0]   # VGZ: +2.1 dB at 42
+
+variants:
+  slow:                 # 2.5 frames a row (250 BPM, speed 5): a 16th a row, 4 bars a pattern; the same notes
+    name: "Game Over slow"
+    ticks_per_row: 2.5
+    target_speed: 5

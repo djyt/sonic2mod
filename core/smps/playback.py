@@ -28,10 +28,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK, noise_follows_tone3
-from .driver_tables import fm_note_index, psg_note_index
+from .driver_tables import FM_TABLE_NC0, fm_note_index, fm_render_word, psg_note_index
 from .names import NOISE_CHANNEL_NAME, source_names
 from .rules import PitchRules, PlaybackRules
-from .song import ChannelType, SmpsNote, SmpsSong, SmpsVoice
+from .song import REST, ChannelType, SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 from .track import TrackState
@@ -257,10 +257,14 @@ def psg_render_divider(rules: PlaybackRules, semitone: int, detune: int = 0) -> 
 
 
 def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...]) -> int:
-    """The frequency word the driver reads for a note byte at the track's transposition."""
+    """The frequency word the driver reads for a note byte at the track's transposition.  An FM
+    note transposed past the table reads stray bytes: the pitch meant (Time Trax's two)."""
     if st.is_psg:
         return st.psg.divider(psg_note_index(note.note_value, st.transpose))
-    return fm_frequencies[fm_note_index(note.note_value, st.transpose)]
+    i = fm_note_index(note.note_value, st.transpose)
+    if i < len(fm_frequencies):
+        return fm_frequencies[i]
+    return fm_render_word(note.note_value - REST - FM_TABLE_NC0 + st.transpose, fm_frequencies)
 
 
 def _first_step(st: TrackState, rules: PlaybackRules) -> int:

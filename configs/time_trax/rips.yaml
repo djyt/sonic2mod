@@ -67,7 +67,7 @@
     - {frame: 1660, frames: -1, why: "update at 1659 (67 writes) runs into 1660, none in it: its V-int lost"}
     - {frame: 2045, frames: -1, why: "update at 2044 (44 writes) runs into 2045, none in it: its V-int lost"}
     - {frame: 2814, frames: -1, why: "update at 2813 (56 writes) runs into 2814, none in it: its V-int lost"}
-    - {frame: 3199, frames: -1, why: "update at 3198 (35 writes) runs into 3199, none in it: its V-int lost"}
+    - {frame: 3592, frames: -1, why: "none in 3591-3592 after the update at 3590 (4 writes, no overrun seen): where in it, the notes cannot tell"}
     - {frame: 3776, frames: -1, why: "update at 3775 (27 writes) runs into 3776, none in it: its V-int lost"}
     - {frame: 3969, frames: -1, why: "update at 3968 (27 writes) runs into 3969, none in it: its V-int lost"}
     - {frame: 4354, frames: -1, why: "update at 4353 (48 writes) runs into 4354, none in it: its V-int lost"}

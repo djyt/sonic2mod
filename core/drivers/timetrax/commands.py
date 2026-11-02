@@ -44,7 +44,8 @@ class Command:
 
 
 # The commands the song keeps as effects (grammar.py)
-PAN, VOICE, RE_KEY, LEGATO, DETUNE, DETUNE_OFF = 0x87, 0x88, 0x8B, 0x8C, 0xA8, 0xA9
+PAN, VOICE, TRANSPOSE, RE_KEY, LEGATO, DETUNE, DETUNE_OFF = 0x87, 0x88, 0x89, 0x8B, 0x8C, 0xA8, 0xA9
+GATE, GATE_OFF, KEY_OFF_AFTER, KEY_OFF_AFTER_OFF = 0x96, 0x97, 0x98, 0x99   # each set clears the other's
 
 
 COMMANDS: dict[int, Command] = {
@@ -57,7 +58,7 @@ COMMANDS: dict[int, Command] = {
     0x86: Command(1, "fixed duration", Steer.FIXED),
     PAN: Command(1, "pan"),
     VOICE: Command(1, "voice"),
-    0x89: Command(1, "transposition", later=True),
+    TRANSPOSE: Command(1, "transposition"),
     0x8A: Command(1, "volume", later=True),
     RE_KEY: Command(0, "notes re-key"),
     LEGATO: Command(0, "legato"),
@@ -70,10 +71,10 @@ COMMANDS: dict[int, Command] = {
     0x93: Command(0, "glide off", later=True),
     0x94: Command(2, "portamento", later=True),
     0x95: Command(0, "portamento off", later=True),
-    0x96: Command(1, "key off before the end", later=True),
-    0x97: Command(0, "key off before the end off", later=True),
-    0x98: Command(1, "key off after the start", later=True),
-    0x99: Command(0, "key off after the start off", later=True),
+    GATE: Command(1, "key off before the end"),
+    GATE_OFF: Command(0, "key off before the end off"),
+    KEY_OFF_AFTER: Command(1, "key off after the start"),
+    KEY_OFF_AFTER_OFF: Command(0, "key off after the start off"),
     0x9A: Command(6, "vibrato", later=True),
     0x9B: Command(0, "vibrato restart", later=True),
     0x9C: Command(0, "vibrato off", later=True),

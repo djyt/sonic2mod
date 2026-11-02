@@ -1721,8 +1721,8 @@ read_moonwalker:
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_outrun:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 1a2a6f5-dirty
+  date: '2026-11-02'
   inputs:
     input/roms/OutRun (USA, Europe).md: 231f52844398
 read_sonic1_asm_music:
@@ -1835,22 +1835,22 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 1a2a6f5-dirty
+  date: '2026-11-02'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 1a2a6f5-dirty
+  date: '2026-11-02'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
 read_streets_of_rage_2:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 1a2a6f5-dirty
+  date: '2026-11-02'
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
 read_time_trax:
-  commit: 64f9abf-dirty
+  commit: 1a2a6f5-dirty
   date: '2026-11-02'
   inputs:
     input/roms/Time Trax (USA) (Proto).md: 830410ab309d

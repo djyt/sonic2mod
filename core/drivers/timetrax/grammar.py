@@ -8,12 +8,16 @@ frames).
     $86 n               nothing: the walk gives the notes after it their duration
     $87 n               Pan: B4's speakers by the driver's table (n $FF left, 0 centre, 1 right)
     $88 n               SetVoice
+    $89 n               SetTransposition n (signed): the note's table entry n + it
     $8B / $8C           Legato off / on (a note neither keys off nor on)
     $8D n / $8E         the sync: the signal nothing, the wait a rest of the frames it waits
+    $96 n / $97         Gate n + 1 (and KeyOffAfter cleared) / Gate 0: each frame after the countdown
+    $98 n / $99         KeyOffAfter n - 1 (and Gate cleared) / KeyOffAfter 0   ($1293: n against it)
     $A8 d / $A9         Detune d (signed, added to the frequency word) / 0
 
-Read and dropped for now, each named (docs/todo/time_trax.md Phase 2): transposition, volume and
-its mask, glide, portamento, key-off timing, vibrato, volume envelopes.  Refused (no song plays
+A rest writes nothing: the note sounds on to a read's key-off (TrackRules.key_off.rest_holds).
+Read and dropped for now, each named (docs/todo/time_trax.md Phase 2): volume and its mask, glide,
+portamento, vibrato, volume envelopes.  Refused (no song plays
 them): the signalled jumps, the random jump, the portamento's transposition mode, release
 envelopes, the LFO, the DAC.
 """
@@ -25,15 +29,48 @@ from core.rom.grammar import Instruction, as_instruction, flag_instruction, trac
 from core.rom.image import RomError
 from core.rom.memory import SoundMemory
 from core.rom.variant import SmpsVariant
-from core.smps import REST, ChannelType, Detune, Legato, Op, OpKind, Pan, SetVoice, SmpsEffect, signed_byte
+from core.smps import (
+    REST,
+    ChannelType,
+    Detune,
+    Gate,
+    KeyOffAfter,
+    Legato,
+    Op,
+    OpKind,
+    Pan,
+    SetTransposition,
+    SetVoice,
+    SmpsEffect,
+    signed_byte,
+)
 
-from .commands import COMMANDS, DETUNE, DETUNE_OFF, FIRST_COMMAND, LEGATO, PAN, RE_KEY, REST_BYTE, VOICE, Steer, counted
+from .commands import (
+    COMMANDS,
+    DETUNE,
+    DETUNE_OFF,
+    FIRST_COMMAND,
+    GATE,
+    GATE_OFF,
+    KEY_OFF_AFTER,
+    KEY_OFF_AFTER_OFF,
+    LEGATO,
+    PAN,
+    RE_KEY,
+    REST_BYTE,
+    TRANSPOSE,
+    VOICE,
+    Steer,
+    counted,
+)
 from .memory import TimeTraxMemory
 
 _NOTE_BASE = REST                       # note n plays the FM table's entry n: SMPS's $80 + n
 _LEGATO_ON = 1                          # Legato's mode byte
 _PAN_INDEX = 1                          # $87 n: the table's entry n + 1 ($FF wraps to 0)
 _BYTE = 0xFF
+_CHECK_LAG = 1                          # $1293 checks after the countdown: n + 1 frames before the end,
+                                        # n - 1 after the start (the read's frame unchecked)
 
 def instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType) -> Instruction:
     """The instruction at `address` (SmpsVariant.grammar): a note or rest, else a command (FLAGS)."""
@@ -104,8 +141,8 @@ def _rest(frames: int) -> tuple[Op, ...]:
     return Op(OpKind.NOTE, value=REST), Op(OpKind.DURATION, value=frames)
 
 
-def _effect(memory: TimeTraxMemory, address: int, byte: int, operand: int) -> SmpsEffect:
-    """A command the song keeps as an effect."""
+def _effect(memory: TimeTraxMemory, address: int, byte: int, operand: int) -> SmpsEffect | tuple[SmpsEffect, ...]:
+    """A command the song keeps as an effect, or the walk resolves (a transposition, the key-offs)."""
     if byte == PAN:
         pans = memory.tables.pans
         index = (operand + _PAN_INDEX) & _BYTE
@@ -118,6 +155,16 @@ def _effect(memory: TimeTraxMemory, address: int, byte: int, operand: int) -> Sm
         return Legato(_LEGATO_ON if byte == LEGATO else 0)
     if byte in (DETUNE, DETUNE_OFF):
         return Detune(signed_byte(operand))           # $A9: no operand, 0
+    if byte == TRANSPOSE:
+        return SetTransposition(signed_byte(operand))
+    if byte == GATE:
+        return Gate(operand + _CHECK_LAG if operand else 0), KeyOffAfter(0)
+    if byte == KEY_OFF_AFTER:
+        return KeyOffAfter(max(operand - _CHECK_LAG, 0)), Gate(0)
+    if byte == GATE_OFF:
+        return Gate(0)
+    if byte == KEY_OFF_AFTER_OFF:
+        return KeyOffAfter(0)
     raise AssertionError(f"${byte:02X}: a command with no reading")
 
 

@@ -271,14 +271,21 @@ reached.  A glide is the same with another curve: D4 uses it.
   transposition dropped); level the volume law; length rests that hold, `$96` / `$98`.  The rips'
   lost frames (0.3) confirmed: V-ints the driver loses ($06F4), 77 in `rips.yaml` (10-25 a song).
   Each set checked whole: every rip then loops its song's frames, and the lift's onsets fall
-  (3734 / 4369 / 4798 / 2877 / 5845 -> 13 / 29 / 25 / 282 / 40; song 3's left: notes the lift
-  misses at 63-66 s, Phase 2).  `vgm_analyze --updates` flags most; three it misses, placed by the
-  notes: an update that ends just short of the next frame (song 0's 5618), one split by a late
-  burst (song 4's 2330, 8995).  One of its flags is no loss (song 4's 3099), and song 4's 6688 sits
-  somewhere in an idle 6688-6692.
+  (3734 / 4369 / 4798 / 2877 / 5845 -> 12 / 24 / 25 / 22 / 40, with 2.1).  `vgm_analyze --updates`
+  flags most; four it misses, placed by the notes: an update that ends just short of the next
+  frame (song 0's 5618), one split by a late burst (song 4's 2330, 8995), none seen (song 3's
+  3592).  Two of its flags are no loss (song 3's 3199, song 4's 3099); song 3's 3592 and song 4's
+  6688 sit somewhere in idle frames.
 
 ### Phase 2: the walk
-- [ ] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.
+- [x] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.  A read (note or
+  rest) loads the countdown; each later frame counts down, then `$1293` keys off: `$96 n` at n + 1
+  frames before the read's end (`Gate`), `$98 n` n - 1 after its start (`KeyOffAfter`, a gate
+  first); each set clears the other's.  A rest writes nothing ($0D18): the note sounds on to a
+  read's key-off; a legato read after one stays silent (`KeyOffRules.rest_holds`, DriverTrack).
+  `$89`: `SetTransposition`, played as the change.  Two notes transposed past the FM table (song 3,
+  4: FM1) play the pitch meant.  Lift: length 1076 -> 22, note 1473 -> 18 (song 0); `vgm_frames`
+  attack pitch 1470 -> 27.  Left for 2.2: levels, the modulator TLs `$AA` scales ("voice").
 - [ ] 2.2 Volume law; `$AA` masks.  `vgm_frames` levels per key-on.
 - [ ] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch (T2).
 - [ ] 2.4 Volume envelopes; `vgm_frames` levels per frame (T2, T3).

@@ -111,6 +111,8 @@ class KeyOffRules:
     gate_floor: int | None = None           # frames a note no longer than the gate keys (Streets of Rage 2's
                                             # FM: 1, $40F72); None: it plays whole
     soft_release: SoftReleaseLaw | None = None   # the driver's soft release; None: it has none (refused)
+    rest_holds: bool = False                # a rest writes nothing: the note sounds on through it to a
+                                            # read's key-off, and a tie after one stays silent (Time Trax's)
 
 
 @dataclass(frozen=True)

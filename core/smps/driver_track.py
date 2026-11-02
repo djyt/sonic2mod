@@ -35,18 +35,21 @@ from .effects import (
     AdsrEnvelope,
     AlterVol,
     AlterVolumeStep,
+    ChangeTransposition,
     Detune,
     DetuneAdd,
     DriverEffect,
     EnvelopePreset,
     Fm3Special,
     Gate,
+    KeyOffAfter,
     Legato,
     NoiseRate,
     PlayedEffect,
     PsgForm,
     PsgVoice,
     SelectSample,
+    SetTransposition,
     SetVoice,
     SetVol,
     SmpsEffect,
@@ -88,6 +91,9 @@ class DriverTrack:
         self._presets = rules.adsr_presets
         self._detune_word = 0
         self._gate = 0                             # frames before a note's end the driver keys it off
+        self._after = 0                            # ... after a read starts (KeyOffAfter), a gate first
+        self._sounding = False                     # a note sounds (TrackRules.key_off.rest_holds)
+        self._transposition = header.pitch_offset  # the track's, as SetTransposition sets it
         self._legato = False                       # every read ties (Legato)
         self._noise_form: int | None = None        # the PSG_FORM that holds: notes are noise
         self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
@@ -132,6 +138,14 @@ class DriverTrack:
             case Gate(frames=frames):
                 self._gate = frames
                 return ()
+            case KeyOffAfter(frames=frames):
+                self._after = frames
+                return ()
+            case SetTransposition(semitones=semitones):
+                delta, self._transposition = semitones - self._transposition, semitones
+                return (ChangeTransposition(delta),) if delta else ()
+            case ChangeTransposition(semitones=semitones):
+                self._transposition += semitones
             case Legato():
                 self._legato = effect.on
                 return ()
@@ -343,6 +357,8 @@ class DriverTrack:
         or the rest after a note, the note drops to its softer level (a SetVol) and rings on, a
         rest held.  An effect plays where the note before it ends, or a rest's first where it starts."""
         self._read_levels = {}                     # the read is over: its writes are the chip's
+        if self._rules.key_off.rest_holds:
+            return self._holding(note, tied_next)
         if not note.is_rest:
             self._spared = self._soft is not None
             held = self._held(note, tied_next)
@@ -367,6 +383,23 @@ class DriverTrack:
             return _split(note, holds)
         return [note]
 
+    def _holding(self, note: SmpsNote, tied_next: bool) -> list[SmpsNote]:
+        """`note` where a rest writes nothing (TrackRules.key_off.rest_holds): a rest, a tie or a
+        legato read keys nothing on, so it ties the note still sounding, or rests after a key-off;
+        every read is keyed off where its gate or KeyOffAfter falls (Time Trax's, $1293).
+
+            KeyOffAfter 2:  C 6                ->  C 2 | rest 4
+            Gate 3:         C 2, rest 6        ->  C 2 | C tied 3 | rest 3
+        """
+        if note.is_rest or note.is_no_attack:
+            if not self._sounding:
+                return [SmpsNote(note_value=REST, duration=note.duration, is_rest=True)]
+            note = dataclasses.replace(note, is_no_attack=True)
+        held = self._held(note, tied_next)
+        played = [note] if held is None else _split(note, held)
+        self._sounding = not played[-1].is_rest
+        return played
+
     def _softened_level(self) -> tuple[PlayedEffect, ...]:
         """The level a soft release drops a note to, written as a volume: that of the step it
         makes of the track's."""
@@ -382,7 +415,7 @@ class DriverTrack:
         driver spares - a tied note where the key-off waits on the tie, one the next byte ties
         where the driver looks (it checks each frame)."""
         if not self._gate:
-            return None
+            return self._after if 0 < self._after < note.duration else None
         if note.is_no_attack and self._rules.key_off.gate_spares_tied:
             return None
         if self._rules.key_off.gate_sees_tie and tied_next:

@@ -10,8 +10,9 @@ disassembler (docs/todo/time_trax.md).
     FM table    96 words from B (index 1 C0): A = fnum $44B, +25 cents on the NTSC clock, +10 on
                 PAL's; played as written
 
-Its playback rules are Sonic 1's for now: the plan's Phase 2 reviews each against the code (rests
-that hold, the key-off timing, the volume law, glides, portamento, volume envelopes).
+Its playback rules: a rest writes nothing, the note sounds on to a read's key-off (rest_holds).
+The rest are Sonic 1's for now: the plan's Phase 2 reviews each against the code (the volume law,
+glides, portamento, volume envelopes).
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from core.rom.header import RomHeader
 from core.rom.image import RomImage
 from core.rom.memory import SoundMemory
 from core.rom.variant import HeaderLayout, SmpsVariant, TrackSlot
-from core.smps import FM_CHANNEL_NAMES, ChannelType, PlaybackRules
+from core.smps import FM_CHANNEL_NAMES, ChannelType, KeyOffRules, PlaybackRules, TrackRules
 
 from ..names import SmpsDriver
 from .grammar import FLAGS, instruction
@@ -58,7 +59,8 @@ TIMETRAX = SmpsVariant(
     header=_HEADER,
     voice_layout=VOICE,
     rules=PlaybackRules(driver=SmpsDriver.TIMETRAX, fm_frequencies=(), psg_frequencies=(), psg_read=(),
-                        psg_envelopes={}, dac_names={}),
+                        psg_envelopes={}, dac_names={},
+                        tracks={ChannelType.FM: TrackRules(key_off=KeyOffRules(rest_holds=True))}),
     rules_from_rom=_rules_from_rom,
     grammar=instruction,
     music_header_reader=read_header,

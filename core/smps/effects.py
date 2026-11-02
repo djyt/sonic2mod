@@ -67,6 +67,8 @@ class CoordFlag(StrEnum):
     ENVELOPE_PRESET = auto()      # its $F0 on the PSG
     ADSR_ENVELOPE = auto()        # its $FA on the PSG
     NOISE_RATE = auto()           # its $F8 on the PSG
+    KEY_OFF_AFTER = auto()        # Time Trax's $98
+    SET_TRANSPOSITION = auto()    # its $89
 
 
 @dataclass(frozen=True)
@@ -252,6 +254,20 @@ class Gate(DriverEffect):
     """Each note keyed off this many frames (track updates) before its end; 0: none."""
     flag = CoordFlag.GATE
     frames: int
+
+
+@dataclass(frozen=True)
+class KeyOffAfter(DriverEffect):
+    """Each read keyed off this many frames after it starts, a gate first; 0: none."""
+    flag = CoordFlag.KEY_OFF_AFTER
+    frames: int
+
+
+@dataclass(frozen=True)
+class SetTransposition(DriverEffect):
+    """The track's transposition set, not added to: the walk's ChangeTransposition by the difference."""
+    flag = CoordFlag.SET_TRANSPOSITION
+    semitones: int                # signed
 
 
 @dataclass(frozen=True)

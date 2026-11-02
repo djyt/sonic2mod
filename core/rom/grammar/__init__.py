@@ -43,9 +43,10 @@ class Instruction:
     dropped: str = ""               # a DROP flag's name
 
 
-def as_instruction(e: SmpsEffect, length: int) -> Instruction:
-    """An instruction of `length` bytes that is the effect `e`."""
-    return Instruction((Op(OpKind.EFFECT, effect=e),), length, True)
+def as_instruction(e: SmpsEffect | tuple[SmpsEffect, ...], length: int) -> Instruction:
+    """An instruction of `length` bytes that is the effect `e`, or several in order."""
+    effects = e if isinstance(e, tuple) else (e,)
+    return Instruction(tuple(Op(OpKind.EFFECT, effect=one) for one in effects), length, True)
 
 
 def flag_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType) -> Instruction:

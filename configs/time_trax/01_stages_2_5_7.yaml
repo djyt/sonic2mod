@@ -24,7 +24,7 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [27, "fm_v4a_F3.raw", 26, 0]   # VGZ: -4.7 dB at 15
 
 variants:
-  slow:                 # 2 frames a row (125 BPM, speed 2): the same notes; glides step a row at a time
+  slow:                 # 3 frames a row (125 BPM, speed 3): a 120-frame bar (20 16ths) is 40 rows; the same notes
     name: "Stages 2, 5, 7 slow"
-    ticks_per_row: 2
-    target_speed: 2
+    ticks_per_row: 3
+    target_speed: 3

@@ -138,7 +138,7 @@ class _PsgRenderer:
 
         entry_type = entry.type.lower()
         if entry_type == _TONE:
-            mono, rate = self._tone(entry, spec.synth_idx, target_rate, envelope, env_info, spec.detune)
+            mono, rate = self._tone(entry, spec.synth_idx, target_rate, envelope, env_info, spec.render_offset)
         elif entry_type in (_WHITE_NOISE, _PERIODIC_NOISE):
             mono, rate = self._noise(entry, spec.synth_idx, entry_type == _WHITE_NOISE, target_rate, envelope, env_info)
         else:
@@ -162,9 +162,9 @@ class _PsgRenderer:
         return mono, rate
 
     def _tone(self, entry: PsgInstrumentEntry, note: int, target_rate: int, envelope: PsgEnvelope | None,
-              env_info: str, detune: int = 0) -> tuple[Sequence[float], int]:
+              env_info: str, offset: int = 0) -> tuple[Sequence[float], int]:
         synth, inst_num = self._synth, entry.mod_instrument
-        n_val = note_to_psg_n(note, self._rules, synth.clock_rate, detune)
+        n_val = note_to_psg_n(note, self._rules, synth.clock_rate, offset)
         if self._pitches_out is not None:
             self._pitches_out[inst_num] = psg_frequency_hz(n_val, synth.clock_rate)
         if self._verbose:

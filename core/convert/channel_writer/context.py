@@ -6,7 +6,7 @@ from ...config import ConversionConfig, SynthesisSettings
 from ...diagnostics import Diagnostics
 from ...merge import MergePlan, merge_plan_of
 from ...mod import ModFile
-from ...plan import ConversionPlan, DetunePlan, Timeline, detune_cents, fm_catalogue
+from ...plan import ConversionPlan, DetunePlan, ResolvedNote, Timeline, detune_cents, fm_catalogue, psg_catalogue
 from ...smps import C1_SEMITONE, SmpsSong
 from ..vibrato import VibratoSpeed
 
@@ -18,6 +18,8 @@ class EmissionStats:
     bank_cuts: int = 0             # banked notes cut before the next sound in their slot
     bank_cxx_moved: int = 0        # banked melodic notes whose attack-row Cxx went to the next row
     tie_retunes: dict = field(default_factory=lambda: {'placed': 0, 'skipped': 0})   # E1x / E2x on ties
+    attack_retunes: dict = field(default_factory=lambda: {'placed': 0, 'skipped': 0})   # ... on notes whose
+                                   # detune found no slot (DetunePlan.unplaced)
 
 
 @dataclass
@@ -68,11 +70,20 @@ class WriterContext:
         return self.synth.legato if self.synth else "strict"
 
     def sample_cents(self, inst: int) -> float:
-        """Cents an FM instrument's sample is detuned by (core.plan.detune): its FNUM offset at the
-        pitch it is rendered at."""
+        """Cents an instrument's sample is detuned by (core.plan.detune): an FM one's FNUM offset, a
+        PSG one's divider offset, at the pitch it is rendered at."""
         if self._sample_detunes is None:
-            self._sample_detunes = {i.inst: detune_cents(C1_SEMITONE + i.synth_idx, i.layers[0].fnum_offset,
-                                                         self.song.rules.fm_frequencies)
-                                    for i in fm_catalogue(self.song, self.conv).instruments.values()
-                                    if len(i.layers) == 1}
+            rules = self.song.rules
+            fm = {i.inst: detune_cents(C1_SEMITONE + i.synth_idx, i.layers[0].fnum_offset, rules.fm_frequencies)
+                  for i in fm_catalogue(self.song, self.conv).instruments.values() if len(i.layers) == 1}
+            psg = {i.inst: rules.psg_table.offset_cents(C1_SEMITONE + i.synth_idx, i.render_offset)
+                   for i in psg_catalogue(self.conv).values() if i.render_offset}
+            self._sample_detunes = psg | fm
         return self._sample_detunes.get(inst, 0.0)
+
+    def note_cents(self, res: ResolvedNote, psg: bool) -> float:
+        """Cents a note's detune moves it from its table pitch (an FM note's FNUM offset, a PSG
+        note's divider offset)."""
+        if psg:
+            return self.song.rules.psg_table.offset_cents(res.chip, res.detune)
+        return detune_cents(res.chip, res.detune, self.song.rules.fm_frequencies)

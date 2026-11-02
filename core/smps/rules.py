@@ -30,7 +30,7 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import TYPE_CHECKING
 
-from ..chips import split_freq_word
+from ..chips import PSG_DIVIDER_MASK, split_freq_word
 from .adsr import Adsr
 from .clock import VINT, UpdateClock
 from .driver_tables import PsgEnvelope, PsgTable
@@ -154,6 +154,14 @@ class PitchRules:
     noise_writes_tone3: bool = True         # a noise note writes its pitch to tone 3; False: tone 3
                                             # keeps the last tone note's (none: divider 0, nMaxPSG)
 
+
+    def divider(self, word: int) -> int:
+        """The PSG divider the chip takes for a detuned `word`: 1-1023 where the driver clamps it, else
+        its low 10 bits (a detune past them wraps: Streets of Rage's $8F PSG1 ramp, down to A2, then
+        from the top again)."""
+        if self.divider_clamp:
+            return min(max(word, 1), PSG_DIVIDER_MASK)
+        return word & PSG_DIVIDER_MASK
 
     def shift(self, index: int) -> int:
         """What the detune word and the modulation's sum are shifted by for the note at table `index`."""

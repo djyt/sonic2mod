@@ -792,8 +792,9 @@ def detail_lines(infos: list[dict]) -> list[str]:
             for inst, base, d, e, n in info['variants']:
                 envelope = f", pitch envelope {e}" if e else ""
                 out.append(f"detune variant inst {inst}: inst {base} at {d:+d} FNUM{envelope} [dim]({n} notes)[/dim]")
-        elif t == InfoKind.DETUNE_TIES:
-            out.append(f"ties retuned to their new detune: {info['placed']} E1x / E2x"
+        elif t in (InfoKind.DETUNE_TIES, InfoKind.DETUNE_ATTACKS):
+            what = "ties retuned to their new detune" if t == InfoKind.DETUNE_TIES else "notes of a detune with no slot retuned"
+            out.append(f"{what}: {info['placed']} E1x / E2x"
                        + (f" [dim]({info['skipped']} rows had no free effect slot)[/dim]" if info['skipped'] else ""))
         elif t == InfoKind.SYNTH_SHIFT:
             out.append(f"{escape(info['context'])}: rendered at {synth_note_name(info['synth_root'])}, "

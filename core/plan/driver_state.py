@@ -33,6 +33,7 @@ from ..config import InstrumentRange, PsgInstrumentEntry
 from ..mod import clamp_note
 from ..smps import (
     ChannelType,
+    PitchRules,
     PsgForm,
     PsgTable,
     PsgVoice,
@@ -44,6 +45,9 @@ from ..smps import (
 if TYPE_CHECKING:
     from .conversion import ConversionPlan
     from .detune import DetunePlan
+
+
+_PITCH = PitchRules()            # a driver's PSG pitch rules where none is given: Sonic 1's
 
 
 def psg_range_entry(entries, key: int):
@@ -65,12 +69,13 @@ class DriverState(TrackState):
     """The driver's track state plus the MOD instrument it routes to, advanced one coordination
     flag at a time."""
 
-    __slots__ = ("_tone_routing", "config", "instrument", "psg_entries", "psg_entry", "psg_label")
+    __slots__ = ("_tone_routing", "config", "instrument", "psg_entries", "psg_entry", "psg_label", "psg_pitch")
 
     def __init__(self, config, *, is_psg: bool, psg: PsgTable, transpose: int = 0,
-                 volume: int = 0, instrument: int = 0):
+                 volume: int = 0, instrument: int = 0, psg_pitch: PitchRules = _PITCH):
         super().__init__(is_psg=is_psg, psg=psg, transpose=transpose, volume=volume)
         self.config = config
+        self.psg_pitch = psg_pitch          # how the driver makes a PSG divider (its detune's wrap)
         self.instrument = instrument        # MOD instrument slot currently routed to
         self.psg_entry = None               # active PsgInstrumentEntry
         self.psg_entries = None             # its full psg_voice_map list, if it came from one
@@ -86,7 +91,8 @@ class DriverState(TrackState):
                  psg=channel.rules.psg_table,
                  transpose=header.pitch_offset,
                  volume=header.volume,
-                 instrument=instrument)
+                 instrument=instrument,
+                 psg_pitch=channel.rules.track(ChannelType.PSG).pitch)
         label = header.psg_voice_label
         st.envelope = label or None
         entries = config.psg_voice_map.get(label) if label else None
@@ -202,7 +208,8 @@ class ResolvedNote:
     key: int                 # what the ranges were matched against (DriverState.range_key)
     chip: int                # the real pitch the chip plays (chip_pitch)
     total_transpose: int     # driver transpose + the channel config's transpose
-    detune: int = 0          # the track's smpsDetune in force (raw FNUM / divider units)
+    detune: int = 0          # the track's smpsDetune in force (raw FNUM / divider units); PSG: what is
+                             #   left once whole semitones moved the note (PsgTable.detuned)
     pitch_envelope: int = 0  # the track's pitch envelope in force (SetPitchEnvelope); 0: none
     gain_db: float = 0.0     # merged build: dB a unison chord folded into this note adds to its
                              #   level (core.merge.unison_gain_db); the note's level is the
@@ -228,6 +235,16 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     key = st.range_key(source_semitone)
     total = st.transpose + chan_transpose
     chip = chip_pitch(source_semitone, st.transpose, st.is_psg, st.psg)
+    note_detune, moved = st.detune, 0
+
+    # A PSG tone detuned past half a semitone sounds as another note: it routes and plays as that
+    # one, the detune left over its variant's (Streets of Rage's $8F PSG1: B7 ramped down to F#3)
+    if st.is_psg and not st.in_noise_mode and note_detune:
+        written = st.psg_pitch.divider(st.psg.divider(source_semitone + st.transpose) + note_detune)
+        sounds, note_detune = st.psg.nearest(written)
+        moved = sounds - chip
+        key, chip = key + moved, sounds
+
     inst, raw, path, entry = st.instrument, None, "transpose", None
     if not st.is_psg:
         entry = st.fm_range_entry(source, key)
@@ -249,11 +266,11 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
             elif entry.type != "tone":
                 raw, path = entry.root.value, "psg_fixed"
         if detune is not None and not st.in_noise_mode:
-            inst = detune.instrument_for(inst, st.detune, chip)
+            inst = detune.instrument_for(inst, note_detune, chip)
     if raw is None:
-        raw = source_semitone + total
+        raw = source_semitone + total + moved
     return ResolvedNote(inst, clamp_note(raw), raw, path, entry,
-                        source_semitone, key, chip, total, st.detune, st.pitch_envelope)
+                        source_semitone, key, chip, total, note_detune, st.pitch_envelope)
 
 
 def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None = None):

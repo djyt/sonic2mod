@@ -380,6 +380,7 @@ class ChannelWriter:
             self._cells.put(n.pattern, n.row, self._col, 0xC, n.volume)
         self._modulation.write(n, self._st, self._range_entry, self._col, not slot_used and not n.needs_cxx,
                                fill, cxx_cell)
+        self._retune_attack(n)
 
         # A sliding loop's fall, and a banked sound's end
         self._write_decay(n, fill)
@@ -629,6 +630,21 @@ class ChannelWriter:
         rate = note_rate(note_value, self._ctx.amiga_clock)
         self._ctx.stats.bank_cuts += self._cells.cut_after(self._col, tick, sound_bytes / rate,
                                                            self._next_note_row(tick))
+
+    def _retune_attack(self, n: NoteOn) -> None:
+        """A note whose detune found no slot plays its instrument's sample (DetunePlan.unplaced): an
+        E1x / E2x on its row moves it the rest of the way, where the row's effect is still free
+        (Streets of Rage's $8F PSG1 ramp: up to 50 c a note, left over once the notes moved)."""
+        plan = self._ctx.detune
+        if plan is None or (n.instrument, n.res.detune) not in plan.unplaced:
+            return
+        want = self._ctx.note_cents(n.res, n.psg) - self._ctx.sample_cents(n.instrument)
+        moved = self._cells.fine_slide(n.pattern, n.row, self._col, PERIOD_TABLE[n.mod_note.value], want, attack=True)
+        ring = self._ring
+        if moved is None or ring.cents is None:
+            return
+        ring.period -= moved
+        ring.cents += 1200.0 * math.log2((ring.period + moved) / ring.period)
 
     # --- ties -----------------------------------------------------------------------------------
     def _retune_tie(self, tick: int) -> None:

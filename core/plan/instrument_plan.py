@@ -86,7 +86,7 @@ def rendered_pitches(song, conv: ConversionPlan) -> dict[int, float]:
 
 def _psg_render_hz(song, psg) -> float:
     """The Hz a PSG tone's sample is rendered at: its divider, its own detune in."""
-    return psg_frequency_hz(psg_render_divider(song.rules, psg.synth_idx + RENDER_INDEX_C1, psg.detune), MD_PSG_CLOCK)
+    return psg_frequency_hz(psg_render_divider(song.rules, psg.synth_idx + RENDER_INDEX_C1, psg.render_offset), MD_PSG_CLOCK)
 
 
 def _fm_word_cents(semitone: int, fm_frequencies: tuple[int, ...]) -> float:

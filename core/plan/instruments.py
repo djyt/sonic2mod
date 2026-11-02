@@ -257,7 +257,8 @@ def _add_psg_detune_variants(out: dict[int, PsgInstrument], conv: ConversionPlan
         if base is None or base.entry.type != TONE or v.inst in out:
             continue
         out[v.inst] = dataclasses.replace(base, inst=v.inst, entry=dataclasses.replace(base.entry, mod_instrument=v.inst),
-                                          detune=v.detune, context=f"{base.context} detune {v.detune:+d}")
+                                          render_offset=conv.detune.psg_offsets.get(v.inst, 0),
+                                          context=f"{base.context} detune {v.detune:+d}")
 
 
 def free_slots(conv: ConversionPlan, song) -> list[int]:
@@ -278,8 +279,8 @@ class PsgInstrument:
     pitch: RenderPitch       # where it is rendered (core.plan.synth_roots; noise: as stated)
     context: str
     source: str = ""         # the smpsPSGvoice label (tone) or the smpsPSGform byte, "$E7" (noise)
-    detune: int = 0          # a tone's: the detune word most of its notes play at, rendered into its
-                             # sample (core.plan.detune); the driver's shift: core.smps.psg_render_divider
+    render_offset: int = 0   # a tone's: dividers its sample is rendered off the table's, the detune its
+                             # notes play at scaled to the render pitch (DetunePlan.psg_offsets)
 
     @property
     def root_idx(self) -> int:
@@ -321,8 +322,8 @@ def psg_catalogue(conv: ConversionPlan, noise_envelopes: dict | None = None) -> 
 
     def add(entry: PsgInstrumentEntry, pitch: RenderPitch, context: str, source: str) -> None:
         if entry.root is not None and entry.mod_instrument not in out:
-            detune = conv.detune.own.get(entry.mod_instrument, 0) if conv.detune is not None else 0
-            out[entry.mod_instrument] = PsgInstrument(entry.mod_instrument, entry, pitch, context, source, detune)
+            offset = conv.detune.psg_offsets.get(entry.mod_instrument, 0) if conv.detune is not None else 0
+            out[entry.mod_instrument] = PsgInstrument(entry.mod_instrument, entry, pitch, context, source, offset)
 
     for form, entry in config.psg_map.items():
         variants = [(entry.mod_instrument, noise_envelopes.get(entry.mod_instrument, entry.envelope), "")]

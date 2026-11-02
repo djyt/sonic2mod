@@ -10,9 +10,10 @@ from __future__ import annotations
 import unittest
 
 from core.config import InstrumentRange
-from core.drivers.reference import FM_FREQUENCIES
+from core.drivers.reference import FM_FREQUENCIES, SONIC1_RULES
 from core.mod import ModNote
 from core.plan import DetunePlan, DetuneVariant, FmCatalogue, FmInstrument, FmLayer, RenderPitch, detune_cents
+from core.plan.detune import _psg_offset
 from core.plan.instruments import _add_detune_variants
 
 _NC5 = 60          # SMPS semitone of nC5 (C0 = 0): fnum 644
@@ -74,3 +75,15 @@ class DetunePlanTest(unittest.TestCase):
         _add_detune_variants(cat, plan)
         moved = cat.instruments[25]
         self.assertEqual((moved.entry.root, moved.pitch), (ModNote.C2, RenderPitch(66, 6)))
+
+
+class PsgOffsetTest(unittest.TestCase):
+    _A3, _B7 = 45, 95
+
+    def test_a_detune_keeps_its_interval_at_the_render_pitch(self):
+        # B7's 29 + 2 (-115 c) rendered at A3's 508: + 35, not + 2 (-7 c)
+        self.assertEqual(_psg_offset(SONIC1_RULES.psg_table, 2, {self._B7: 1}, self._A3), 35)
+
+    def test_the_commonest_pitch_sets_the_interval(self):
+        self.assertEqual(_psg_offset(SONIC1_RULES.psg_table, 2, {self._A3: 1, self._B7: 3}, self._A3), 35)
+        self.assertEqual(_psg_offset(SONIC1_RULES.psg_table, 2, {self._A3: 3, self._B7: 1}, self._A3), 2)

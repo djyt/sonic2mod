@@ -488,7 +488,8 @@ detune an instrument plays into a sample of its own:
   Screen's FM5 double takes no extra slot);
 - every other detune is a **variant** in a free slot, the most played first, sharing the instrument's
   entry, level and `sample_list` volume / finetune;
-- one with no free slot plays the instrument's own sample (`detune_no_slot`: Credits);
+- one with no free slot plays the instrument's own sample (`detune_no_slot`: Credits), an `E1x` /
+  `E2x` on the note's row moving it the rest of the way where that row's effect is still free;
 - a sample carries its detune's interval at the pitch it is rendered at.  Where that is more than a
   finetune step off its notes' (Streets of Rage's +195: +336 c on F#, +266 c on A#), a variant is
   rendered in its notes' commonest pitch class (the same `root`, another `synth_shift`), and notes the
@@ -500,12 +501,15 @@ detune an instrument plays into a sample of its own:
   note keeps its sample, so the tie's row gets `E1x` / `E2x` by the period difference (only a row of its
   own with a free slot; `--verbose` counts them);
 - a merged chip composite renders each layer at its own track's detune;
-- **PSG** tones the same: own and variants, a variant per detune (no pitch classes).  The detune is
-  added to the divider as the driver adds it (`core.smps.psg_render_divider`: as it is, Sonic 1's;
-  >> the note's octave, Streets of Rage 2's), so Sonic 1's +2 is a different interval on each note
-  of a window: Robotnik's PSG2 stays 15 c out.  Marble Zone's PSG2 went from 13.5 c to 2.5 c, Go
-  Straight's PSG1 from 16 c to 8 c (the rest: its vibrato swings below the note only, a MOD's is
-  centred);
+- **PSG** tones the same: own and variants, a variant per detune (no pitch classes).  The walk's
+  detune is the divider offset the driver writes (its shift by the note's octave in: Streets of Rage
+  2's).  A divider is a period, so a sample rendered at another pitch carries the offset scaled by
+  its divider over its notes' commonest (`_psg_offset`: B7's 29 + 2, -115 c, is A3's 508 + 35).  A
+  note the detune moves past half a semitone sounds as the note nearest its divider
+  (`PsgTable.nearest`, the driver's wrap or clamp in: `PitchRules.divider`): it routes and plays as
+  that note, the offset left over its detune (Streets of Rage's `$8F` PSG1 ramps B7's 29 by +2-3 a
+  note, down to A2, wrapping to the top again: it spans the PSG's samples, not one B7 sample's 750
+  variants);
 - **channel 3's special mode** (Streets of Rage's `$F7`: each operator at the note's word plus its own
   offset) is a copy of the voice that carries the offsets (`SmpsVoice.fnum_offsets`, made in the walk as
   `$FA` patches are), rendered on channel 3 with `$27` = `$40`.  Its offsets count in the intervals above

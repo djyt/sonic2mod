@@ -422,6 +422,8 @@ class SmpsToModConverter:
                             delays_dropped=stats.bank_delays_dropped, cxx_moved=stats.bank_cxx_moved)
         if any(stats.tie_retunes.values()):
             self._diag.info(InfoKind.DETUNE_TIES, **stats.tie_retunes)
+        if any(stats.attack_retunes.values()):
+            self._diag.info(InfoKind.DETUNE_ATTACKS, **stats.attack_retunes)
 
     def sample_secs(self) -> dict[int, float]:
         """{instrument: seconds its sample lasts} for the instruments whose sample, not the

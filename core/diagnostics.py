@@ -62,6 +62,7 @@ class InfoKind(StrEnum):
     SYNTH_SHIFT = 'synth_shift'
     DETUNE_VARIANTS = 'detune_variants'
     DETUNE_TIES = 'detune_ties'
+    DETUNE_ATTACKS = 'detune_attacks'
     # samples
     AUTO_SUSTAIN_FM = 'auto_sustain_fm'
     AUTO_SUSTAIN_PSG = 'auto_sustain_psg'

@@ -36,6 +36,7 @@ from ..plan import ConversionPlan, sounding_pitches
 from ..vgm import Segment
 
 _SLIDE_UP, _SLIDE_DOWN = 0x1, 0x2          # 1xx / 2xx
+_FINE_SLIDE, _FINE_UP, _FINE_DOWN = 0xE, 0x1, 0x2   # E1x / E2x
 _ATTACK = 3                                 # a timeline entry's: a note-on, not a slide's step
 _HELD = 0.025                               # s a pitch holds for a move from it to start a note (> a frame)
 _INSTANT = 0.008                            # s: a segment shorter is one write of a burst the next replaces
@@ -75,9 +76,13 @@ def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[
     rows, end = timed_pass(mod, cfg.target_speed)
     for r in rows:
         for c, (period, ins, eff, par) in enumerate(r.cells):
-            if period in known and ins in inst:
-                sounding[c] = (period, ins)
-                out[c].append((r.start + edx_delay(eff, par, r.bpm), pitch(period, ins), ins, True))
+            fine = eff == _FINE_SLIDE and par >> 4 in (_FINE_UP, _FINE_DOWN)
+            noted = period in known and ins in inst
+            if noted:
+                # E1x / E2x beside the note moves it on its first tick: the note sounds there
+                p = _fine_slid(period, par) if fine else period
+                sounding[c] = (p, ins)
+                out[c].append((r.start + edx_delay(eff, par, r.bpm), pitch(p, ins), ins, True))
             if eff in (_SLIDE_UP, _SLIDE_DOWN) and par and c in sounding:
                 # 1xx / 2xx: the period moves by xx on each tick after the row's first (a sweep)
                 p, ins_s = sounding[c]
@@ -85,13 +90,18 @@ def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[
                     p += -par if eff == _SLIDE_UP else par
                     out[c].append((r.start + tick * TICK_SECS_AT_1_BPM / r.bpm, pitch(p, ins_s), ins_s, False))
                 sounding[c] = (p, ins_s)
-            elif eff == 0xE and par >> 4 in (1, 2) and c in sounding:
+            elif fine and not noted and c in sounding:
                 # E1x / E2x: the sounding note's period moved (a tie retuned to a new detune)
                 p, ins_s = sounding[c]
-                p = p - (par & 15) if par >> 4 == 1 else p + (par & 15)
+                p = _fine_slid(p, par)
                 sounding[c] = (p, ins_s)
                 out[c].append((r.start, pitch(p, ins_s), ins_s, False))
     return out, end
+
+
+def _fine_slid(period: int, par: int) -> int:
+    """The period an E1x / E2x (`par`: its 1x / 2x) leaves."""
+    return period - (par & 15) if par >> 4 == _FINE_UP else period + (par & 15)
 
 
 _OPENING_SECS = 30.0            # the chip note starts that decide where the song starts

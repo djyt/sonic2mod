@@ -210,7 +210,8 @@ chains.  FM octave o plays block o; PSG row r plays octave r + 1 (rows 0-1 read 
   step, clamped to 15.
 - **Detune:** added to the 14-bit block|fnum word, the PSG's sum >> 4 (`pitch.word_shift`); up to +195,
   several semitones (detune variants per pitch class: `docs/pipeline.md`).  A word past the PSG's
-  10 bits wraps (`$8F` PSG1).
+  10 bits wraps (`$8F` PSG1's ramp: B7 down to A2, then from the top again; its notes play as the
+  pitches they reach: `docs/pipeline.md` § Detune variants).
 - **Ties and the gate:** every note keys off, then on; after `$FD` neither: a new pitch slides
   legato, written as a frequency alone.  The gate keys off n frames before the end, but not a
   note the next byte ties (`key_off.gate_sees_tie`) nor, on FM, a tied note (`key_off.gate_spares_tied`); a note

@@ -38,9 +38,9 @@ from ..smps import C1_SEMITONE, PlaybackRules, PsgDrumFrame, psg_render_divider
 DEFAULT_OVERSAMPLE = DEFAULT_PSG_OVERSAMPLE
 
 
-def note_to_psg_n(mod_note_index: int, rules: PlaybackRules, clock_rate: int = MD_PSG_CLOCK, detune: int = 0) -> int:
-    """MOD note index → the SN76489 10-bit divider N the driver writes for that note, `detune` (a
-    detune word) added as it adds it (core.smps.psg_render_divider).
+def note_to_psg_n(mod_note_index: int, rules: PlaybackRules, clock_rate: int = MD_PSG_CLOCK, offset: int = 0) -> int:
+    """MOD note index → the SN76489 10-bit divider N the driver writes for that note, `offset`
+    dividers added (a detune as it sounds at this pitch: core.smps.psg_render_divider).
 
     The driver's PSG table is what the hardware plays: its chromatic run starts at its own pitch
     (Sonic 1's at C3, Streets of Rage 2's and Space Harrier II's at A2).  Sonic 1's differs from
@@ -49,7 +49,7 @@ def note_to_psg_n(mod_note_index: int, rules: PlaybackRules, clock_rate: int = M
     Index 0=C1, 12=C2, 24=C3, 33=A3 (220 Hz).
     """
     if clock_rate == MD_PSG_CLOCK:
-        return psg_render_divider(rules, mod_note_index + C1_SEMITONE, detune)
+        return psg_render_divider(rules, mod_note_index + C1_SEMITONE, offset)
     return psg_divider_for_hz(440.0 * (2.0 ** ((mod_note_index - 45) / 12.0)), clock_rate)
 
 

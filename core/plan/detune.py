@@ -26,6 +26,11 @@ on A#), it is rendered in the pitch class its notes play most instead (`rendered
 notes it moves by an interval more than 25 c from its sample's get a variant per pitch class
 (`pitch_class`; Moon Beach FM2's six $B3s among 248 $BA).
 
+A PSG tone's detune is a divider offset, as the driver writes it; one moving its note past half a
+semitone has moved it to another (core.plan.driver_state.resolve_note), so a detune here is the
+offset left.  A divider is a period: a sample rendered at another pitch carries the offset scaled
+to it (`_psg_offset`), at the pitch its notes play most.
+
 Channel 3's special mode adds an FNUM offset of its own (the voice's, core.smps.SmpsVoice:
 Streets of Rage's OP4 at +100 on its FM3 drums): the intervals above count it with the detune,
 so its notes in another pitch class get a variant of their own at the instrument's own detune too.
@@ -42,10 +47,10 @@ from dataclasses import dataclass, field
 
 from ..chips import FREQ_WORD_MAX, split_freq_word
 from ..config import SampleRow
-from ..smps import ChannelType, fm_table_index
+from ..smps import ChannelType, PsgTable, fm_table_index
 from .conversion import ConversionPlan
 from .driver_state import enabled_channels, walk_channel
-from .instruments import TONE, fm_catalogue, free_slots, psg_catalogue
+from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, free_slots, psg_catalogue
 
 _NAME_CHARS = 22            # a MOD sample name
 _FINETUNE_CENTS = 12.5      # a MOD finetune step
@@ -74,6 +79,8 @@ class DetunePlan:
     # (base, detune, envelope, class) ->
     variants: dict[tuple[int, int, int, int | None], DetuneVariant] = field(default_factory=dict)
     unplaced: dict[tuple[int, int], int] = field(default_factory=dict)  # (base, detune) -> notes with no slot
+    psg_offsets: dict[int, int] = field(default_factory=dict)   # {PSG slot: dividers its sample is rendered off
+                                                                #  the table's}, nonzero only (_psg_offset)
     _bases: dict[int, int] = field(default_factory=dict)   # {variant slot: base}
 
     def instrument_for(self, inst: int, detune: int, chip: int, envelope: int = 0) -> int:
@@ -130,8 +137,9 @@ def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
             at[res.chip] = at.get(res.chip, 0) + 1
 
     plan = DetunePlan()
-    psg_own, wanted = _psg_detunes(song, conv)
-    plan.own |= psg_own
+    psg = _psg_detunes(song, conv)
+    plan.own |= {inst: d for inst, d in psg.own.items() if d}
+    wanted = list(psg.wanted)
     fm = song.rules.fm_frequencies
     for inst, per in counts.items():
         # The most played pair; ties: the smaller detune, then no envelope
@@ -157,6 +165,7 @@ def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
             plan.unplaced[(w.base, w.detune)] = plan.unplaced.get((w.base, w.detune), 0) + w.notes
             continue
         plan.add(DetuneVariant(slots.pop(0), w.base, w.detune, w.notes, w.rendered, w.pitch_class, w.envelope))
+    plan.psg_offsets = psg.offsets(plan, song.rules.psg_table)
 
     entries = conv.samples.rows()
     for v in plan.variants.values():
@@ -168,22 +177,55 @@ def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
     return plan
 
 
-def _psg_detunes(song, conv: ConversionPlan) -> tuple[dict[int, int], list[_Wanted]]:
-    """({PSG tone instrument: the detune word most of its notes play at}, nonzero only, the variants
-    its other detunes want), as an FM instrument's: its own rendered into its sample, each other a
-    slot of its own where one is free (Streets of Rage 2's PSG detunes -1 and -2, 7-15 c a note at
-    A#4, played flat; Sonic 1's Robotnik shares a sample between PSG1 at 0 and PSG2 at 2)."""
-    tones = {inst for inst, p in psg_catalogue(conv).items() if p.entry.type == TONE}
+@dataclass
+class _PsgDetunes:
+    """A PSG tone instrument's detunes, as an FM instrument's: the one most of its notes play at
+    rendered into its sample (`own`), each other a slot of its own where one is free (`wanted`).
+    Streets of Rage 2's PSG detunes -1 and -2, 7-15 c a note at A#4, played flat; Sonic 1's
+    Robotnik shares a sample between PSG1 at 0 and PSG2 at 2."""
+    own: dict[int, int]                                  # {instrument: its sample's detune}
+    wanted: list[_Wanted]
+    played: dict[tuple[int, int], dict[int, int]]        # (instrument, detune) -> {chip pitch: notes}
+    rendered: dict[int, int]                             # {instrument: the pitch its sample is rendered at}
+
+    def offsets(self, plan: DetunePlan, table: PsgTable) -> dict[int, int]:
+        """{slot: dividers its sample is rendered off the table's}: each detune at the pitch the
+        sample is rendered at, nonzero only."""
+        rendered = {(inst, d): inst for inst, d in self.own.items()}
+        rendered |= {(v.base, v.detune): v.inst for v in plan.variants.values() if v.base in self.rendered}
+        out = {}
+        for (base, d), slot in rendered.items():
+            offset = _psg_offset(table, d, self.played[(base, d)], self.rendered[base])
+            if offset:
+                out[slot] = offset
+        return out
+
+
+def _psg_detunes(song, conv: ConversionPlan) -> _PsgDetunes:
+    """Every PSG tone instrument's detunes, the pitches each plays at."""
+    tones = {inst: p.synth_idx + RENDER_INDEX_C1 for inst, p in psg_catalogue(conv).items() if p.entry.type == TONE}
     counts: dict[int, dict[int, int]] = {}
+    played: dict[tuple[int, int], dict[int, int]] = {}
     for chan_cfg, channel in enabled_channels(song, conv.config, (ChannelType.PSG,)):
         for _event, st, res in walk_channel(channel, conv, chan_cfg):
             if res is None or res.instrument not in tones or st.noise_form is not None:
                 continue
             per = counts.setdefault(res.instrument, {})
             per[res.detune] = per.get(res.detune, 0) + 1
+            at = played.setdefault((res.instrument, res.detune), {})
+            at[res.chip] = at.get(res.chip, 0) + 1
     own = {inst: max(per, key=lambda d: (per[d], -abs(d), d)) for inst, per in counts.items()}
     wanted = [_Wanted(n, inst, d, 0, None, None) for inst, per in counts.items() for d, n in per.items() if d != own[inst]]
-    return {inst: d for inst, d in own.items() if d}, wanted
+    return _PsgDetunes(own, wanted, played, tones)
+
+
+def _psg_offset(table: PsgTable, detune: int, played: dict[int, int], rendered: int) -> int:
+    """`detune` (dividers at the pitch its notes play most) as the same interval at `rendered`, the
+    pitch its sample is rendered at: a divider is a period, so the offset scales with it (B7's
+    29 + 2 is 29 + 35 at A3's 507, -115 c either way)."""
+    if not detune:
+        return 0
+    return round(detune * table.render_divider(rendered) / table.render_divider(_commonest(played)))
 
 
 @dataclass(frozen=True)

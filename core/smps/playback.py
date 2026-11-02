@@ -31,7 +31,7 @@ from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK, noise_follows_tone3
 from .driver_tables import fm_note_index, psg_note_index
 from .names import NOISE_CHANNEL_NAME, source_names
 from .rules import PitchRules, PlaybackRules
-from .song import ChannelType, SmpsNote, SmpsSong, SmpsVoice
+from .song import SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
 from .track import TrackState
@@ -239,14 +239,12 @@ def _filled(note: PlayedNote, read: int, fill_off: int | None, schedule: tuple[T
     return played
 
 
-def psg_render_divider(rules: PlaybackRules, semitone: int, detune: int = 0) -> int:
+def psg_render_divider(rules: PlaybackRules, semitone: int, offset: int = 0) -> int:
     """The divider a PSG sample of `semitone` (SMPS, C0 = 0) is rendered at: the driver's table's
-    (PsgTable.render_divider), its detune word added as the driver adds it (>> the note's octave:
-    Streets of Rage 2's, floored as the 68k's asr; as it is: Sonic 1's), within the chip's 10 bits.
-    The renderer, the pitch a sample is taken to sound and the converter's check read it here."""
-    table = rules.psg_table
-    shift = rules.track(ChannelType.PSG).pitch.shift(semitone - table.pitch)
-    return max(1, min(PSG_DIVIDER_MASK, table.render_divider(semitone) + (detune >> shift)))
+    (PsgTable.render_divider) plus `offset` dividers (a detune as it sounds at this pitch:
+    core.plan.detune; the driver's shift is in already), within the chip's 10 bits.  The renderer,
+    the pitch a sample is taken to sound and the converter's check read it here."""
+    return max(1, min(PSG_DIVIDER_MASK, rules.psg_table.render_divider(semitone) + offset))
 
 
 def _table_word(note: SmpsNote, st: TrackState, fm_frequencies: tuple[int, ...]) -> int:
@@ -278,9 +276,7 @@ def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int
     if rules.octave_wrap is not None and not st.is_psg:
         word = rules.octave_wrap.wrapped(word)     # the driver's octave, before what it adds after
     word += special + envelope_offset
-    if st.is_psg and rules.divider_clamp:
-        word = min(max(word, 1), PSG_DIVIDER_MASK)
-    pitch = word & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
+    pitch = rules.divider(word) if st.is_psg else word & FREQ_WORD_MAX
     return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
                       voice=voice, level=level, pan=st.pan,
                       modulation=st.modulation if st.modulation_on else None, fill=st.fill,

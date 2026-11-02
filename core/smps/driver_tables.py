@@ -146,6 +146,20 @@ class PsgTable:
             return self.read[i]
         return psg_divider_for_hz(semitone_to_hz(semitone))
 
+    def offset_cents(self, semitone: int, offset: int) -> float:
+        """Cents `offset` dividers move a note of `semitone` (up: positive): a divider is a period."""
+        n = self.render_divider(semitone)
+        return 1200.0 * math.log2(n / max(1, n + offset))
+
+    def nearest(self, divider: int) -> tuple[int, int]:
+        """(the pitch whose divider (render_divider) is nearest `divider`'s, `divider` minus it): where
+        a detuned note sounds.  Streets of Rage's $8F PSG1 ramps B7's 29 up by 2-3 a note: 31 is A#7's
+        exactly, 596 an F#3 at 604 - 8."""
+        n = max(1, divider)                 # 0 clocked as 1
+        near = round(_divider_semitone(n))
+        sounds = min((near - 1, near, near + 1), key=lambda s: abs(math.log2(n / self.render_divider(s))))
+        return sounds, n - self.render_divider(sounds)
+
     def divider_cents(self, semitone: int) -> float:
         """Cents the divider a sample of a pitch is rendered at sounds off equal temperament
         (Streets of Rage's and Sonic 1's B7: divider 29, -42 c)."""

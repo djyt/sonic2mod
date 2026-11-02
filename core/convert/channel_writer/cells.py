@@ -19,6 +19,7 @@ class Cells:
     def __init__(self, ctx: WriterContext):
         self._mod, self._timeline, self._config = ctx.mod, ctx.timeline, ctx.config
         self._retunes = ctx.stats.tie_retunes
+        self._attack_retunes = ctx.stats.attack_retunes
 
     # --- addressing -----------------------------------------------------------------------------
     @staticmethod
@@ -98,19 +99,22 @@ class Cells:
         if not self._mod.note_at(pattern, row, col) and self._mod.effect_at(pattern, row, col) == (0xC, 0):
             self.put(pattern, row, col, 0, 0)
 
-    def fine_slide(self, pattern: int, row: int, col: int, period: int, cents: float) -> int | None:
-        """E1x / E2x moving a sounding note `cents` (up: positive) from `period`, on a cell with
-        no note and a free effect slot → the period units it moved (up: positive), else None."""
+    def fine_slide(self, pattern: int, row: int, col: int, period: int, cents: float,
+                   attack: bool = False) -> int | None:
+        """E1x / E2x moving a sounding note `cents` (up: positive) from `period`, on a cell with a
+        free effect slot and no note (`attack`: the note's own; the slide follows it on tick 0)
+        → the period units it moved (up: positive), else None."""
         units = round(period - period * 2.0 ** (-cents / 1200.0))
         units = max(-_FINE_SLIDE_MAX, min(_FINE_SLIDE_MAX, units))
         self._mod.ensure_pattern(pattern)
         if not units:
             return None
-        if self._mod.note_at(pattern, row, col) or not self._mod.effect_slot_free(pattern, row, col):
-            self._retunes['skipped'] += 1
+        counts = self._attack_retunes if attack else self._retunes
+        if (not attack and self._mod.note_at(pattern, row, col)) or not self._mod.effect_slot_free(pattern, row, col):
+            counts['skipped'] += 1
             return None
         self.put(pattern, row, col, 0xE, (0x10 if units > 0 else 0x20) | abs(units))
-        self._retunes['placed'] += 1
+        counts['placed'] += 1
         return units
 
     # --- placing a note-on ----------------------------------------------------------------------

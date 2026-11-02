@@ -1631,12 +1631,12 @@ pitch_sor2_game_over:
     tests/baselines/sor2_game_over_baseline.mod: 33767398ef02
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_go_straight:
-  commit: 47ca32b-dirty
-  date: '2026-11-01'
+  commit: a750fdc-dirty
+  date: '2026-11-02'
   inputs:
-    configs/streets_of_rage_2/00_go_straight.yaml: c98be6eef40b
+    configs/streets_of_rage_2/00_go_straight.yaml: 9f1189d1ab9f
     reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
-    tests/baselines/sor2_go_straight_baseline.mod: b29de63f0e52
+    tests/baselines/sor2_go_straight_baseline.mod: 8f263482fb8a
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_jungle_base:
   commit: 47ca32b-dirty

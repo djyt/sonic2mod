@@ -25,7 +25,7 @@ continue_screen_merged:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 credits:
-  commit: caee39e
+  commit: a750fdc
   config: e6a8e0769f6c
   date: '2026-11-02'
   settings: f08dfd2ff1bd
@@ -185,22 +185,22 @@ or_step_on_beat:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik:
-  commit: caee39e
+  commit: a750fdc
   config: c5ae35760344
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 robotnik_lofi:
-  commit: caee39e
+  commit: a750fdc
   config: d2440b3976b1
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 robotnik_lofi_merged:
-  commit: caee39e
+  commit: a750fdc
   config: d2440b3976b1
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 robotnik_merged:
-  commit: caee39e
+  commit: a750fdc
   config: c5ae35760344
   date: '2026-11-02'
   settings: f08dfd2ff1bd
@@ -240,27 +240,27 @@ sor2_game_over:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_go_straight:
-  commit: 47ca32b
-  config: 3cd8febd439a
-  date: '2026-11-01'
+  commit: a750fdc
+  config: ac7664a42731
+  date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_jungle_base:
-  commit: caee39e
+  commit: a750fdc
   config: 9a7e5a54cbf1
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_level_complete:
-  commit: 47ca32b
+  commit: a750fdc
   config: 313ed9b20249
-  date: '2026-11-01'
+  date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_song_12:
-  commit: 47ca32b
+  commit: a750fdc
   config: f9cb3005d436
-  date: '2026-11-01'
+  date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_too_deep:
-  commit: caee39e
+  commit: a750fdc
   config: 88ad9adb77d9
   date: '2026-11-02'
   settings: f08dfd2ff1bd

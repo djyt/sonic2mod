@@ -873,7 +873,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/regression/credits.mod
-  commit: caee39e-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1049,7 +1049,7 @@ credits_rom:
   - $91
   - --output
   - output/regression/credits_rom.mod
-  commit: caee39e-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6926,7 +6926,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/regression/robotnik.mod
-  commit: caee39e-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7100,7 +7100,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/regression/robotnik_lofi.mod
-  commit: caee39e-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7275,7 +7275,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/regression/robotnik_lofi_merged.mod
-  commit: caee39e-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7448,7 +7448,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/regression/robotnik_merged.mod
-  commit: caee39e-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8835,7 +8835,7 @@ sor2_go_straight:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_go_straight.mod
-  commit: 47ca32b-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8997,7 +8997,7 @@ sor2_go_straight:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/00_go_straight.yaml: c98be6eef40b
+    configs/streets_of_rage_2/00_go_straight.yaml: 9f1189d1ab9f
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_jungle_base:
@@ -9008,7 +9008,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: caee39e-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9181,7 +9181,7 @@ sor2_level_complete:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_level_complete.mod
-  commit: 47ca32b-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9354,7 +9354,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: 47ca32b-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9527,7 +9527,7 @@ sor2_too_deep:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_too_deep.mod
-  commit: caee39e-dirty
+  commit: a750fdc-dirty
   files:
   - convert.py
   - core/__init__.py

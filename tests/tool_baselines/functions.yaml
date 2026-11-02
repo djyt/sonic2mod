@@ -206,6 +206,7 @@ functions:
   core/audit/pitch.py::_StartScorer.__init__: 1fffffffffff0000000000000000000000000000
   core/audit/pitch.py::_StartScorer.score: 1fffffffffff0000000000000000000000000000
   core/audit/pitch.py::_chip_starts: 1fffffffffff0000000000000000000000000000
+  core/audit/pitch.py::_fine_slid: '8000000000000000000000000000000000000'
   core/audit/pitch.py::_judge: 1fffffffffff0000000000000000000000000000
   core/audit/pitch.py::_same_pitch: 1fffffffffff0000000000000000000000000000
   core/audit/pitch.py::_settled: 1fffffffffff0000000000000000000000000000
@@ -272,6 +273,7 @@ functions:
   core/chips/psg.py::noise_follows_tone3: dbc00000000000fd68000000000000000000000000
   core/chips/psg.py::noise_rate: dbc00000000000fd680000001ce70000039ce739ce
   core/chips/psg.py::noise_white: 1ce70000039ce739ce
+  core/chips/psg.py::psg_divider_for_hz: '8000000000000000000000000000000000000'
   core/chips/psg.py::psg_frequency_hz: ffbbe3cc0e9f00004217bdef7bc2f7bdef7bdef
   core/chips/psg.py::psg_level_db: 7c0330000000000000739ce7380e739ce739ce
   core/chips/ym2612/wrapper.py::output_rate: 1ffffffffffffffc000000000000000000000000
@@ -514,10 +516,10 @@ functions:
   core/drivers/smpsz80/type0fm/variant.py::_rules_from_rom: 200000000e000084000000000000000000000000
   core/files.py::write_shared: 7c037000000000000000000000000000000000
   core/mod/cell.py::Cell.decode: 1fffffffffff0000000000000000000000000000
-  core/mod/file.py::ModFile.get_name: 1ffffffffffffffc7fffffffffffffffffffffff
+  core/mod/file.py::ModFile.get_name: 1ff7fffffffffffc7fffffffffffffffffffffff
   core/mod/file.py::ModFile.get_name_bytes: 1ffffffffffffffc7fffffffffffffffffffffff
   core/mod/file.py::ModFile.set_name: 1ffffffffffffffc7fffffffffffffffffffffff
-  core/mod/file.py::ModSample.get_name: 1ffffffffffffffc7fffffffffffffffffffffff
+  core/mod/file.py::ModSample.get_name: 1ff7fffffffffffc7fffffffffffffffffffffff
   core/mod/file.py::ModSample.set_name: 1ffffffffffffffc7fffffffffffffffffffffff
   core/mod/limits.py::sample_limit_bytes: 1ffffffffffffffc000000000000000000000000
   core/mod/notes.py::clamp_note: 1fffffffffff0000000000000000000000000000
@@ -581,11 +583,13 @@ functions:
   core/plan/derive.py::derive_config: 7fe3f00e000000000000000000000000000000
   core/plan/derive.py::starting_volume: 7fe3f00e000000000000000000000000000000
   core/plan/detune.py::DetunePlan.add: 96fffb8c1210000000000000000000000000000
+  core/plan/detune.py::_PsgDetunes.offsets: '8000000000000000000000000000000000000'
   core/plan/detune.py::_Wanted.order: 97fffb8c1290000000000000000000000000000
   core/plan/detune.py::_apart: 1fffffffffff0000000000000000000000000000
   core/plan/detune.py::_commonest: 97ff3b8c1290000000000000000000000000000
   core/plan/detune.py::_in_class: '60000000080000000000000000000000000000'
   core/plan/detune.py::_psg_detunes: 580c0000200000000000000000000000000000
+  core/plan/detune.py::_psg_offset: '8000000000000000000000000000000000000'
   core/plan/detune.py::_rendered: 97ff3b8c1290000000000000000000000000000
   core/plan/detune.py::_stem: 96fffb8c1210000000000000000000000000000
   core/plan/detune.py::_word_hz: 197fffbfc1e90000000000000000000000000000
@@ -819,8 +823,9 @@ functions:
   core/smps/compare.py::align_songs.score: f000000000000000000000000000
   core/smps/compare.py::compare_songs: f000000000000000000000000000
   core/smps/driver_tables.py::PsgEnvelope.frames: '68000000000000000000000000'
-  core/smps/driver_tables.py::PsgTable.divider: dbd900133fc028fd68000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.divider: dbd908133fc028fd68000000000000000000000000
   core/smps/driver_tables.py::PsgTable.divider_cents: fa0123cc0c90000000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.nearest: '8000000000000000000000000000000000000'
   core/smps/driver_tables.py::PsgTable.of: fbfffffffffffffffc000000000000000000000000
   core/smps/driver_tables.py::PsgTable.render_divider: 580c0000200000000000000000000000000000
   core/smps/driver_tables.py::PsgTable.semitone: 1ffc1f3fc0e90000000000000000000000000000
@@ -879,7 +884,7 @@ functions:
   core/smps/names.py::_build_smps_note_names: ffffffffffffffffffffffffffffffffffffffffff
   core/smps/names.py::note_label: 7fe3f00e000000000000000000000000000000
   core/smps/names.py::parse_smps_note: 1fffffffffff3000000000000000000000000000
-  core/smps/names.py::parse_synth_note: '10000000000000000000000000000000000000'
+  core/smps/names.py::parse_synth_note: '18000000000000000000000000000000000000'
   core/smps/names.py::source_map: fffffffffffffffffc000000000000000000000000
   core/smps/names.py::source_names: fffffffffffffffffc000000000000000000000000
   core/smps/names.py::synth_note_name: 7fe3f00e000000000000000000000000000000
@@ -915,6 +920,7 @@ functions:
   core/smps/playback.py::played_song: fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::psg_render_divider: 580c0000200000000000000000000000000000
   core/smps/rules.py::OctaveWrap.wrapped: a00000000e00018c000000000000000000000000
+  core/smps/rules.py::PitchRules.divider: '8000000000000000000000000000000000000'
   core/smps/rules.py::PitchRules.shift: dfdffc1f3fc0e9fd68000000000000000000000000
   core/smps/rules.py::PlaybackRules.psg_table: fbfffffffffffffffc000000000000000000000000
   core/smps/rules.py::PlaybackRules.track: fffffffffffffffffc800000000000000000000000

@@ -519,6 +519,13 @@ functions:
   core/drivers/smpsz80/type0fm/variant.py::_memory: 200000000e000084000000000000000000000000
   core/drivers/smpsz80/type0fm/variant.py::_rules_from_rom: 200000000e000084000000000000000000000000
   core/drivers/timetrax/commands.py::counted: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/envelope.py::TimeTraxEnvelopes.start: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/envelope.py::_Run.__init__: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/envelope.py::_Run._segment: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/envelope.py::_Run._step: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/envelope.py::_Run.frame: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/envelope.py::_envelope: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/envelope.py::read_envelopes: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/glide.py::TimeTraxGlide.toward: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/glide.py::_down: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/glide.py::_up: '1000000000000000000000000000000000000000000'
@@ -898,8 +905,12 @@ functions:
   core/smps/driver_track.py::DriverTrack._channel_number: c0007c000000000c60000000000000000000000000
   core/smps/driver_track.py::DriverTrack._detune: 1dfd97c1fbfc1e9bd68000000000000000000000000
   core/smps/driver_track.py::DriverTrack._envelope: 80007c000000000840000000000000000000000000
+  core/smps/driver_track.py::DriverTrack._enveloped: '1000000000000000000000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._held: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack._holding: '1000000000000000000000000000000000000000000'
+  core/smps/driver_track.py::DriverTrack._keyed_off: 1e08000000000000000000000000000000000000000
+  core/smps/driver_track.py::DriverTrack._law_levels: '1000000000000000000000000000000000000000000'
+  core/smps/driver_track.py::DriverTrack._level_path: '1000000000000000000000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._load_voice: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack._patched: c0007c000000000c60000000000000000000000000
   core/smps/driver_track.py::DriverTrack._preset: 80007c000000000840000000000000000000000000
@@ -965,6 +976,7 @@ functions:
   core/smps/playback.py::PlayedNote.aspect: f000000000000000000000000000
   core/smps/playback.py::PlayedNote.onset: f000000000000000000000000000
   core/smps/playback.py::PlayedSong.loop_span: b000000000000000000000000000
+  core/smps/playback.py::_carrier_path: '1000000000000000000000000000000000000000000'
   core/smps/playback.py::_filled: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_first_step: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_fixed_noise: 1fbe00000000000fffc000000000000000000000000
@@ -976,6 +988,7 @@ functions:
   core/smps/playback.py::_rest: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_slid: '1000000000000000000000000000000000000000000'
   core/smps/playback.py::_table_word: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_unwritten: '1000000000000000000000000000000000000000000'
   core/smps/playback.py::played_song: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::psg_render_divider: 580c0000200000000000000000000000000000
   core/smps/rules.py::OctaveWrap.wrapped: a00000000e00018c000000000000000000000000
@@ -1035,6 +1048,11 @@ functions:
   core/smps/voice_patch.py::VoicePatcher.copy: 1fffffffffffffffffc000000000000000000000000
   core/smps/voice_patch.py::VoicePatcher.under_lfo: c00058000000000c60000000000000000000000000
   core/smps/voice_patch.py::VoicePatcher.voice: '1000000000000000000000000000000000000000000'
+  core/smps/volume_envelope.py::EnvelopeTrack.__init__: '1000000000000000000000000000000000000000000'
+  core/smps/volume_envelope.py::EnvelopeTrack._frame: '1000000000000000000000000000000000000000000'
+  core/smps/volume_envelope.py::EnvelopeTrack.set: '1000000000000000000000000000000000000000000'
+  core/smps/volume_envelope.py::EnvelopeTrack.stop: '1000000000000000000000000000000000000000000'
+  core/smps/volume_envelope.py::EnvelopeTrack.volumes: '1000000000000000000000000000000000000000000'
   core/source/load.py::_variant: 7fe3f00e00cffc000000000000000000000000
   core/source/load.py::read_dac: 7fe3f00e00fffc000000000000000000000000
   core/source/load.py::read_song: 1ffffffffffffffc000000000000000000000000

@@ -273,7 +273,7 @@ functions:
   core/chips/fm.py::keyed_carriers: 3a0000e000000000000000000000000000000
   core/chips/fm.py::operator_bits: 7c000000000000000000000000
   core/chips/fm.py::split_freq_word: 20bffffffffffffffc7fffffffffffffffffffffff
-  core/chips/fm.py::split_operator_register: c0007c000000000c7c421084210842108421084210
+  core/chips/fm.py::split_operator_register: 1c0007c000000000c7c421084210842108421084210
   core/chips/fm.py::timer_a_hz: '38000000000000000000000000000000000'
   core/chips/psg.py::noise_follows_tone3: dbc00000000000fd68000000000000000000000000
   core/chips/psg.py::noise_rate: dbc00000000000fd680000001ce70000039ce739ce
@@ -535,6 +535,7 @@ functions:
   core/drivers/timetrax/locate.py::_fm_words: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/locate.py::_one: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/locate.py::_pans: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::_squares: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/locate.py::driver_tables: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/locate.py::locate: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/locate.py::time_trax_memory: '1000000000000000000000000000000000000000000'
@@ -544,6 +545,9 @@ functions:
   core/drivers/timetrax/variant.py::_rules_from_rom: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/variant.py::_song_memory: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/voices.py::read_voices: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/volume.py::TimeTraxVolume._times: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/volume.py::TimeTraxVolume.levels: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/volume.py::operator_bit: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/walk.py::_Signals.first_after: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/walk.py::_goes_on: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/walk.py::_keep: '1000000000000000000000000000000000000000000'
@@ -897,6 +901,7 @@ functions:
   core/smps/driver_track.py::DriverTrack._patched: c0007c000000000c60000000000000000000000000
   core/smps/driver_track.py::DriverTrack._preset: 80007c000000000840000000000000000000000000
   core/smps/driver_track.py::DriverTrack._restored: '800058000000000840000000000000000000000000'
+  core/smps/driver_track.py::DriverTrack._scaled_levels: '1000000000000000000000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._shifted: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack._soft_release: '800058000000000840000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._softened_level: '800058000000000840000000000000000000000000'
@@ -986,9 +991,9 @@ functions:
   core/smps/song.py::SmpsVoice.channel_fnum_offset: 1fbfffffffffffffffc000000000000000000000000
   core/smps/song.py::SmpsVoice.chip_registers: 1fbe00000000000fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.feedback_algorithm: 1fbe00000000000fffc000000000000000000000000
-  core/smps/song.py::SmpsVoice.level_fixed: '800000000000000840000000000000000000000000'
+  core/smps/song.py::SmpsVoice.level_fixed: '1800000000000000840000000000000000000000000'
   core/smps/song.py::SmpsVoice.operator_values: 1fbe07fa0000e00fffc000000000000000000000000
-  core/smps/song.py::SmpsVoice.patched: c0007c000000000c60000000000000000000000000
+  core/smps/song.py::SmpsVoice.patched: 1c0007c000000000c60000000000000000000000000
   core/smps/song.py::SmpsVoice.registers: 1fbe003a0000e00fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.volume_registers: 1fbe07fa0000e00fffc000000000000000000000000
   core/smps/song_prep.py::_apply_global_tempo_div: 1fbe07fe3f00e00fffc000000000000000000000000
@@ -1006,16 +1011,17 @@ functions:
   core/smps/tempo.py::tempo_schedule: 1fbe00000000e00fffc000000000000000000000000
   core/smps/tempo.py::tick_at_frame: 1b600000000e00f084000000000000000000000000
   core/smps/track.py::TrackState.__init__: 1fbfffffffffffffffc000000000000000000000000
-  core/smps/track.py::TrackState._set_level: fbf97c9fffc53ffffc000000000000000000000000
+  core/smps/track.py::TrackState._set_level: 1fbf97c9fffc53ffffc000000000000000000000000
   core/smps/track.py::TrackState.apply: 1fbfffffffffffffffc000000000000000000000000
   core/smps/track.py::TrackState.for_channel: 1fbe00000000000fffc000000000000000000000000
   core/smps/track.py::TrackState.in_noise_mode: 1fffffffffff0000000000000000000000000000
-  core/smps/voice_patch.py::VoiceChanges.applied: c0007c000000000c60000000000000000000000000
+  core/smps/voice_patch.py::VoiceChanges.applied: 1c0007c000000000c60000000000000000000000000
   core/smps/voice_patch.py::VoiceChanges.level_written: '800018000000000840000000000000000000000000'
   core/smps/voice_patch.py::VoiceChanges.written: c00074000000000c60000000000000000000000000
   core/smps/voice_patch.py::VoicePatcher.__init__: 1fffffffffffffffffc000000000000000000000000
   core/smps/voice_patch.py::VoicePatcher.copy: 1fffffffffffffffffc000000000000000000000000
   core/smps/voice_patch.py::VoicePatcher.under_lfo: c00058000000000c60000000000000000000000000
+  core/smps/voice_patch.py::VoicePatcher.voice: '1000000000000000000000000000000000000000000'
   core/source/load.py::_variant: 7fe3f00e00cffc000000000000000000000000
   core/source/load.py::read_dac: 7fe3f00e00fffc000000000000000000000000
   core/source/load.py::read_song: 1ffffffffffffffc000000000000000000000000

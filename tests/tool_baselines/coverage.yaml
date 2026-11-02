@@ -23323,7 +23323,7 @@ read_outrun:
   argv:
   - tools/rom/song_dump.py
   - input/roms/OutRun (USA, Europe).md
-  commit: 1a2a6f5-dirty
+  commit: 86e818b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -23807,7 +23807,7 @@ read_space_harrier_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: 1a2a6f5-dirty
+  commit: 86e818b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -23882,7 +23882,7 @@ read_streets_of_rage:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: 1a2a6f5-dirty
+  commit: 86e818b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -23955,7 +23955,7 @@ read_streets_of_rage_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Streets of Rage 2 (USA).md
-  commit: 1a2a6f5-dirty
+  commit: 86e818b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -24029,7 +24029,7 @@ read_time_trax:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Time Trax (USA) (Proto).md
-  commit: 1a2a6f5-dirty
+  commit: 86e818b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -24056,6 +24056,7 @@ read_time_trax:
   - core/drivers/timetrax/memory.py
   - core/drivers/timetrax/variant.py
   - core/drivers/timetrax/voices.py
+  - core/drivers/timetrax/volume.py
   - core/drivers/timetrax/walk.py
   - core/rom/__init__.py
   - core/rom/envelopes.py

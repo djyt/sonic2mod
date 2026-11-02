@@ -285,7 +285,15 @@ reached.  A glide is the same with another curve: D4 uses it.
   `$89`: `SetTransposition`, played as the change.  Two notes transposed past the FM table (song 3,
   4: FM1) play the pitch meant.  Lift: length 1076 -> 22, note 1473 -> 18 (song 0); `vgm_frames`
   attack pitch 1470 -> 27.  Left for 2.2: levels, the modulator TLs `$AA` scales ("voice").
-- [ ] 2.2 Volume law; `$AA` masks.  `vgm_frames` levels per key-on.
+- [x] 2.2 Volume law; `$AA` masks.  `vgm_frames` levels per key-on.  `$1343`: each operator's
+  output (127 - TL) x the master ($000A, $FF; the carriers) x the track's volume ($8A; the operators
+  `$AA` masks, the carriers again at each voice set, `$AB` too), by a quarter-square multiply (a
+  table of x² / 256 at Z80 $0100: a product as it rounds).  A track starts at volume 0.
+  `VolumeRules.law` (core/drivers/timetrax/volume.py): the walk plays it as a `SetVol` of the
+  loudest carrier's change and a voice copy with each TL that misses written exact.  D3's threshold:
+  `samples.level_patch_min` (3), in core/plan/derive.py: a law's copy within it of its voice plays
+  as the voice.  `vgm_frames` level misses 2134 -> 1 (song 0), 1 / 1 / 0 (songs 2, 3, 5); left
+  (songs 1, 4, and song 2's modulators): the volume envelopes (2.4).
 - [ ] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch (T2).
 - [ ] 2.4 Volume envelopes; `vgm_frames` levels per frame (T2, T3).
 

@@ -131,6 +131,13 @@ samples:
   #   9     : 1.7x at worst; Moonwalker +8 %     [default]
   max_window: 9
 
+  # A voice copy a driver's volume law makes (one that scales each operator: Time Trax's), differing
+  # from its voice in its TLs alone, keeps a slot of its own only where some TL misses the voice's at
+  # its level by this many steps (0.75 dB each); the rest play as their voice at that level.
+  #   0     : every copy keeps a slot                     [exact; slots run out sooner]
+  #   3     : 2.25 dB                                     [default]
+  level_patch_min: 3
+
   # The MOD note an FM drum (Golden Axe's drum programs, rendered whole) is rendered for: its
   # sample's rate.  Broadband like noise; a hit is 0.1-0.4 s.
   #   C2    : ~8.3 kHz; dull hats                    [smallest]

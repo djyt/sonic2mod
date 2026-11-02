@@ -60,8 +60,9 @@ _REVIEWED: dict[SmpsDriver, dict] = {
                 "ties.exit_clears": False, "ties.late_keys_off": True, "modulation.turn_pause": False,
                 "pitch.octave_shift_from": 21, "pitch.divider_clamp": True, "pitch.noise_writes_tone3": False},
     },
-    # A rest writes nothing ($0D18): the note sounds on to a read's key-off ($1293).  The rest Sonic 1's
-    # for now: docs/todo/time_trax.md Phase 2 reviews each switch against its code
+    # A rest writes nothing ($0D18): the note sounds on to a read's key-off ($1293).  Its volume law
+    # ($1343) comes from the ROM (rules_from_rom).  The rest Sonic 1's for now: docs/todo/time_trax.md
+    # Phase 2 reviews each switch against its code
     SmpsDriver.TIMETRAX: {"FM": {"key_off.rest_holds": True}},
 }
 _PLAYBACK_SWITCHES = ("tempo_phase", "key_run_out", "update_clock")

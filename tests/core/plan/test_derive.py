@@ -1,5 +1,5 @@
-"""A minimal config completed from its song (core/plan/derive.py).  The Moonwalker, GoldenAxe and
-StreetsOfRage classes read their ROMs when they are present.
+"""A minimal config completed from its song (core/plan/derive.py).  The Moonwalker, GoldenAxe,
+StreetsOfRage and TimeTrax classes read their ROMs when they are present.
 
     python -m pytest tests/core/plan/test_derive.py -q
 """
@@ -41,11 +41,13 @@ from tests.roms import (
     SPACE_HARRIER_2_ROM,
     STREETS_OF_RAGE_2_ROM,
     STREETS_OF_RAGE_ROM,
+    TIME_TRAX_ROM,
     needs_golden_axe,
     needs_moonwalker,
     needs_space_harrier_2,
     needs_streets_of_rage,
     needs_streets_of_rage_2,
+    needs_time_trax,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -331,3 +333,32 @@ class StreetsOfRage2(unittest.TestCase):
                     continue
                 entries = config.psg_voice_map[st.envelope or "$00"] if st.is_psg else config.voice_map[st.voice]
                 self.assertTrue(any(e.low <= res.chip <= e.high for e in entries), (source, event.tick_position))
+
+
+_TIME_TRAX_STATED = {"name": "Mission Briefing", "input_file": str(TIME_TRAX_ROM), "rom_song": "$04"}
+
+
+@needs_time_trax
+class TimeTrax(unittest.TestCase):
+    """The Mission Briefing ($04): its volume law's voice copies, a slot each only where a TL misses
+    its voice by level_patch_min."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.song = read_rom_song(RomImage.load(TIME_TRAX_ROM), 0x04)
+        cls.settings = load_settings(str(ROOT / "tests" / "settings.yaml"))[0]
+
+    def _derive(self, patch_min: int):
+        return derive_config(_TIME_TRAX_STATED, self.song, "configs/time_trax/04_mission_briefing.yaml",
+                             replace(self.settings, level_patch_min=patch_min))
+
+    def test_a_copy_close_to_its_voice_plays_as_it(self):
+        out = self._derive(3)
+        voices = {v.index: v for v in self.song.voices}
+        self.assertTrue(out.levels_folded)
+        for copy, (voice, _) in out.levels_folded.items():
+            self.assertEqual(voices[copy].unpatched, voice)
+            self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][voice])
+
+    def test_at_0_every_copy_keeps_its_own(self):
+        self.assertFalse(self._derive(0).levels_folded)

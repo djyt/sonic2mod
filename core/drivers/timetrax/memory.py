@@ -18,8 +18,8 @@ from core.rom.memory import BankedMemory
 
 @dataclass(frozen=True)
 class DriverTables:
-    """The bank and the ROM addresses of the driver's tables (all in the bank), its FM table's words
-    and its pan bytes."""
+    """The bank and the ROM addresses of the driver's tables (all in the bank), its FM table's words,
+    its pan bytes and what its volume law reads (volume.py)."""
 
     bank: int
     songs: int                        # a sound's header address per sound, from 0
@@ -27,6 +27,8 @@ class DriverTables:
     envelopes: int                    # a volume envelope's address per envelope
     fm_words: tuple[int, ...]         # by index: note + transposition
     pans: tuple[int, ...]             # B4's speaker bits by $87's n + 1
+    squares: bytes = field(default=b"", repr=False)  # the multiply's table of x * x / 256 (volume.py)
+    master: int = 0                   # the master volume as the program loads it
 
 
 @dataclass(frozen=True)

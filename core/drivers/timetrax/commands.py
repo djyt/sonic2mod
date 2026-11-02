@@ -46,6 +46,7 @@ class Command:
 # The commands the song keeps as effects (grammar.py)
 PAN, VOICE, TRANSPOSE, RE_KEY, LEGATO, DETUNE, DETUNE_OFF = 0x87, 0x88, 0x89, 0x8B, 0x8C, 0xA8, 0xA9
 GATE, GATE_OFF, KEY_OFF_AFTER, KEY_OFF_AFTER_OFF = 0x96, 0x97, 0x98, 0x99   # each set clears the other's
+VOLUME, MASK, MASK_CARRIERS = 0x8A, 0xAA, 0xAB
 
 
 COMMANDS: dict[int, Command] = {
@@ -59,7 +60,7 @@ COMMANDS: dict[int, Command] = {
     PAN: Command(1, "pan"),
     VOICE: Command(1, "voice"),
     TRANSPOSE: Command(1, "transposition"),
-    0x8A: Command(1, "volume", later=True),
+    VOLUME: Command(1, "volume"),
     RE_KEY: Command(0, "notes re-key"),
     LEGATO: Command(0, "legato"),
     0x8D: Command(1, "signal", Steer.SIGNAL),
@@ -91,8 +92,8 @@ COMMANDS: dict[int, Command] = {
     0xA7: Command(1, "DAC sample", Steer.REFUSED),
     DETUNE: Command(1, "detune"),
     DETUNE_OFF: Command(0, "detune off"),
-    0xAA: Command(1, "volume mask", later=True),
-    0xAB: Command(0, "volume mask: the carriers", later=True),
+    MASK: Command(1, "volume mask"),
+    MASK_CARRIERS: Command(0, "volume mask: the carriers"),
 }
 
 

@@ -16,7 +16,8 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
                key_run_out      frames a note keys without an attacking read (core/smps/run_out.py)
     tracks     each kind of track's TrackRules: how the walk reads it where the driver differs
                from Sonic 1's (track(kind); a kind left out reads as Sonic 1's), by concern:
-                   volume      the step a volume flag keeps, the level it sets, a register write over it
+                   volume      the step a volume flag keeps, the level it sets, a register write over it,
+                               a law that scales operators instead (VolumeLaw)
                    key_off     the gate and the rest: what they key off, a soft release instead
                    ties        what a jump and a tied read do to a tie
                    modulation  the vibrato's turns
@@ -28,7 +29,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from ..chips import split_freq_word
 from .adsr import Adsr
@@ -68,6 +69,16 @@ class OctaveWrap:
         return word
 
 
+class VolumeLaw(Protocol):
+    """A driver whose volume scales each operator's output, not adds to the carriers' TL (Time Trax's:
+    core/drivers/timetrax/volume.py).  The walk plays it as a SetVol and a voice with the TLs it misses."""
+
+    def levels(self, tls: Mapping[int, int], carriers: tuple[int, ...], volume: int, mask: int | None) -> dict[int, int]:
+        """Each TL register's TL as the driver writes it: `tls` the voice's (channel 0's TL registers),
+        `volume` 0-255, `mask` the operators it scales (bit 3: $40 ... bit 0: $4C; None: `carriers`)."""
+        ...
+
+
 @dataclass(frozen=True)
 class VolumeRules:
     """The step a track's volume keeps and the level it sets."""
@@ -82,6 +93,8 @@ class VolumeRules:
     tl_writes_hold: bool = False            # a register write to any TL holds until the next volume change or
                                             # voice: the volume write rewrites all four, a modulator's from the
                                             # voice (Streets of Rage 2's, $41A9A); False: a carrier's refused
+    law: VolumeLaw | None = None            # the volume scales operators (ScaledVolume, VolumeMask); None: it is
+                                            # a TL added to the carriers'
 
 
 @dataclass(frozen=True)

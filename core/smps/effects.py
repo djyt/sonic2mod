@@ -69,6 +69,8 @@ class CoordFlag(StrEnum):
     NOISE_RATE = auto()           # its $F8 on the PSG
     KEY_OFF_AFTER = auto()        # Time Trax's $98
     SET_TRANSPOSITION = auto()    # its $89
+    SCALED_VOLUME = auto()        # its $8A
+    VOLUME_MASK = auto()          # its $AA / $AB
 
 
 @dataclass(frozen=True)
@@ -268,6 +270,20 @@ class SetTransposition(DriverEffect):
     """The track's transposition set, not added to: the walk's ChangeTransposition by the difference."""
     flag = CoordFlag.SET_TRANSPOSITION
     semitones: int                # signed
+
+
+@dataclass(frozen=True)
+class ScaledVolume(DriverEffect):
+    """The track's volume as its driver's law scales the operators by it (TrackRules.volume.law)."""
+    flag = CoordFlag.SCALED_VOLUME
+    level: int                    # 0-255
+
+
+@dataclass(frozen=True)
+class VolumeMask(DriverEffect):
+    """The operators the track's volume scales, until the next voice set."""
+    flag = CoordFlag.VOLUME_MASK
+    operators: int | None         # bit 3: TL $40 ... bit 0: $4C; None: the algorithm's carriers
 
 
 @dataclass(frozen=True)

@@ -25,7 +25,8 @@ def _psg_volume_mode(value) -> str:
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
                "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots",
-               "trim_tails", "names", "root_harmonics", "top_note", "max_window", "drum_root")
+               "trim_tails", "names", "root_harmonics", "top_note", "max_window", "drum_root",
+               "level_patch_min")
 
 
 # settings.yaml's keys, by section (None: the top level)
@@ -272,6 +273,9 @@ class SampleSettings:
     root_harmonics: float = 8.0
     top_note: int = ModNote.A3.value
     max_window: int = 0
+    # settings.yaml samples.level_patch_min: TL steps a copy a driver's volume law makes (Time Trax's), differing
+    # in its TLs alone, must miss its voice by somewhere to keep a slot; 0: every copy keeps one
+    level_patch_min: int = 0
     drum_root: int = ModNote.C3.value    # settings.yaml samples.drum_root: the note an FM drum is rendered for
     loop_timbre: bool = True         # a sustain loop waits for the timbre to hold too
                                      # (core.audio.loops.PROFILE_PER_DB); the converter clears it
@@ -316,6 +320,7 @@ class SampleSettings:
             root_harmonics=_non_negative(smp, "root_harmonics", cls.root_harmonics, filepath),
             top_note=_mod_note(smp, "top_note", cls.top_note, filepath),
             max_window=_non_negative(smp, "max_window", cls.max_window, filepath, int),
+            level_patch_min=_non_negative(smp, "level_patch_min", cls.level_patch_min, filepath, int),
             drum_root=_mod_note(smp, "drum_root", cls.drum_root, filepath),
         )
 

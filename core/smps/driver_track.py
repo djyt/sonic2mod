@@ -28,7 +28,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Sequence
 
-from ..chips import CH3_CHANNEL, NOISE_RATE_MASK, OperatorReg
+from ..chips import CH3_CHANNEL, NOISE_RATE_MASK, TL_MASK, OperatorReg
 from .adsr import Adsr
 from .driver_tables import SMPS_OP_TO_REG_OFFSET, signed_byte, signed_word
 from .effects import (
@@ -48,6 +48,7 @@ from .effects import (
     PlayedEffect,
     PsgForm,
     PsgVoice,
+    ScaledVolume,
     SelectSample,
     SetTransposition,
     SetVoice,
@@ -55,6 +56,7 @@ from .effects import (
     SmpsEffect,
     SoftRelease,
     VoiceRegister,
+    VolumeMask,
     VolumeStep,
 )
 from .names import FM_CHANNEL_NAMES
@@ -94,6 +96,8 @@ class DriverTrack:
         self._after = 0                            # ... after a read starts (KeyOffAfter), a gate first
         self._sounding = False                     # a note sounds (TrackRules.key_off.rest_holds)
         self._transposition = header.pitch_offset  # the track's, as SetTransposition sets it
+        self._scaled = 0                           # ScaledVolume's level: the track RAM starts cleared
+        self._mask: int | None = None              # VolumeMask's operators; None: the carriers
         self._legato = False                       # every read ties (Legato)
         self._noise_form: int | None = None        # the PSG_FORM that holds: notes are noise
         self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
@@ -141,6 +145,12 @@ class DriverTrack:
             case KeyOffAfter(frames=frames):
                 self._after = frames
                 return ()
+            case ScaledVolume(level=level):
+                self._scaled = level
+                return self._scaled_levels()
+            case VolumeMask(operators=operators):
+                self._mask = operators
+                return self._scaled_levels()
             case SetTransposition(semitones=semitones):
                 delta, self._transposition = semitones - self._transposition, semitones
                 return (ChangeTransposition(delta),) if delta else ()
@@ -184,6 +194,9 @@ class DriverTrack:
                 self._voice_loads = law is not None and law.voice_keys_off
                 self._voice = index
                 self._changes = dataclasses.replace(self._changes, registers=(), levels=())
+                if self._rules.volume.law is not None:
+                    self._mask = None                  # the voice set masks its carriers (Time Trax's $0F91)
+                    return self._scaled_levels()
                 return (SetVoice(self._voices.copy(index, self._changes)),)
             case VoiceRegister(register=register, value=value):
                 return (self._patched(register, value),)
@@ -263,6 +276,28 @@ class DriverTrack:
         assert self._voice is not None
         self._changes = dataclasses.replace(self._changes, levels=held)
         return (SetVoice(self._voices.copy(self._voice, self._changes)), *played)
+
+    def _scaled_levels(self) -> tuple[PlayedEffect, ...]:
+        """The voice and level a law that scales operators writes (TrackRules.volume.law): a SetVol of
+        the loudest carrier's change, the voice copied with each TL that change misses written exact.
+
+            TLs (carriers C) 10C 40C 20, volume 200:  scaled 36 59 20  ->  SetVol 26, TL $44 59 fixed
+        """
+        law = self._rules.volume.law
+        if law is None:
+            raise ValueError(f"{self._header.label}: a scaled volume, which its driver has no law for")
+        if self._voice is None:
+            return ()
+        voice = self._voices.voice(self._voice)
+        tls = {r: v for r, v in voice.chip_registers().items() if r in _TL_REGISTERS}
+        carriers = voice.carrier_registers
+        scaled = law.levels(tls, carriers, self._scaled, self._mask)
+        loudest = min(carriers, key=lambda r: scaled[r])
+        offset = scaled[loudest] - tls[loudest]
+        added = {r: (v + offset) & TL_MASK if r in carriers else v for r, v in tls.items()}
+        missed = tuple((r, scaled[r]) for r in sorted(tls) if scaled[r] != added[r])
+        self._changes = dataclasses.replace(self._changes, levels=missed)
+        return SetVoice(self._voices.copy(self._voice, self._changes)), SetVol(offset)
 
     def _special_mode(self, offsets: tuple[int, ...] | None) -> SetVoice | None:
         """The voice set, its operators at `offsets` from the next note on (None: before any

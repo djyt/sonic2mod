@@ -521,6 +521,7 @@ regression runner exits 2 otherwise); add a new key to both.
 | `render_cache` | off | `output/cache` | Directory (relative to the project root) caching chip renders by a hash of their inputs |
 | `root_harmonics` | `8` | `8` | Minimal configs: harmonics a window's lowest note keeps below Nyquist (§ 2); 0 = every window at E1, the smallest samples |
 | `max_window` | `0` | `9` | Minimal configs: the widest window in semitones, so no note plays far from its render pitch (§ 2); 0 = no cap |
+| `level_patch_min` | `0` | `3` | Minimal configs: TL steps a copy a driver's volume law makes (Time Trax's), differing in its TLs alone, must miss its voice by somewhere to keep a slot; the rest play as their voice at their level; 0 = every copy keeps one |
 | `top_note` | `A3` | `A3` | Minimal configs: the highest MOD note a window reaches.  A#3 (period 120) and B3 (113) are past Paula's period-124 DMA limit and sound bad on an Amiga |
 | `drum_root` | `C3` | `C3` | Minimal configs: the MOD note an FM drum (Type 0 FM's drum programs, rendered whole) is rendered for and played at: its sample's rate (C2 ~8.3 kHz, C3 ~16.6, A3 ~27.9) |
 

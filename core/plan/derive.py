@@ -86,6 +86,7 @@ _MAX_GRID_STEPS = 32           # the coarsest row grid tried: 32 x the exact one
 _WIDE_SPEEDS = range(2, 17)    # speeds tried where none of 2-8 gives a BPM within _BPM_CLOSE
 _BPM_CLOSE = 0.1               # % off the driver's tempo
 _FIRST_NOTE = 0x81           # the note byte of C0
+_TL_REGISTERS = range(OperatorReg.TL, OperatorReg.KS_AR)   # channel 0's operator TLs
 _FINETUNES = range(-8, 8)    # a MOD sample's finetune
 
 # Derived sample files.  A stated row naming one follows that sample to its slot
@@ -148,6 +149,8 @@ class Derivation:
                                                             # cut (another max_window's, or stale): left out
     folded: dict[int, tuple[int, int]] = field(default_factory=dict)   # {voice copy: (the voice it plays
                                                             # as, the ticks its notes sound)}: no slot for it
+    levels_folded: dict[int, tuple[int, int]] = field(default_factory=dict)   # likewise a copy whose TLs
+                                                            # miss its voice's by less than level_patch_min
     volumes_folded: dict[str, tuple[str, int]] = field(default_factory=dict)   # {envelope at a volume:
                                                             # (the volume it plays as, the ticks its notes sound)}: no slot
     windows_merged: dict[str, int] = field(default_factory=dict)   # {voice / envelope: windows merged}
@@ -205,6 +208,10 @@ class _Deriver:
         self._harmonics = settings.root_harmonics
         self._top = settings.top_note
         self._max_window = settings.max_window
+        # A volume law's copies (Time Trax's) fold under level_patch_min; a written TL's (Streets of Rage 2's $FA) keep theirs
+        self._patch_min = settings.level_patch_min if self._song.rules.track(ChannelType.FM).volume.law else 0
+        self._voices = {v.index: v for v in self._song.voices}
+        self._level_misses: dict[int, float] = {}    # a TL-only copy -> the most its TLs miss its voice's
         self._drum_root = ModNote(settings.drum_root).name
         # Lowest MOD note a window starts at: the first above the sample audit's low-rate line
         self._floor = next(i for i, period in enumerate(PERIOD_TABLE) if period_rate(period, self._clock) >= LOW_RATE_HZ)
@@ -230,7 +237,8 @@ class _Deriver:
         self._dac_samples(dac_names)
         fm, tone = self._fit(fm, tone, MAX_INSTRUMENTS - (self._next - 1) - sum(len(e) for e in noise.values()))
         voice_map = self._windows(fm, ChannelType.FM, _FM_STEM.format)
-        self._items("voice_map", voice_map | {copy: voice_map[self._folded_to(copy)] for copy in self._out.folded})
+        folded = self._out.folded | self._out.levels_folded
+        self._items("voice_map", voice_map | {copy: voice_map[self._folded_to(copy)] for copy in folded})
         envelopes = self._windows(tone, "tone", _TONE_STEM.format)
         self._items("psg_voice_map", envelopes | {label: envelopes[head] for label, (head, _) in self._out.volumes_folded.items()})
         self._items("psg_map", {form: self._noise(form, noise[form]) for form in sorted(noise)})
@@ -274,7 +282,21 @@ class _Deriver:
                 elif res is not None and st.voice is not None:
                     fm[st.voice][res.chip] += note.duration
                     levels[(ChannelType.FM, st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
+                    self._level_miss(st.voice, st.tl)
         return fm, tone, noise, dac
+
+    def _level_miss(self, index: int, tl: int) -> None:
+        """How far voice copy `index`, played at track level `tl`, misses its voice there, where it
+        differs in its TLs alone (a driver's volume law); a register patch: never close."""
+        copy = self._voices[index]
+        if copy.unpatched is None:
+            return
+        mine, theirs = copy.chip_registers(tl), self._voices[copy.unpatched].chip_registers(tl)
+        moved = [r for r in mine if mine[r] != theirs[r]]
+        miss = max((abs(mine[r] - theirs[r]) for r in moved), default=0)
+        if any(r not in _TL_REGISTERS for r in moved):
+            miss = math.inf
+        self._level_misses[index] = max(self._level_misses.get(index, 0), miss)
 
     # --- sections ---------------------------------------------------------------------
 
@@ -365,6 +387,7 @@ class _Deriver:
         as the voice they patch (a patch can change the sound wholly: Never Return Alive's $1F
         lets $09's feedback modulator decay; folded, a 5 s note played 19 dB loud), last
         special-mode copies (their notes' pitch moves)."""
+        fm = self._fold_levels(fm)
         tone, self._out.volumes_folded = fold_volumes(tone, slots - self._fm_slots(fm), volume_family, self._tone_slots)
         fm = self._fold_copies(fm, slots - self._tone_slots(tone), (_lfo_voice,))
         for fallback in (_unpatched_voice, _special_voice):
@@ -373,6 +396,17 @@ class _Deriver:
         self._out.windows_merged = {(f"${key:02X}" if kind == ChannelType.FM else key): n
                                     for (kind, key), n in self._merges.items()}
         return fm, tone
+
+    def _fold_levels(self, fm: dict[int, Counter]) -> dict[int, Counter]:
+        """`fm` with each TL-only copy that misses its voice by less than level_patch_min played as
+        that voice, at its own level (Derivation.levels_folded)."""
+        fm = {key: Counter(pitches) for key, pitches in fm.items()}
+        for copy in [k for k in fm if self._level_misses.get(k, math.inf) < self._patch_min]:
+            voice = self._voices[copy].unpatched
+            assert voice is not None
+            self._out.levels_folded[copy] = (voice, fm[copy].total())
+            fm.setdefault(voice, Counter()).update(fm.pop(copy))
+        return fm
 
     def _merged_fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> bool:
         """The windows merged as far as `slots` asks (self._merges): whether they fit."""
@@ -413,8 +447,9 @@ class _Deriver:
 
     def _folded_to(self, copy: int) -> int:
         """The voice a folded copy plays as: its fallback's, where that was folded too."""
-        while copy in self._out.folded:
-            copy = self._out.folded[copy][0]
+        folded = self._out.folded | self._out.levels_folded
+        while copy in folded:
+            copy = folded[copy][0]
         return copy
 
     def _fm_slots(self, fm: dict[int, Counter]) -> int:

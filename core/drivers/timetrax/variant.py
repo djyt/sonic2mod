@@ -10,9 +10,9 @@ disassembler (docs/todo/time_trax.md).
     FM table    96 words from B (index 1 C0): A = fnum $44B, +25 cents on the NTSC clock, +10 on
                 PAL's; played as written
 
-Its playback rules: a rest writes nothing, the note sounds on to a read's key-off (rest_holds).
-The rest are Sonic 1's for now: the plan's Phase 2 reviews each against the code (the volume law,
-glides, portamento, volume envelopes).
+Its playback rules: a rest writes nothing, the note sounds on to a read's key-off (rest_holds); the
+volume scales operators (volume.py: its table of squares from the ROM).  The rest are Sonic 1's for
+now: the plan's Phase 2 reviews each against the code (glides, portamento, volume envelopes).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from core.rom.header import RomHeader
 from core.rom.image import RomImage
 from core.rom.memory import SoundMemory
 from core.rom.variant import HeaderLayout, SmpsVariant, TrackSlot
-from core.smps import FM_CHANNEL_NAMES, ChannelType, KeyOffRules, PlaybackRules, TrackRules
+from core.smps import FM_CHANNEL_NAMES, ChannelType, KeyOffRules, PlaybackRules, TrackRules, VolumeRules
 
 from ..names import SmpsDriver
 from .grammar import FLAGS, instruction
@@ -31,6 +31,7 @@ from .header import read_header, track_numbers
 from .locate import driver_tables, locate, time_trax_memory
 from .memory import TimeTraxMemory
 from .voices import VOICE, read_voices
+from .volume import TimeTraxVolume
 from .walk import walk_song
 
 # The tracks as the generic header reader would lay them out (read_header reads them)
@@ -46,8 +47,11 @@ def _song_memory(memory: SoundMemory, head: RomHeader) -> SoundMemory:
 
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
-    """Its FM table, read from the driver: note n plays entry n ($80 + n)."""
-    return replace(rules, fm_frequencies=driver_tables(rom).fm_words)
+    """Its FM table, read from the driver (note n plays entry n: $80 + n), and its volume law's table."""
+    tables = driver_tables(rom)
+    fm = rules.track(ChannelType.FM)
+    law = VolumeRules(law=TimeTraxVolume(tables.squares, tables.master))
+    return replace(rules, fm_frequencies=tables.fm_words, tracks={ChannelType.FM: replace(fm, volume=law)})
 
 
 TIMETRAX = SmpsVariant(

@@ -12,9 +12,11 @@ the 68k copies to Z80 RAM (core/rom/z80.py), not by the game's addresses.
     FM table   the note's frequency routine reads it: ld hl,table / call (ld a,(ix+8) ...); 96 words
                (block in bits 11-13) from B, index 1 C0
     pan        ld hl,table / rst $30 / ld a,(hl) / ld (ix+$22),a: B4's speaker bits by $87's n + 1
+    volume     the multiply's table page (ld h,page / ld a,b / sub c), 256 squares; the master volume
+               the law reads for the first operator (ld a,(master)), as the program loads it
 
     Time Trax (USA) (Proto)   bank $F8000; songs $8007 (6 of 39), voices $8205, envelopes $82C7;
-                              FM table Z80 $1804, pan $1340
+                              FM table Z80 $1804, pan $1340, squares $0100, master $000A ($FF)
 """
 
 from __future__ import annotations
@@ -103,6 +105,23 @@ _PAN_TABLE = code_pattern("""
     7E          ld a,(hl)
     DD 77 22    ld (ix+$22),a
 """)
+_MULTIPLY = code_pattern("""
+    26 <b>      ld h,page           the table of squares
+    78          ld a,b
+    91          sub c
+    30 ?        jr nc
+    ED 44       neg
+    CB 3F       srl a
+""")
+_MASTER = code_pattern("""
+    DD 7E 5E    ld a,(ix+$5E)       the first operator's TL
+    EE 7F       xor $7F
+    DD CB 78 5E bit 3,(ix+$78)      a carrier
+    28 ?        jr z
+    47          ld b,a
+    3A <w>      ld a,(master)
+""")
+_PAGE = 0x100
 _A15 = 15
 _A16 = 16
 _BIT7 = 7
@@ -122,7 +141,8 @@ def driver_tables(rom: RomImage) -> DriverTables:
     if songs != header + 1 or voices != songs + _WORD:
         raise RomError(f"the song table's address at ${songs:X}, the voices' at ${voices:X}: not the bank's header")
     return DriverTables(window.bank, window.header_pointer(header, songs), window.header_pointer(header, voices),
-                        window.header_pointer(header, songs + _ENVELOPES_AT), _fm_words(z80), _pans(z80))
+                        window.header_pointer(header, songs + _ENVELOPES_AT), _fm_words(z80), _pans(z80),
+                        _squares(z80), z80[z80_word(_one(_MASTER, z80, "master volume read").group(1), 0)])
 
 
 def time_trax_memory(image: RomImage) -> TimeTraxMemory:
@@ -185,6 +205,12 @@ def _fm_words(z80: bytes) -> tuple[int, ...]:
 def _pans(z80: bytes) -> tuple[int, ...]:
     at = z80_word(_one(_PAN_TABLE, z80, "pan table").group(1), 0)
     return tuple(z80[at:at + _PANS])
+
+
+def _squares(z80: bytes) -> bytes:
+    """The multiply's table: the page its code names."""
+    at = _one(_MULTIPLY, z80, "multiply").group(1)[0] * _PAGE
+    return z80[at:at + _PAGE]
 
 
 def _one(pattern: re.Pattern[bytes], z80: bytes, what: str) -> re.Match[bytes]:

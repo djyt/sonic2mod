@@ -25,6 +25,7 @@ from core.smps import (
     PlaybackRules,
     PsgForm,
     PsgVoice,
+    ScaledVolume,
     SetTransposition,
     SetVoice,
     SetVol,
@@ -33,7 +34,9 @@ from core.smps import (
     SoftReleaseLaw,
     TieRules,
     TrackRules,
+    VoiceField,
     VoiceRegister,
+    VolumeMask,
     VolumeRules,
     VolumeStep,
 )
@@ -200,6 +203,51 @@ class RestsHold(unittest.TestCase):
         tie = SmpsNote(note_value=_NOTE, duration=4, is_no_attack=True)
         (rest,) = track.cut(tie, tied_next=False)
         self.assertTrue(rest.is_rest)
+
+
+_TLS = (0x40, 0x44, 0x48, 0x4C)
+
+
+class _Halving:
+    """A volume law: each scaled operator's TL halfway to silence at volume 128 (the test's)."""
+
+    def levels(self, tls, carriers, volume, mask):
+        bits = mask if mask is not None else sum(1 << (3 - (r - 0x40) // 4) for r in carriers)
+        return {r: (tl + 127) // 2 if bits & 1 << (3 - (r - 0x40) // 4) and volume == 128 else tl
+                for r, tl in tls.items()}
+
+
+class ScaledVolumes(unittest.TestCase):
+    """A law that scales operators (Time Trax's): a SetVol of the loudest carrier's change, the voice
+    copied with each TL that misses."""
+
+    def _track(self) -> tuple[DriverTrack, VoicePatcher]:
+        rules = TrackRules(volume=VolumeRules(law=_Halving()))
+        playback = PlaybackRules(driver="test", fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
+                                 dac_names={}, tracks={ChannelType.FM: rules})
+        voice = SmpsVoice(0, algorithm=4, operators={VoiceField.TOTAL_LEVEL: (0x20, 0x20, 0x01, 0x07)})
+        patcher = VoicePatcher([voice])
+        return DriverTrack(SmpsChannelHeader(ChannelType.FM, "t"), "FM1", playback, patcher), patcher
+
+    def test_the_loudest_carrier_sets_the_level_and_the_other_is_fixed(self):
+        track, patcher = self._track()
+        track.effect(SetVoice(0))
+        played = track.effect(ScaledVolume(128))
+        voice, level = played
+        assert isinstance(voice, SetVoice) and isinstance(level, SetVol)
+        copy = patcher.voice(voice.index)
+        self.assertEqual(copy.unpatched, 0)
+        base = patcher.voice(0)
+        tls = {r: v for r, v in copy.chip_registers(level.level).items() if r in _TLS}
+        wanted = _Halving().levels({r: base.chip_registers()[r] for r in _TLS}, base.carrier_registers, 128, None)
+        self.assertEqual(tls, wanted)
+
+    def test_a_voice_set_masks_its_carriers_again(self):
+        track, _ = self._track()
+        track.effect(SetVoice(0))
+        track.effect(VolumeMask(0b1111))
+        track.effect(ScaledVolume(128))
+        self.assertEqual(track.effect(SetVoice(0)), track.effect(ScaledVolume(128)))
 
 
 class Transpositions(unittest.TestCase):

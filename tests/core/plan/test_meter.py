@@ -8,9 +8,9 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from core.config import SampleSettings
+from core.config import ConversionConfig, SampleSettings
 from core.drivers.reference import SONIC1_RULES
-from core.plan import derive_config
+from core.plan import complete_config, derive_config
 from core.plan.meter import find_meter
 from core.smps import (
     NO_TEMPO_HOLDS,
@@ -118,6 +118,26 @@ class BarGrid(unittest.TestCase):
     def test_the_rows_it_derives_cannot_be_stated(self):
         with self.assertRaises(ValueError):
             self._derive(_song(_repeated(16, 2)), ticks_per_row=3)
+
+    def test_nor_patterns_it_renumbers(self):
+        with self.assertRaises(ValueError):
+            self._derive(_song(_repeated(16, 2)), merge_patterns=[])
+
+    def test_a_song_with_no_meter_says_so(self):
+        song = _song(_note(REST, 96))
+        out = derive_config({"name": "Bar", "input_file": "song.asm", "row_grid": "bar"}, song,
+                            Path("configs/bar.yaml"), _SETTINGS)
+        self.assertIn("accurate grid", out.rows_note or "")
+
+    def test_a_config_stating_its_channels_derives_its_rows_alone(self):
+        song = _song(_repeated(16, 8), _repeated(16, 8, bass=True))
+        data = {"name": "Bar", "input_file": "song.asm", "row_grid": "bar",
+                "channels": [{"source": "FM1", "mod_channel": 0}, {"source": "FM2", "mod_channel": 1}]}
+        config = ConversionConfig.from_data(data, "configs/bar.yaml")
+        complete, derivation = complete_config(config, "configs/bar.yaml", _SETTINGS, song)
+        self.assertEqual((complete.ticks_per_row, complete.target_speed), (6, 6))
+        assert derivation is not None
+        self.assertEqual(derivation.derived, ["ticks_per_row", "target_speed"])
 
 
 if __name__ == "__main__":

@@ -100,7 +100,7 @@ BPM must also fit 32–255 (Drowning needs `ticks_per_row: 2`).
 | $04, $08, $0C | 4 | 4 |
 | $04, $06, $0C | 2 | 2 |
 
-**`row_grid: bar`** (a minimal config's variant) lays the song out as a composer would instead
+**`row_grid: bar`** (a variant, as a rule) lays the song out as a composer would instead
 (`core/plan/meter.py`), from the notes that key on:
 
     step      the coarsest grid holding 85 % of them, each channel at its own phase (an echo a frame late)
@@ -112,7 +112,10 @@ BPM must also fit 32–255 (Drowning needs `ticks_per_row: 2`).
 Patterns hold whole phrases: 64 rows where phrases are a power of two rows, else breaks every
 `k × phrase` rows (Time Trax's Stages 2, 5, 7: 20-row 5/4 bars, 60-row patterns).  Notes between
 rows take `EDx`, exact where the speed puts every frame on a MOD tick; where the cell's effect slot is
-taken (a gate's `ECx`, a `Cxx`, a legato `3FF`), they round to a row: a frame off.
+taken (a gate's `ECx`, a `Cxx`, a legato `3FF`), they round to a row: a frame off.  It derives
+`ticks_per_row`, `target_speed` and `mod_pattern_breaks` and renumbers `merge_patterns`' patterns:
+stating any of them is an error (`null` them in the variant).  The report's Tempo line names the
+phrase, or what gave way.
 
 ### BPM
 

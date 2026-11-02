@@ -104,6 +104,7 @@ _WIDE_SPEEDS = range(2, 17)    # speeds tried where none of 2-8 gives a BPM with
 _BPM_CLOSE = 0.1               # % off the driver's tempo
 _DEFAULT_SPEED = 6
 _BAR_KEYS = ("ticks_per_row", "target_speed", "mod_pattern_breaks")   # what row_grid: bar derives
+_PATTERN_KEYS = ("merge_patterns",)   # name patterns of the build's grid: row_grid: bar renumbers them
 _MIN_PATTERN_ROWS = 16         # row_grid: bar cuts no pattern shorter (a phrase of a prime 67 rows: 64)
 _MAX_PATTERNS = 127            # max_patterns' default
 _FIRST_NOTE = 0x81           # the note byte of C0
@@ -185,13 +186,14 @@ class Derivation:
                                                             # (the volume it plays as, the ticks its notes sound)}: no slot
     windows_merged: dict[str, int] = field(default_factory=dict)   # {voice / envelope: windows merged}
     meter: Meter | None = None                              # row_grid: bar's rows (core.plan.meter)
+    rows_note: str | None = None                            # what of row_grid: bar gave way, and why
 
 
 def load_config(path: str | Path, settings_path: str | None = None, variant: str | None = None) -> ConversionConfig:
-    """A config file read as `variant`, a minimal one completed from its song (what every tool
+    """A config file read as `variant`, completed from its song where it derives (what every tool
     reads a config with)."""
     config = ConversionConfig.from_yaml(str(path), variant)
-    if config.is_minimal:
+    if config.is_derived:
         settings = load_settings(settings_path or find_settings(str(path)))[0]
         config, _ = complete_config(config, path, settings)
     return config
@@ -200,12 +202,13 @@ def load_config(path: str | Path, settings_path: str | None = None, variant: str
 def complete_config(config: ConversionConfig, config_path: str | Path, settings: SampleSettings,
                     song: SmpsSong | None = None) -> tuple[ConversionConfig, Derivation | None]:
     """A minimal config (no channels:) completed from its song, the ROM's DAC samples written to
-    its samples_dir; any other config as it is."""
-    if not config.is_minimal:
-        if config.row_grid == BAR_GRID:
-            raise ValueError(f"row_grid: {BAR_GRID} derives the rows: a minimal config's (no channels:)")
+    its samples_dir; a full one with row_grid: bar, its rows alone; any other config as it is."""
+    if not config.is_derived:
         return config, None
     song = song or config.read_song()
+    if not config.is_minimal:
+        derivation = _derive_rows(config.stated(), song, settings)
+        return ConversionConfig.from_data(derivation.data, str(config_path), config.variant), derivation
     settings = with_song_overrides(settings, config)       # the song's max_window
     derivation = derive_config(config.stated(), song, config_path, settings, config.read_dac())
     if config.variant is not None and "output_file" in derivation.derived:
@@ -219,6 +222,13 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
     for name, pcm in derivation.files.items():
         write_shared(samples / name, pcm)       # other conversions may be reading it
     return complete, derivation
+
+
+def _derive_rows(stated: dict, song: SmpsSong, settings: SampleSettings) -> Derivation:
+    """`stated`, a config that states its channels, with the rows row_grid: bar derives."""
+    out = Derivation(dict(stated))
+    _Deriver(stated, song, out, settings, []).timing()
+    return out
 
 
 def derive_config(stated: dict, song: SmpsSong, config_path: str | Path, settings: SampleSettings,
@@ -276,7 +286,7 @@ class _Deriver:
 
         sources = self._sources()
         self._default("channels", [{"source": s, "mod_channel": i} for i, s in enumerate(sources)])
-        self._timing()
+        self.timing()
 
         fm, tone, noise, dac_names = self._notes(sources)
         self._dac_samples(dac_names)
@@ -378,7 +388,7 @@ class _Deriver:
 
     # --- sections ---------------------------------------------------------------------
 
-    def _timing(self) -> None:
+    def timing(self) -> None:
         """Ticks per row: the grid every note starts and lasts on.  Where that grid is too fine (the
         pattern limit, or no speed's BPM in 32-255), the multiple of it that puts the most notes on
         rows: the rest take EDx.  A 1-frame stagger between channels makes the exact grid 1 frame;
@@ -414,13 +424,20 @@ class _Deriver:
     def _bar_timing(self) -> bool:
         """row_grid: bar: the meter's row (core.plan.meter), a speed putting every frame on a MOD tick,
         patterns of whole phrases from the first downbeat; False where the song has no meter or its
-        rows do not fit (the accurate grid then)."""
-        stated = [key for key in _BAR_KEYS if key in self._stated]
-        if stated:
-            raise ValueError(f"row_grid: {BAR_GRID} derives {', '.join(stated)}: state none")
+        rows do not fit (the accurate grid then, said in rows_note)."""
+        derived = [key for key in _BAR_KEYS if key in self._stated]
+        if derived:
+            raise ValueError(f"row_grid: {BAR_GRID} derives {', '.join(derived)}: state none (null in a variant)")
+        renumbered = [key for key in _PATTERN_KEYS if key in self._stated]
+        if renumbered:
+            raise ValueError(f"row_grid: {BAR_GRID} renumbers the patterns {', '.join(renumbered)} names: "
+                             f"state none (null in a variant)")
+
         meter = find_meter(self._song, self._passing())
         fit = self._grid_options(meter.row) if meter is not None else None
         if meter is None or fit is None:
+            self._out.rows_note = ("nothing keys: the accurate grid" if meter is None else
+                                   f"{meter.row}-tick rows pass the pattern limit or the BPM range: the accurate grid")
             return False
 
         tpr, options = fit
@@ -464,7 +481,9 @@ class _Deriver:
         first = round(meter.downbeat / meter.row) % rows
         total = math.ceil(self._song.end_tick() / meter.row)
         patterns = (1 if first else 0) + math.ceil((total - first) / rows)
-        if patterns > min(int(self._stated.get("max_patterns", _MAX_PATTERNS)), ModFile.MAX_POSITIONS):
+        limit = min(int(self._stated.get("max_patterns", _MAX_PATTERNS)), ModFile.MAX_POSITIONS)
+        if patterns > limit:
+            self._out.rows_note = f"{rows}-row patterns need {patterns}, over {limit}: 64-row ones"
             return []
         return phrase_breaks(first, rows, total)
 

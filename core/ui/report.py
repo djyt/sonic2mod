@@ -77,6 +77,7 @@ class Report:
     volumes_folded: dict = field(default_factory=dict)   # {envelope at a volume: (the one it plays as, notes)}
     windows_merged: dict = field(default_factory=dict)   # {voice / envelope: windows merged}
     phrase_rows: int | None = None                # row_grid: bar: the rows a phrase fills (core.plan.meter)
+    rows_note: str | None = None                  # what of row_grid: bar gave way, and why
 
 
 # ── Warnings: (check, headline, fix) ──────────────────────────────────────────────────────────
@@ -432,6 +433,8 @@ def print_header(console: Console, rep: Report) -> None:
              f"{cfg.ticks_per_row} ticks/row")
     if rep.phrase_rows:
         tempo += f" · phrase {rep.phrase_rows} rows"
+    if rep.rows_note:
+        tempo += f"  {WARN} [yellow]row_grid: bar: {escape(rep.rows_note)}[/yellow]"
     if b and abs(b.error_pct) >= _BPM_ERROR_PCT:
         tempo += f"  {WARN} [yellow]{b.error_pct:+.2f} %[/yellow]"
     elif b:

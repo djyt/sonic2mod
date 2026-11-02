@@ -198,8 +198,9 @@ class ConversionConfig:
     # harmonics (the smallest samples); "highest": as high as its range (its top at top_note) and the
     # sample limit (its longest ring whole) allow, the most rate
     window_root: str = "lowest"
-    # Minimal configs: the row grid derived.  "accurate": the finest the notes need (a check against the
-    # rip); "bar": a step a row, whole phrases a pattern (core.plan.meter), as a composer lays it out
+    # The row grid.  "accurate": as stated, or (a minimal config) the finest the notes need: the build to
+    # check against the rip; "bar": derived from the song's meter (core.plan.meter), a step a row, whole
+    # phrases a pattern, as a composer lays it out
     row_grid: str = "accurate"
     # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
     # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
@@ -289,6 +290,12 @@ class ConversionConfig:
     def is_minimal(self) -> bool:
         """No `channels:` section: everything the config leaves out is derived from the song."""
         return "channels" not in self._data
+
+    @property
+    def is_derived(self) -> bool:
+        """Completed from its song (core.plan.complete_config): a minimal config, or one whose rows
+        row_grid: bar derives."""
+        return self.is_minimal or self.row_grid == BAR_GRID
 
     def stated(self) -> dict:
         """The YAML data the config states, with any later input_file / rom_song override."""

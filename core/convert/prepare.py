@@ -3,7 +3,7 @@ uses it, and so does every tool that walks a song as the converter does (survey_
 fold_csv; vgm_compare, vgm_pitch_audit), so their seconds, BPM and settings are the converter's.
 
     the config as read
-      └► completed from its song (a minimal config: core.plan.complete_config)
+      └► completed from its song (a minimal config, or row_grid: bar: core.plan.complete_config)
           └► the merged build's columns (merged: core.merge.prepare_merged_config)
               └► target_bpm from the song's tempo header (auto_bpm)
                   └► the settings, with the song's own overrides (and the player asked for)
@@ -38,7 +38,7 @@ class PreparedConversion:
     song: SmpsSong
     synth: SynthesisSettings
     psg_synth: PsgSynthesisSettings
-    derivation: Derivation | None = None     # a minimal config's: what was derived from the song
+    derivation: Derivation | None = None     # a derived config's: what was derived from the song
     bpm: BpmReport | None = None             # auto_bpm: how far the whole-number BPM is from the tempo
 
 

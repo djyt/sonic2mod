@@ -30,6 +30,21 @@ def shift_for_breaks(flat_row: int, breaks: list[tuple[int, int]] | None) -> int
     return flat_row
 
 
+def phrase_breaks(first: int, rows: int, total: int) -> list[tuple[int, int]]:
+    """The breaks that cut `total` rows into patterns of `rows`, the first `first` rows (a pickup)
+    a pattern of their own; at 64 rows, the pickup's alone.  Each in the rows the ones before it
+    left, as apply_pattern_breaks takes them.  first 32, rows 40: (0, 31), (1, 39), (2, 39) ..."""
+    breaks = [(0, first - 1)] if first else []
+    if rows >= ROWS_PER_PATTERN:
+        return breaks
+
+    pattern, row = len(breaks), first
+    while row + rows < total:
+        breaks.append((pattern, rows - 1))
+        pattern, row = pattern + 1, row + rows
+    return breaks
+
+
 def apply_pattern_breaks(mod: ModFile, breaks: list) -> None:
     """Each (pattern, row) of `breaks`, ascending: the rows after it repacked from the next
     pattern's row 0, the Bxx aimed past it retargeted, a Bxx to the next pattern at the break.

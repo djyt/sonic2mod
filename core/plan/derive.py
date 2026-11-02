@@ -42,6 +42,7 @@ from typing import NamedTuple
 from ..audio import db_to_gain, semitone_to_hz
 from ..chips import DEFAULT_FM_PAN_LAW_DB, TL_MASK, OperatorReg, fm_level_db, keyed_carriers, psg_level_db
 from ..config import (
+    BAR_GRID,
     HIGHEST_ROOT,
     SAMPLE_FILE,
     SAMPLE_FINETUNE,
@@ -59,7 +60,17 @@ from ..config import (
     with_song_overrides,
 )
 from ..files import write_shared
-from ..mod import FINETUNE_STEPS, LOW_RATE_HZ, PERIOD_TABLE, ROWS_PER_PATTERN, ModNote, note_rate, period_rate
+from ..mod import (
+    FINETUNE_STEPS,
+    LOW_RATE_HZ,
+    PERIOD_TABLE,
+    ROWS_PER_PATTERN,
+    ModFile,
+    ModNote,
+    note_rate,
+    period_rate,
+    phrase_breaks,
+)
 from ..smps import (
     ALL_OPERATORS,
     C1_SEMITONE,
@@ -79,6 +90,7 @@ from ..smps import (
 from .conversion import ConversionPlan
 from .driver_state import walk_channel
 from .glides import channel_reads
+from .meter import Meter, find_meter
 from .slot_fit import fold_volumes, merge_windows, windows
 from .timeline import Timeline
 
@@ -90,6 +102,10 @@ _NOISE_ROOT = "A3"           # a noise sample rendered at ~28 kHz keeps most of 
 _MAX_GRID_STEPS = 32           # the coarsest row grid tried: 32 x the exact one
 _WIDE_SPEEDS = range(2, 17)    # speeds tried where none of 2-8 gives a BPM within _BPM_CLOSE
 _BPM_CLOSE = 0.1               # % off the driver's tempo
+_DEFAULT_SPEED = 6
+_BAR_KEYS = ("ticks_per_row", "target_speed", "mod_pattern_breaks")   # what row_grid: bar derives
+_MIN_PATTERN_ROWS = 16         # row_grid: bar cuts no pattern shorter (a phrase of a prime 67 rows: 64)
+_MAX_PATTERNS = 127            # max_patterns' default
 _FIRST_NOTE = 0x81           # the note byte of C0
 _TL_REGISTERS = range(OperatorReg.TL, OperatorReg.KS_AR)   # channel 0's operator TLs
 _FINETUNES = range(-8, 8)    # a MOD sample's finetune
@@ -168,6 +184,7 @@ class Derivation:
     volumes_folded: dict[str, tuple[str, int]] = field(default_factory=dict)   # {envelope at a volume:
                                                             # (the volume it plays as, the ticks its notes sound)}: no slot
     windows_merged: dict[str, int] = field(default_factory=dict)   # {voice / envelope: windows merged}
+    meter: Meter | None = None                              # row_grid: bar's rows (core.plan.meter)
 
 
 def load_config(path: str | Path, settings_path: str | None = None, variant: str | None = None) -> ConversionConfig:
@@ -185,6 +202,8 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
     """A minimal config (no channels:) completed from its song, the ROM's DAC samples written to
     its samples_dir; any other config as it is."""
     if not config.is_minimal:
+        if config.row_grid == BAR_GRID:
+            raise ValueError(f"row_grid: {BAR_GRID} derives the rows: a minimal config's (no channels:)")
         return config, None
     song = song or config.read_song()
     settings = with_song_overrides(settings, config)       # the song's max_window
@@ -365,7 +384,10 @@ class _Deriver:
         rows: the rest take EDx.  A 1-frame stagger between channels makes the exact grid 1 frame;
         the beat's grid (7 frames) keeps all but the staggered notes on rows.  Where it is too
         coarse (no speed's BPM reaches 32: Space Harrier II's Game Over, three long notes), the
-        largest part of it that fits.  The speed whose whole-number BPM is nearest the driver's tempo."""
+        largest part of it that fits.  The speed whose whole-number BPM is nearest the driver's tempo.
+        row_grid: bar: the song's meter (_bar_timing), where it has one that fits."""
+        if self._stated.get("row_grid") == BAR_GRID and self._bar_timing():
+            return
         if "ticks_per_row" in self._stated:
             return
         # The song's own rhythm: where a driver cuts a note (a run-out, a gate) falls between rows
@@ -387,9 +409,66 @@ class _Deriver:
         self._out.data["ticks_per_row"] = tpr
         self._out.derived.append("ticks_per_row")
 
-        self._default("target_speed", options[0]["speed"] if options else 6)
+        self._default("target_speed", options[0]["speed"] if options else _DEFAULT_SPEED)
 
-    def _tpr_options(self, grid: int) -> tuple[float, list[dict]]:
+    def _bar_timing(self) -> bool:
+        """row_grid: bar: the meter's row (core.plan.meter), a speed putting every frame on a MOD tick,
+        patterns of whole phrases from the first downbeat; False where the song has no meter or its
+        rows do not fit (the accurate grid then)."""
+        stated = [key for key in _BAR_KEYS if key in self._stated]
+        if stated:
+            raise ValueError(f"row_grid: {BAR_GRID} derives {', '.join(stated)}: state none")
+        meter = find_meter(self._song, self._passing())
+        fit = self._grid_options(meter.row) if meter is not None else None
+        if meter is None or fit is None:
+            return False
+
+        tpr, options = fit
+        self._default("ticks_per_row", tpr)
+        self._default("target_speed", self._frame_speed(meter.row, options))
+        breaks = self._phrase_breaks(meter)
+        if breaks:
+            self._default("mod_pattern_breaks", [{"pattern": p, "row": r} for p, r in breaks])
+        self._out.meter = meter
+        return True
+
+    def _passing(self) -> set[int]:
+        """The legato reads the MOD slides through or bakes, where a driver slides (Time Trax's):
+        a glide's (_glided), a sweep's one-frame steps."""
+        bare = ConversionPlan.of(ConversionConfig()).config
+        passing: set[int] = set()
+        for ch in self._song.channels:
+            if ch.rules.track(ch.header.channel_type).pitch.slide is None:
+                continue
+            passing |= self._glided(ch, bare)
+            passing |= {id(e) for e in ch.events if e.note is not None and e.note.is_no_attack
+                        and e.note.duration < 2 * self._timeline.ticks_per_frame_at(e.tick_position)}
+        return passing
+
+    def _frame_speed(self, grid: float, options: list[dict]) -> int:
+        """The smallest fitting speed whose MOD tick is a whole part of a frame, so an EDx puts a note
+        on its own frame (2.5 frames a row: speed 5); else the BPM's nearest."""
+        frames = grid / self._timeline.ticks_per_frame_at(0)
+        exact = [o["speed"] for o in options if math.isclose(o["speed"] / frames, round(o["speed"] / frames), abs_tol=1e-6)]
+        if exact:
+            return min(exact)
+        return options[0]["speed"] if options else _DEFAULT_SPEED
+
+    def _phrase_breaks(self, meter: Meter) -> list[tuple[int, int]]:
+        """Pattern breaks putting the first downbeat on a pattern's row 0 and whole phrases in each
+        pattern; none where that would pass the pattern limit."""
+        phrase = meter.rows_per_phrase
+        if phrase is None:
+            return []
+        rows = _pattern_rows(phrase)
+        first = round(meter.downbeat / meter.row) % rows
+        total = math.ceil(self._song.end_tick() / meter.row)
+        patterns = (1 if first else 0) + math.ceil((total - first) / rows)
+        if patterns > min(int(self._stated.get("max_patterns", _MAX_PATTERNS)), ModFile.MAX_POSITIONS):
+            return []
+        return phrase_breaks(first, rows, total)
+
+    def _tpr_options(self, grid: float) -> tuple[float, list[dict]]:
         """Ticks per row for `grid` and the speeds whose BPM fits.  Stored ticks hold the header's
         tempo divider; ticks_per_row counts duration units (Timeline multiplies the divider back in).
         Speeds 2-8, or up to 16 where none of those comes close: Good Ending's 13-frame rows are
@@ -403,7 +482,7 @@ class _Deriver:
             options = bpm_rounding_options(h.tempo_divider, h.tempo_modifier, tpr, fps, speeds=_WIDE_SPEEDS) or options
         return tpr, options
 
-    def _grid_options(self, grid: int) -> tuple[float, list[dict]] | None:
+    def _grid_options(self, grid: float) -> tuple[float, list[dict]] | None:
         """`grid`'s ticks per row and speeds, if the song fits the pattern limit at it and some speed's
         BPM fits (a tempo without one: any); else None."""
         limit = int(self._stated.get("max_patterns", 127))
@@ -705,6 +784,17 @@ def _special_voice(voice: SmpsVoice) -> int | None:
 
 def _unpatched_voice(voice: SmpsVoice) -> int | None:
     return voice.unpatched
+
+
+def _pattern_rows(phrase: int) -> int:
+    """Rows a pattern holds under row_grid: bar: 64 where phrases tile it (a power of two); else the
+    most whole phrases that fit (Time Trax's Stages 2, 5, 7: three 20-row bars, 60), or the largest
+    part of a longer phrase (96: 48)."""
+    if phrase & (phrase - 1) == 0:
+        return ROWS_PER_PATTERN
+    rows = (phrase * (ROWS_PER_PATTERN // phrase) if phrase <= ROWS_PER_PATTERN
+            else max(d for d in range(1, ROWS_PER_PATTERN + 1) if phrase % d == 0))
+    return rows if rows >= _MIN_PATTERN_ROWS else ROWS_PER_PATTERN
 
 
 def _output_path(config_path: Path) -> str:

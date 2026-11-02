@@ -230,7 +230,8 @@ def main():
         derived=derivation.derived if derivation else [], stale=derivation.stale if derivation else [],
         folded=derivation.folded if derivation else {},
         volumes_folded=derivation.volumes_folded if derivation else {},
-        windows_merged=derivation.windows_merged if derivation else {}))
+        windows_merged=derivation.windows_merged if derivation else {},
+        phrase_rows=derivation.meter.rows_per_phrase if derivation and derivation.meter else None))
 
 
 if __name__ == '__main__':

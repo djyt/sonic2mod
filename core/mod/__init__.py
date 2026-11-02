@@ -3,7 +3,7 @@
     cell.py          one pattern cell's 4 bytes (Cell), ROWS_PER_PATTERN
     file.py          ModFile writer, read_sample (a sample_list file)
     reader.py        read_mod: a MOD read back (ModImage), isolate_channel
-    breaks.py        pattern breaks: a pattern ended early, the rows after it repacked
+    breaks.py        pattern breaks: a pattern ended early, the rows after it repacked; patterns of N rows
     notes.py         PERIOD_TABLE, note_rate / period_rate, ModNote (C1..B3), MOD_NOTE_MAP
     volume.py        dB -> MOD volume (0..64)
     limits.py        bytes a sample may hold, the sustain that fits
@@ -12,7 +12,7 @@
     timing.py        when each row of one pass plays (Fxx followed), EDx delays
 """
 
-from .breaks import apply_pattern_breaks, row_to_bcd, shift_for_breaks
+from .breaks import apply_pattern_breaks, phrase_breaks, row_to_bcd, shift_for_breaks
 from .cell import ROWS_PER_PATTERN
 from .file import MAX_INSTRUMENT, PAL_AMIGA_CLOCK, ModFile, ModSample, read_sample
 from .limits import MAX_MOD_SAMPLE_BYTES, max_sustain_secs, sample_limit_bytes
@@ -69,6 +69,7 @@ __all__ = [
     "max_sustain_secs",
     "note_rate",
     "period_rate",
+    "phrase_breaks",
     "read_mod",
     "read_sample",
     "row_to_bcd",

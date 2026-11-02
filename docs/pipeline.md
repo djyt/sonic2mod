@@ -100,6 +100,20 @@ BPM must also fit 32–255 (Drowning needs `ticks_per_row: 2`).
 | $04, $08, $0C | 4 | 4 |
 | $04, $06, $0C | 2 | 2 |
 
+**`row_grid: bar`** (a minimal config's variant) lays the song out as a composer would instead
+(`core/plan/meter.py`), from the notes that key on:
+
+    step      the coarsest grid holding 85 % of them, each channel at its own phase (an echo a frame late)
+    row       the step, halved while over 2 % of the notes (legato ones too, not glide or sweep
+              steps) share a row with their channel's previous one
+    phrase    the shortest lag its pitches repeat at nearly as well as the best: a bar or a few
+    downbeat  the loop's start, else the phase most notes fall on: a pattern's row 0
+
+Patterns hold whole phrases: 64 rows where phrases are a power of two rows, else breaks every
+`k × phrase` rows (Time Trax's Stages 2, 5, 7: 20-row 5/4 bars, 60-row patterns).  Notes between
+rows take `EDx`, exact where the speed puts every frame on a MOD tick; where the cell's effect slot is
+taken (a gate's `ECx`, a `Cxx`, a legato `3FF`), they round to a row: a frame off.
+
 ### BPM
 
 The driver reads `fps × (m − 1) / m` ticks a second (tempo modifier *m*; the `TempoWait` mechanism is

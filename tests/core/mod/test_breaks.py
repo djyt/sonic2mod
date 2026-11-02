@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import unittest
 
-from core.mod import ROWS_PER_PATTERN, ModFile, apply_pattern_breaks, shift_for_breaks
+from core.mod import ROWS_PER_PATTERN, ModFile, apply_pattern_breaks, phrase_breaks, shift_for_breaks
 
 
 def _numbered(patterns: int) -> ModFile:
@@ -53,3 +53,19 @@ class Breaks(unittest.TestCase):
         self.assertEqual(shift_for_breaks(31, [(0, 31)]), 31)
         self.assertEqual(shift_for_breaks(32, [(0, 31)]), 64)
         self.assertEqual(shift_for_breaks(64, [(0, 31)]), 96)
+
+
+class PhraseBreaks(unittest.TestCase):
+    def test_a_pickup_then_patterns_of_whole_phrases(self):
+        breaks = phrase_breaks(32, 40, 200)
+        self.assertEqual(breaks, [(0, 31), (1, 39), (2, 39), (3, 39), (4, 39)])
+
+        # Applied: each pattern after the pickup starts 40 rows after the one before
+        mod = _numbered(4)
+        apply_pattern_breaks(mod, breaks)
+        for pattern in range(1, 5):
+            self.assertEqual(_origin(mod, pattern, 0), divmod(32 + 40 * (pattern - 1), ROWS_PER_PATTERN))
+
+    def test_whole_patterns_break_only_for_the_pickup(self):
+        self.assertEqual(phrase_breaks(0, ROWS_PER_PATTERN, 500), [])
+        self.assertEqual(phrase_breaks(16, ROWS_PER_PATTERN, 500), [(0, 15)])

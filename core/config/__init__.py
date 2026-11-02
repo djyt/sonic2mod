@@ -36,6 +36,7 @@ from .settings import (
     with_song_overrides,
 )
 from .song import (
+    BAR_GRID,
     HIGHEST_ROOT,
     SAMPLE_FILE,
     SAMPLE_FINETUNE,
@@ -47,6 +48,7 @@ from .song import (
 )
 
 __all__ = [
+    "BAR_GRID",
     "DEFAULT_AMIGA_CLOCK",
     "DEFAULT_PSG_OVERSAMPLE",
     "DEFAULT_SHELF_HZ",

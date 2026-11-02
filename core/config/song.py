@@ -28,12 +28,14 @@ _KEYS = frozenset({
     "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
     "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_vacate", "merge_output_file",
     "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "merge_loop_timbre", "loop_drift_db",
-    "treble_shelf_db", "dac_stall", "max_window", "level_patch_min", "baked_slots", "window_root",
+    "treble_shelf_db", "dac_stall", "max_window", "level_patch_min", "baked_slots", "window_root", "row_grid",
 })
 
 _TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
 WINDOW_ROOTS = ("lowest", "highest")            # window_root's values
 HIGHEST_ROOT = WINDOW_ROOTS[1]
+ROW_GRIDS = ("accurate", "bar")               # row_grid's values
+BAR_GRID = ROW_GRIDS[1]
 
 def variant_output_file(path: str, variant: str) -> str:
     """Where a variant writes when it states no output_file: <stem>_<variant><ext>."""
@@ -196,6 +198,9 @@ class ConversionConfig:
     # harmonics (the smallest samples); "highest": as high as its range (its top at top_note) and the
     # sample limit (its longest ring whole) allow, the most rate
     window_root: str = "lowest"
+    # Minimal configs: the row grid derived.  "accurate": the finest the notes need (a check against the
+    # rip); "bar": a step a row, whole phrases a pattern (core.plan.meter), as a composer lays it out
+    row_grid: str = "accurate"
     # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
     # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
     merge_max_synth_shift: int = 12
@@ -358,3 +363,6 @@ class ConversionConfig:
         self.window_root = str(data.get('window_root', self.window_root))
         if self.window_root not in WINDOW_ROOTS:
             raise ValueError(f"window_root: {self.window_root!r} is not one of {', '.join(WINDOW_ROOTS)}")
+        self.row_grid = str(data.get('row_grid', self.row_grid))
+        if self.row_grid not in ROW_GRIDS:
+            raise ValueError(f"row_grid: {self.row_grid!r} is not one of {', '.join(ROW_GRIDS)}")

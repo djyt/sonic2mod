@@ -69,10 +69,11 @@ legato read after it re-pitches the note unkeyed (song 0's FM4 bass under its cr
 - **Quality:** `window_root: highest` in every config: each window rooted as high as its range and the
   64 K limit allow (notes' mean rate ~8 kHz -> ~20 kHz; the samples about twice the bytes).
 - **Speed:** songs 1, 2, 3 and 5 derive 1 frame a row (250 BPM, speed 2): legato reads (glide,
-  portamento and sweep steps) land on odd frames.  `--variant slow` rows the keyed notes by the bar:
-  songs 2 and 5 a 16th (2.5 frames, speed 5: 4 bars a pattern), song 3 a 32nd (3 frames: 2 bars),
-  song 1 3 frames (its 120-frame bar, 20 16ths, is 40 rows).  The same notes (song 3: one 1-frame
-  stagger off); glides step a row at a time.
+  portamento and sweep steps) land on odd frames.  `--variant bar` (`row_grid: bar`) rows them by
+  the meter: song 1 6 frames (5/4: 20-row bars, 60-row patterns), song 2 5 (32-row phrases), song 3
+  3 (an intro bar, then 64-row phrases).  The same notes, 55-144 a frame off; glides step a row at a
+  time.  The pitch audit misjudges song 2's: FM5's intro has 4-frame notes 5-frame rows cannot all
+  hold, and its running alignment settles a note off over the F#5s after (the MOD's note-ons match).
 
 ## Against the rips
 

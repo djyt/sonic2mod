@@ -205,8 +205,9 @@ python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 # Every register write in order, decoded (TL op1, key on, pan, PSG tone / att), a run of one field a row:
 # what --frames folds away (a volume write rewriting every TL, a key-off before a key-on)
 python tools/vgm/vgm_analyze.py "reference/vgz/streets_of_rage_2/15 - Expander.vgz" --writes --channel FM3 --from 0 --to 3
-# Each driver update (its bursts of writes, core.vgm.driver_updates): first write's sample, how late, the gap to
-# the one before in samples and frames; a V-int lost flagged (an update running into the next frame, then a gap of two)
+# Each driver update (its bursts of writes, core.vgm.driver_updates): first write's sample, how late, its reach past
+# the next V-int, the gap to the one before; a V-int lost flagged (an update running past the next V-int, then a
+# frame with none; "possible": one ending just short of it, then idle - the writes cannot tell)
 python tools/vgm/vgm_analyze.py "reference/vgz/time_trax/03 - Stages 1, 3, 8.vgz" --updates --from 1270 --to 1280
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
@@ -238,7 +239,7 @@ python tools/vgm/vgm_frames.py --all --configs configs/streets_of_rage
 python tools/vgm/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one song: its misses
 python tools/vgm/vgm_frames.py --all --configs configs/time_trax --aspects pitch pitch-path   # only these judged
 # A rip's own glitches (a V-int lost: every channel a frame late from there on): candidates, with evidence
-# (each moved channel's attacks; the update gaps around it: a gap after an overrun = a V-int lost).
+# (each moved channel's attacks; the updates after a frame with none: after an overrun = a V-int lost).
 # Confirmed ones go in rips.yaml by hand ({rip:, glitches:, foreign:}); every rip tool then undoes them
 python tools/vgm/vgm_frames.py --all --glitches --configs configs/space_harrier_2
 

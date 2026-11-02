@@ -94,5 +94,8 @@
     - {frame: 10020, frames: -1, why: "update at 10019 (46 writes) runs into 10020, none in it: its V-int lost"}
     - {frame: 11045, frames: -1, why: "update at 11044 (70 writes) runs into 11045, none in it: its V-int lost"}
     - {frame: 11174, frames: -1, why: "update at 11173 (21 writes) runs into 11174, none in it: its V-int lost"}
-    - {frame: 11239, frames: -1, why: "update at 11238 (20 writes) runs into 11239, none in it: its V-int lost"}
-05_game_over: "06 - Game Over.vgz"
+    - {frame: 11303, frames: -1, why: "update at 11302 (69 writes: the loop's jump, every track read) runs into 11303, where the rip loops: its V-int lost, as at 280"}
+05_game_over:
+  rip: "06 - Game Over.vgz"
+  glitches:
+    - {frame: 516, frames: -1, why: "update at 515 (74 writes) runs into 516, none in it: its V-int lost"}

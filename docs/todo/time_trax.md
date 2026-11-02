@@ -269,13 +269,12 @@ reached.  A glide is the same with another curve: D4 uses it.
 - [x] 1.4 Run: `vgm_lift --all --configs configs/time_trax --aspects onset length note` and
   `vgm_frames --all`: 0 of 6 clean, as expected before Phase 2.  Pitch misses a semitone (the
   transposition dropped); level the volume law; length rests that hold, `$96` / `$98`.  The rips'
-  lost frames (0.3) confirmed: V-ints the driver loses ($06F4), 77 in `rips.yaml` (10-25 a song).
+  lost frames (0.3) confirmed: V-ints the driver loses ($06F4), 78 in `rips.yaml` (1-25 a song).
   Each set checked whole: every rip then loops its song's frames, and the lift's onsets fall
-  (3734 / 4369 / 4798 / 2877 / 5845 -> 12 / 24 / 25 / 22 / 40, with 2.1).  `vgm_analyze --updates`
-  flags most; four it misses, placed by the notes: an update that ends just short of the next
-  frame (song 0's 5618), one split by a late burst (song 4's 2330, 8995), none seen (song 3's
-  3592).  Two of its flags are no loss (song 3's 3199, song 4's 3099); song 3's 3592 and song 4's
-  6688 sit somewhere in idle frames.
+  (3734 / 4369 / 4798 / 2877 / 5845 / 31 -> 12 / 24 / 25 / 22 / 10 / 3, with 2.1).  `vgm_analyze
+  --updates` (a frequency rewrite starts an update; an update's reach past the V-int estimated
+  from the log) finds all but those the writes cannot place: song 3's 3592 and song 4's 6688 sit
+  in idle frames (6688: "possible"), song 4's 11303 at the rip's end (the loop's jump, as at 280).
 
 ### Phase 2: the walk
 - [x] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.  A read (note or

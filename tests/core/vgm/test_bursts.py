@@ -8,9 +8,11 @@ from __future__ import annotations
 import unittest
 
 from core.vgm import Burst, VgmOp, VgmWrite
-from core.vgm.bursts import BURST_GAP, write_bursts
+from core.vgm.bursts import BURST_GAP, Tune, write_bursts
+from core.vgm.writes import tone_register
 
 _DAC_DATA = 0x2A
+_FNUM_HI = 0xA4
 
 
 def _fm(sample: int, reg: int = 0x28) -> VgmWrite:
@@ -27,6 +29,11 @@ class Bursts(unittest.TestCase):
         stream = [_fm(s, _DAC_DATA) for s in range(110, 900, 50)] + [VgmWrite(500, VgmOp.PCM_SEEK, 0, 0, 0)]
         writes = sorted([_fm(100), *stream, _fm(900)], key=lambda w: w.sample)
         self.assertEqual([b.first for b in write_bursts(writes)], [100, 900])
+
+    def test_a_burst_keeps_its_frequency_writes(self):
+        writes = [_fm(10), _fm(20, _FNUM_HI), _fm(30), _fm(40, _FNUM_HI)]
+        register = tone_register(writes[1])
+        self.assertEqual(write_bursts(writes)[0].tunes, (Tune(1, 20, 10, register), Tune(3, 40, 30, register)))
 
     def test_no_writes_no_bursts(self):
         self.assertEqual(write_bursts([]), ())

@@ -33,6 +33,9 @@ _FIELDS = {OperatorReg.DT_MUL: "DT/MUL", OperatorReg.TL: "TL", OperatorReg.KS_AR
 _PSG_LATCH, _PSG_ATT, _PSG_NOISE_CHANNEL = 0x80, 0x10, 3
 _PSG_DATA_LOW, _PSG_DATA_HIGH = 0x0F, 0x3F
 _PSG_NAMES = ("PSG1", "PSG2", "PSG3", "NOISE")
+_PSG_CHANNEL_SHIFT, _PSG_CHANNEL_MASK = 5, 3
+_PART_REGISTERS = 0x100         # tone_register's number: a YM part's registers each, then the PSG's tones
+_PSG_TONES = 2 * _PART_REGISTERS
 GLOBAL = "YM"
 
 
@@ -65,6 +68,21 @@ def decoded_writes(log: VgmLog) -> Iterator[DecodedWrite]:
 def is_dac_byte(w: VgmWrite) -> bool:
     """A DAC data byte: what decoded_writes leaves out."""
     return w.op is VgmOp.FM and not w.port and w.reg == _DAC_DATA
+
+
+def tone_register(w: VgmWrite) -> int | None:
+    """The register `w` sets a channel's frequency in (a YM part's $A0-$AE, a PSG tone latch), as a
+    number; None for any other write.  A driver writes each once an update."""
+    if w.op is VgmOp.FM:
+        return w.port * _PART_REGISTERS + w.reg if _FNUM_LO <= w.reg < _ALGORITHM else None
+    if w.op is not VgmOp.PSG or not w.value & _PSG_LATCH or w.value & _PSG_ATT:
+        return None
+    channel = _psg_channel(w.value)
+    return None if channel == _PSG_NOISE_CHANNEL else _PSG_TONES + channel
+
+
+def _psg_channel(latch: int) -> int:
+    return (latch >> _PSG_CHANNEL_SHIFT) & _PSG_CHANNEL_MASK
 
 
 def _fm(w: VgmWrite) -> tuple[str, str]:
@@ -117,7 +135,7 @@ class _PsgLatch:
         """((channel, text), 1 where `after`, the next byte, was its data byte and is read with it)."""
         if not byte & _PSG_LATCH:
             return self._data(byte), 0
-        self._channel = (byte >> 5) & 3
+        self._channel = _psg_channel(byte)
         self._attenuation = bool(byte & _PSG_ATT)
         name = _PSG_NAMES[self._channel]
         if self._attenuation:

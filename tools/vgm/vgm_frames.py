@@ -16,9 +16,9 @@ ends inside ("log end"), and a channel's loop re-entry keyed a frame late ("re-e
 
 --glitches scans for the rip's own glitches instead (core/audit/glitch_scan.py): where every
 channel's key-ons move a frame against the song at once, with the evidence; a channel moving
-alone is the song's.  Under each candidate, the driver's updates around it more than a frame
-apart (the frame, the gap in frames): a gap after an update running into the next frame is a V-int
-lost; none, something else (vgm_analyze.py --updates: every update).  It prints candidates;
+alone is the song's.  Under each candidate, the driver's updates around it after a frame with none
+(the frame, the gap in frames): one after an update running past the next V-int is a V-int lost
+("possible": one ending near it, then idle); none, something else (vgm_analyze.py --updates).  It prints candidates;
 confirming one into rips.yaml is a human's call.
 
 Pairs as vgm_lift.py's (core/audit/rips.py): a config and its rip by number, or by the rips.yaml
@@ -62,7 +62,7 @@ from core.audit import (
 )
 from core.config import find_settings, load_settings
 from core.ui import add_shelf_arguments, rip_shelf
-from core.vgm import FrameLog
+from core.vgm import DriverUpdate, FrameLog
 
 _DEFAULT_MISSES = 8               # misses listed per channel and aspect
 _GAPS_SHOWN = 6                   # update gaps listed under a glitch candidate
@@ -121,13 +121,17 @@ def _gaps_line(candidate: GlitchCandidate) -> str:
     """'update gaps: 1274 1.87, 1276 1.90 after an overrun: a V-int lost' (the lost ones listed first)."""
     if not candidate.updates:
         return "        updates a frame apart: no V-int lost"
-    shown = sorted(candidate.updates, key=lambda u: (not u.lost, u.frame))[:_GAPS_SHOWN]
-    gaps = ", ".join(f"{u.frame} {u.gap_frames:.2f}" + (" after an overrun" if u.lost else "")
-                     for u in sorted(shown, key=lambda u: u.frame))
+    shown = sorted(candidate.updates, key=lambda u: (not u.lost, not u.possible, u.frame))[:_GAPS_SHOWN]
+    gaps = ", ".join(f"{u.frame} {u.gap_frames:.2f}" + _gap_note(u) for u in sorted(shown, key=lambda u: u.frame))
     more = len(candidate.updates) - len(shown)
     lost = candidate.lost_vints
     verdict = "no V-int lost" if not lost else "a V-int lost" if lost == 1 else f"{lost} V-ints lost"
+    verdict += f", {candidate.possible_vints} possible" if candidate.possible_vints else ""
     return f"        update gaps: {gaps}" + (f" (+{more} more)" if more else "") + f": {verdict}"
+
+
+def _gap_note(u: DriverUpdate) -> str:
+    return " after an overrun" if u.lost else " after a near overrun?" if u.possible else ""
 
 
 def _tally(check: FrameCheck, tied: bool) -> str:

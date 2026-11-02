@@ -16,9 +16,9 @@ alone is the song's doing (a note, a flag), not the rip's:
     FM2 ───●───●──●────|───○──○────○      the window: the last ● to the first ○ over the channels
     FM4 ─●───●───●─────|─○───○─○────      every channel late from there: a V-int lost (-1)
 
-Each candidate carries the driver's updates around its window that came more than a frame after
-the one before (core.vgm.driver_updates): a gap of two after an update running into the next frame
-is a V-int lost; none, the move is something else.
+Each candidate carries the driver's updates around its window that followed a frame with none
+(core.vgm.driver_updates): one after an update running past the next V-int is a V-int lost (or
+possible: one ending near it, then an idle stretch); none, the move is something else.
 
 The scan prints candidates (vgm_frames.py --glitches); a human confirms one into rips.yaml.  It
 reads the rip as recorded (no glitch undone), less the notes rips.yaml says are another sound's.
@@ -45,7 +45,6 @@ _MOVE_NOTES = 2         # attacks running on another offset that move a channel
 _MIN_CHANNELS = 2       # channels moving together that make a glitch
 _ACROSS = 600           # frames (10 s) either side of a window a steady channel's attacks are looked for
 _UPDATE_REACH = 1       # frames either side of a window whose updates are its evidence
-_ONE_FRAME = 1          # an update's gap, rounded, when no V-int is missed
 
 # An FM channel's attacks: [(the song's frame, note) ...]
 Attacks = list[tuple[int, PlayedNote]]
@@ -71,12 +70,17 @@ class GlitchCandidate:
     moves: tuple[ChannelMove, ...]
     steady: tuple[str, ...] = ()        # channels playing across the window that did not move
     spanning: tuple[str, ...] = ()      # channels silent across it (and others), moved by the sum
-    updates: tuple[DriverUpdate, ...] = ()  # the driver's updates around the window more than a frame apart
+    updates: tuple[DriverUpdate, ...] = ()  # the driver's updates around the window after a frame with none
 
     @property
     def lost_vints(self) -> int:
-        """V-ints the driver's updates show lost around the window (an overrun, then a gap)."""
+        """V-ints the driver's updates show lost around the window (an overrun, then a frame with none)."""
         return sum(u.lost for u in self.updates)
+
+    @property
+    def possible_vints(self) -> int:
+        """... that may have been lost (an update ending near the V-int, then an idle stretch)."""
+        return sum(u.possible for u in self.updates)
 
     @property
     def window(self) -> tuple[int | None, int]:
@@ -124,8 +128,8 @@ def scan_glitches(song: SmpsSong, frames: FrameLog, channels: ChannelChoice = _E
     scans = [_scan_at(song, frames, channels, foreign, early) for early in (False, True)]
     scan = min(scans, key=lambda s: len(s.candidates))
 
-    # Each candidate's evidence: the updates around it a gap apart
-    gaps = [u for u in driver_updates(frames) if u.gap_frames is not None and round(u.gap_frames) != _ONE_FRAME]
+    # Each candidate's evidence: the updates around it after a frame with none
+    gaps = [u for u in driver_updates(frames) if u.skipped]
     scan.candidates = [dataclasses.replace(c, updates=_around(c, gaps)) for c in scan.candidates]
     return scan
 

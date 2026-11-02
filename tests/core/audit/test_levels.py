@@ -1,4 +1,5 @@
-"""write_volumes (core/audit/levels.py) on a minimal config whose slots have moved.
+"""core/audit/levels.py: instrument_levels' note windows; write_volumes on a minimal config whose
+slots have moved.
 
     python -m pytest tests/core/audit/test_levels.py -q
 """
@@ -10,7 +11,10 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
+
 from core.audit import levels
+from core.audit.render import SR
 from core.config import SampleRow
 
 
@@ -33,3 +37,27 @@ class WriteVolumes(unittest.TestCase):
         self.assertIn('  - [12, "psg_noise_e7.raw", 2, 0]', out)            # not measured: renumbered only
         self.assertIn('[7, "fm_v01_Cs3.raw", 14, 0]', out)                  # a window with no row: added
         self.assertNotIn("[5,", out)
+
+
+class NoteWindows(unittest.TestCase):
+    def test_a_quiet_hit_is_not_read_from_the_loud_one_landing_early_after_it(self):
+        # Quiet and loud hits take turns, 0.2 s each; the MOD's loud ones start 5 ms early (rows are
+        # even, the chip's ticks not).  Both read as they are, not the quiet one 10 dB loud.
+        hit, early, pairs = 0.2, 0.005, 8
+        level = {1: 0.01, 2: 0.5}
+        frames = round(2 * hit * pairs * SR) + SR
+        vgm, mod = np.zeros((frames, 2)), np.zeros((frames, 2))
+        times, events = [], []
+        for k in range(2 * pairs):
+            ins, t = 1 + k % 2, k * hit
+            starts = (t, t - early if ins == 2 and k else t)
+            for audio, start in zip((vgm, mod), starts, strict=True):
+                a, b = round(start * SR), round((start + hit) * SR)
+                audio[a:b] = level[ins]
+            times.append(t)
+            events.append((starts[1], ins, None))
+        found = levels.instrument_levels({"FM3": times}, {"FM3": 0}, {0: events}, {1: ("q", 64), 2: ("l", 64)},
+                                         frames / SR, {"FM3": vgm}, {"FM3": mod}, 0.0)
+        for it in found["instruments"]:
+            self.assertAlmostEqual(it["err_db"], 0.0, delta=0.5, msg=it["name"])
+

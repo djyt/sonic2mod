@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from ..audio import cents, db_to_gain, gain_to_db, power_to_db
+from ..mod import TICK_SECS_AT_1_BPM, ModImage, timed_pass
 from .render import SR, workers
 
 
@@ -33,6 +34,52 @@ def load_wav(path: Path, stereo: bool = False) -> np.ndarray:
     a = np.frombuffer(raw, dtype='<i2').astype(np.float64) / 32768.0
     a = a.reshape(-1, ch)
     return a if stereo else a.mean(axis=1)
+
+
+class ModRenderClock:
+    """Moves a MOD's libopenmpt renders onto the clock core.mod.timed_pass times its rows by.
+
+    libopenmpt plays a tick as a whole number of samples, truncated: 816 for 816.67 at 135 BPM, so
+    its render runs 0.08 % fast and drifts ahead of the rows (Golden Axe's Battle Field: 81 ms by
+    99 s, where its drum hits were measured off their notes).  Each tick's samples are moved to
+    where the tick starts; the fraction of a sample a tick lacks repeats the tick's last one.
+
+        rows' clock  |  tick 0   :  tick 1   :  tick 2  |      816.67 frames a tick
+        render       | tick 0  :tick 1  :tick 2  |             816
+    """
+
+    def __init__(self, mod: ModImage, speed: int):
+        rows, end = timed_pass(mod, speed)
+
+        # One BPM per tick of the pass
+        bpms: list[int] = []
+        for i, r in enumerate(rows):
+            row_end = rows[i + 1].start if i + 1 < len(rows) else end
+            bpms += [r.bpm] * round((row_end - r.start) * r.bpm / TICK_SECS_AT_1_BPM)
+
+        # Each tick's start in frames: as timed, and as rendered
+        timed = SR * TICK_SECS_AT_1_BPM / np.array(bpms, dtype=np.float64)
+        self._played = np.floor(timed).astype(np.int64)
+        self._timed_start = np.concatenate(([0.0], np.cumsum(timed)))
+        self._played_start = np.concatenate(([0], np.cumsum(self._played)))
+
+    def load(self, path: Path) -> np.ndarray:
+        """load_wav(path, stereo=True), on the rows' clock."""
+        audio = load_wav(path, stereo=True)
+        return audio[self._render_frames(len(audio))]
+
+    def _render_frames(self, frames: int) -> np.ndarray:
+        """The render's frame for each frame of the rows' clock; past the pass (a release tail)
+        the render runs on, shifted by the pass's drift."""
+        ticks = len(self._played)
+        if not ticks:
+            return np.arange(frames)
+        drift = round(self._timed_start[-1]) - int(self._played_start[-1])
+        n = np.arange(frames + max(drift, 0))
+        k = np.minimum(np.searchsorted(self._timed_start, n, side="right") - 1, ticks - 1)
+        within = np.minimum(np.floor(n - self._timed_start[k]).astype(np.int64), self._played[k] - 1)
+        frame = np.where(n < self._timed_start[-1], self._played_start[k] + within, n - drift)
+        return np.clip(frame, 0, frames - 1)
 
 
 def db(x: float) -> float:

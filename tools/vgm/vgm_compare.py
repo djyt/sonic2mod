@@ -66,6 +66,7 @@ from core.audit import (
     SR,
     VGM_CHANNELS,
     VIB_MIN_NOTE,
+    ModRenderClock,
     OnsetMatch,
     audio_onsets,
     audit_pitches,
@@ -516,14 +517,15 @@ def report(conv: ConversionPlan, song, recording: _Reference, mod_path: Path, wo
     sources = {c.source: c.mod_channel for c in cfg.channels}
 
     # Renders: the MOD's are named after the source, the VGM's after the chip channel
+    mod = read_mod(mod_path)
+    clock = ModRenderClock(mod, cfg.target_speed)
     vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
-    mod_st = {n: load_wav(workdir / f"mod_{src}.wav", stereo=True) for src, n in zip(chan_map, names, strict=True)}
-    mod_st["FULL"] = load_wav(workdir / "mod_FULL.wav", stereo=True)
+    mod_st = {n: clock.load(workdir / f"mod_{src}.wav") for src, n in zip(chan_map, names, strict=True)}
+    mod_st["FULL"] = clock.load(workdir / "mod_FULL.wav")
     rd = _Renders(vgm_st, mod_st)
 
     offset_auto = offset is None
     chip_tl, chip_end = pitch_segments(log)
-    mod = read_mod(mod_path)
     mod_tl, mod_end = mod_pitch_timeline(mod, conv, song)
     offset = _align(offset, chip_tl, mod_tl, sources, rd)
     print()
@@ -567,8 +569,8 @@ def report(conv: ConversionPlan, song, recording: _Reference, mod_path: Path, wo
     return res
 
 
-def report_merged(recording: _Reference, workdir: Path, offset: float | None, ref_chan: str,
-                  labels: dict[str, list[str]], max_rows: int = 400) -> dict:
+def report_merged(recording: _Reference, mod_path: Path, speed: int, workdir: Path, offset: float | None,
+                  ref_chan: str, labels: dict[str, list[str]], max_rows: int = 400) -> dict:
     """The merged build: every MOD channel against the sum of the chip channels folded onto it.
 
     Whole-song balance, audio onsets, and the pitch of each merged channel at its PRIMARY's
@@ -578,8 +580,9 @@ def report_merged(recording: _Reference, workdir: Path, offset: float | None, re
     """
     names = list(labels)
     notes = recording.notes
+    clock = ModRenderClock(read_mod(mod_path), speed)
     rd = _Renders({n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]},
-                  {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *names]})
+                  {n: clock.load(workdir / f"mod_{n}.wav") for n in ["FULL", *names]})
     offset_auto = offset is None
     if offset is None:
         # Within three quarters of a second: a repetitive song correlates a whole bar off
@@ -683,11 +686,13 @@ def report_merged_patterns(cfg: ConversionConfig, recording: _Reference, mod_pat
     Pooled notes (merge_fill, fill: true) sound on whatever column is silent: in no reference; a
     vacated channel's (merge_vacate) are all credited to its own column, the moved ones too.
     """
-    spans = mod_pattern_spans(read_mod(mod_path))
+    mod = read_mod(mod_path)
+    spans = mod_pattern_spans(mod, cfg.target_speed)
     layout = column_sources(cfg, sorted({p for p, _, _ in spans}))
     columns = sorted(layout)
+    clock = ModRenderClock(mod, cfg.target_speed)
     vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *set(chip_names.values())]}
-    mod_st = {n: load_wav(workdir / f"mod_{n}.wav", stereo=True) for n in ["FULL", *(f"col{c}" for c in columns)]}
+    mod_st = {n: clock.load(workdir / f"mod_{n}.wav") for n in ["FULL", *(f"col{c}" for c in columns)]}
     offset_auto = offset is None
     if offset is None:
         offset = envelope_offset(vgm_st["FULL"].mean(axis=1), mod_st["FULL"].mean(axis=1), max_lag=0.75)
@@ -949,7 +954,7 @@ def main() -> None:
     if per_pattern:
         res = report_merged_patterns(cfg, reference, mod_path, workdir, args.offset, chip_names)
     elif args.merged:
-        res = report_merged(reference, workdir, args.offset, args.ref, labels, args.max_rows)
+        res = report_merged(reference, mod_path, cfg.target_speed, workdir, args.offset, args.ref, labels, args.max_rows)
     else:
         res = report(conv, song, reference, mod_path, workdir, args.offset, args.ref, args.max_rows,
                      pitch_tol=args.fail_pitch_cents if args.fail_pitch_cents is not None else 35.0)

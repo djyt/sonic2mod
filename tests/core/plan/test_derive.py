@@ -372,3 +372,21 @@ class TimeTrax(unittest.TestCase):
 
     def test_at_0_every_copy_keeps_its_own(self):
         self.assertFalse(self._derive(0).levels_folded)
+
+    def test_window_root_highest_raises_each_root_within_the_range_and_the_limit(self):
+        """Each window's root as high as top_note and the sample limit allow, never lower."""
+        def roots(how: str) -> dict:
+            stated = _TIME_TRAX_STATED | {"rom_song": "$04", "level_patch_min": 3, "window_root": how}
+            data = derive_config(stated, self.songs[0x04], "configs/time_trax/song.yaml", self.settings).data
+            return {e["mod_instrument"]: e for entries in data["voice_map"].values() for e in entries}
+
+        low, high = roots("lowest"), roots("highest")
+        top = self.settings.top_note
+        raised = 0
+        for inst, entry in high.items():
+            root, floor = ModNote[entry["root"]].value, ModNote[low[inst]["root"]].value
+            span = parse_smps_note(entry["high"]) - parse_smps_note(entry["low"])
+            self.assertGreaterEqual(root, floor)
+            self.assertLessEqual(root + span, top)
+            raised += root > floor
+        self.assertGreater(raised, len(high) // 2)

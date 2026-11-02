@@ -3,3 +3,4 @@
 name: "Song 17"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$17"
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate

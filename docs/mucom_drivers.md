@@ -109,6 +109,8 @@ Bottom, the beta's, matches no song; `$04`, `$12`, `$17` have none)
 **Slots:** 7 songs need 33-53 instruments as derived (many voices, `$FA` copies, an envelope at
 each volume).  A bank (`9xx`) holds one looped sound, and these sustain or fade over seconds, so the
 plain build does not bank: a minimal config gives way as `docs/yaml_config.md` says (an envelope at
-its most played volume, copies, merged windows, special-mode copies last).  All 26 fit.
+its most played volume, copies, merged windows, special-mode copies last).  All 26 fit.  Every config
+states `window_root: highest`: each window rooted as high as its range and the 64 K limit allow
+(notes' mean rate ~12 kHz -> ~21 kHz; the samples about twice the bytes).
 
 **Not done:** the SFX, the voice clips; listening (the user).

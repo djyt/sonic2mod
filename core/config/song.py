@@ -28,10 +28,12 @@ _KEYS = frozenset({
     "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
     "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_vacate", "merge_output_file",
     "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "merge_loop_timbre", "loop_drift_db",
-    "treble_shelf_db", "dac_stall", "level_patch_min", "baked_slots",
+    "treble_shelf_db", "dac_stall", "level_patch_min", "baked_slots", "window_root",
 })
 
 _TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
+WINDOW_ROOTS = ("lowest", "highest")            # window_root's values
+HIGHEST_ROOT = WINDOW_ROOTS[1]
 
 def variant_output_file(path: str, variant: str) -> str:
     """Where a variant writes when it states no output_file: <stem>_<variant><ext>."""
@@ -187,6 +189,10 @@ class ConversionConfig:
     # Minimal configs: slots left free, as far as folding copies and merging windows frees them, for samples
     # sweeps and volume envelopes are baked into (core.plan.baked: Time Trax's drum sweeps)
     baked_slots: int = 0
+    # Minimal configs: where a derived window's root sits.  "lowest": the first note keeping root_harmonics
+    # harmonics (the smallest samples); "highest": as high as its range (its top at top_note) and the
+    # sample limit (its longest ring whole) allow, the most rate
+    window_root: str = "lowest"
     # Merged build only: cap on the semitones a sample is rendered above the pitch its root sounds
     # (resolve_synth_roots; 12 = the usual octave).  0 halves every shifted sample's bytes and rate.
     merge_max_synth_shift: int = 12
@@ -342,3 +348,6 @@ class ConversionConfig:
             raise ValueError(f"dac_stall: {self.dac_stall} is not a share of the time (0 to under 1)")
         self.level_patch_min = _count(data, 'level_patch_min', self.level_patch_min)
         self.baked_slots = _count(data, 'baked_slots', self.baked_slots)
+        self.window_root = str(data.get('window_root', self.window_root))
+        if self.window_root not in WINDOW_ROOTS:
+            raise ValueError(f"window_root: {self.window_root!r} is not one of {', '.join(WINDOW_ROOTS)}")

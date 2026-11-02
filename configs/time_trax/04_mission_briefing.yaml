@@ -6,6 +6,7 @@ rom_song: "$04"
 region: pal               # the rips run at 50 Hz (docs/todo/done/time_trax.md D2)
 level_patch_min: 3        # a voice copy within 3 TL steps (2.25 dB) of its voice plays as it
 baked_slots: 6            # slots kept for baked drum sweeps and envelopes (core/plan/baked.py): 4 left sweeps unbaked
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [1, "fm_v01_D4.raw", 41, 0]   # VGZ: +1.2 dB at 64

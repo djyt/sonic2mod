@@ -3,6 +3,7 @@
 name: "Alien Power"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$14"
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [7, "fm_v0c_F4.raw", 10, 0]   # VGZ: -4.4 dB at 6

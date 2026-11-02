@@ -3,6 +3,7 @@
 name: "Player Select"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$18"
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [1, "dac81.raw", 45, 5]   # VGZ: +3.0 dB at 64

@@ -66,6 +66,8 @@ legato read after it re-pitches the note unkeyed (song 0's FM4 bass under its cr
   songs 3 and 4: 6) keeps slots for shapes, as far as folding and merging frees them, sweeps first
   (an unbaked sweep is unheard; a level falls back to `Cxx`).  Banks (`9xx`) were weighed and left:
   only the sweeps would gain, and they fit.
+- **Quality:** `window_root: highest` in every config: each window rooted as high as its range and the
+  64 K limit allow (notes' mean rate ~8 kHz -> ~20 kHz; the samples about twice the bytes).
 
 ## Against the rips
 

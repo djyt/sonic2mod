@@ -42,6 +42,7 @@ from typing import NamedTuple
 from ..audio import db_to_gain, semitone_to_hz
 from ..chips import DEFAULT_FM_PAN_LAW_DB, TL_MASK, OperatorReg, fm_level_db, keyed_carriers, psg_level_db
 from ..config import (
+    HIGHEST_ROOT,
     SAMPLE_FILE,
     SAMPLE_FINETUNE,
     SAMPLE_SLOT,
@@ -50,6 +51,7 @@ from ..config import (
     ConversionConfig,
     DacSample,
     SampleSettings,
+    SynthesisSettings,
     bpm_rounding_options,
     find_settings,
     load_settings,
@@ -143,6 +145,15 @@ class _Window(NamedTuple):
 
 
 @dataclass
+class _Ring:
+    """A note sounding, ties and legato reads carried: its voice (envelope), pitch, start, length."""
+    key: tuple
+    chip: int
+    start: int
+    ticks: int
+
+
+@dataclass
 class Derivation:
     data: dict                                              # the config's YAML, stated and derived
     derived: list[str] = field(default_factory=list)        # the sections the song filled
@@ -210,6 +221,13 @@ class _Deriver:
         self._harmonics = settings.root_harmonics
         self._top = settings.top_note
         self._max_window = settings.max_window
+        # window_root: highest: each window as high as the sample limit lets its longest ring play whole
+        self._highest = stated.get("window_root", ConversionConfig.window_root) == HIGHEST_ROOT
+        self._max_bytes = settings.max_sample_bytes
+        self._release = settings.release_padding if isinstance(settings, SynthesisSettings) else 0.0
+        self._timeline = Timeline(self._song, ConversionConfig(region=str(stated.get("region", ConversionConfig.region)).lower()))
+        self._timeline.collect_segments()           # the song's tempo steps: a ring's frames
+        self._longest: dict[tuple, dict[int, float]] = defaultdict(dict)   # (kind, voice / envelope) -> {chip: s}
         # A volume law's copies (Time Trax's) fold under level_patch_min; a written TL's (Streets of Rage 2's $FA) keep theirs
         fm_rules = self._song.rules.track(ChannelType.FM)
         self._patch_min = stated.get("level_patch_min", ConversionConfig.level_patch_min) if fm_rules.volume.law else 0
@@ -273,9 +291,13 @@ class _Deriver:
         for source in sources:
             ch = channels[source]
             glided = self._glided(ch, bare.config)
+            ring: _Ring | None = None
             for event, st, res in walk_channel(ch, bare, ChannelConfig(source=source, mod_channel=0)):
                 note = event.note
-                if note is None or note.is_rest or id(event) in glided:
+                if note is None:
+                    continue
+                ring = self._ringing(ring, note, event.tick_position, st, res)
+                if note.is_rest or id(event) in glided:
                     continue
                 if note.is_dac:
                     dac[note.dac_name] += 1
@@ -290,7 +312,29 @@ class _Deriver:
                     fm[st.voice][res.chip] += note.duration
                     levels[(ChannelType.FM, st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
                     self._level_miss(st.voice, st.tl)
+            self._rang(ring)
         return fm, tone, noise, dac
+
+    def _ringing(self, ring: _Ring | None, note, tick: int, st, res) -> _Ring | None:
+        """The ring sounding after `note` (window_root: highest weighs each window's longest): a tie or
+        a legato read carries it on, a rest ends it, a pitched FM or tone note starts one."""
+        if note.is_no_attack and ring is not None:
+            ring.ticks += note.duration
+            return ring
+        self._rang(ring)
+        if note.is_rest or note.is_dac or res is None or st.noise_form is not None:
+            return None
+        if st.is_psg:
+            return _Ring(("tone", st.envelope or _NO_ENVELOPE), res.chip, tick, note.duration)
+        return None if st.voice is None else _Ring((ChannelType.FM, st.voice), res.chip, tick, note.duration)
+
+    def _rang(self, ring: _Ring | None) -> None:
+        """`ring` over: the longest its voice (envelope) rings at its pitch."""
+        if ring is None:
+            return
+        longest = self._longest[ring.key]
+        secs = ring.ticks / self._timeline.ticks_per_frame_at(ring.start) / self._timeline.fps    # the driver's frames
+        longest[ring.chip] = max(longest.get(ring.chip, 0.0), secs)
 
     def _glided(self, channel, config: ConversionConfig) -> set[int]:
         """The legato reads whose word the driver slides (Time Trax's glides): the sounding sample
@@ -387,11 +431,29 @@ class _Deriver:
             entries = []
             for lo, hi in self._cut(kind, key, notes[key]):
                 inst = self._take(kind, _WINDOW_FILE.format(file_stem(key), _pitch_name(lo)), key, (lo, hi))
-                root = min(self._lowest_root(lo), self._top - (hi - lo))
+                root = self._root(kind, key, lo, hi)
                 entries.append({"low": _pitch_name(lo), "high": _pitch_name(hi),
                                 "mod_instrument": inst, "root": synth_note_name(C1_SEMITONE + root)})
             out[key] = entries
         return out
+
+    def _root(self, kind: str, key, lo: int, hi: int) -> int:
+        """The MOD note window lo..hi's lowest pitch plays at: the first keeping root_harmonics
+        harmonics; window_root: highest, as high as its top (top_note) and the sample limit allow:
+        each ring, its release after, whole at the rate its pitch plays the sample."""
+        lowest = min(self._lowest_root(lo), self._top - (hi - lo))
+        if not self._highest:
+            return lowest
+        rings = {c: s for k in self._sharing(kind, key) for c, s in self._longest[(kind, k)].items() if lo <= c <= hi}
+        return next((root for root in range(self._top - (hi - lo), lowest, -1)
+                     if all((secs + self._release) * note_rate(root + c - lo, self._clock) <= self._max_bytes
+                            for c, secs in rings.items())), lowest)
+
+    def _sharing(self, kind: str, key) -> list:
+        """`key` and what plays as it: the copies folded onto a voice, the envelopes onto one."""
+        if kind == ChannelType.FM:
+            return [key, *(c for c in self._out.folded | self._out.levels_folded if self._folded_to(c) == key)]
+        return [key, *(label for label, (head, _) in self._out.volumes_folded.items() if head == key)]
 
     def _reserved_fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> tuple[dict, dict]:
         """`fm` and `tone` fitted to `slots` less the config's baked_slots, fewer kept where folding and merging

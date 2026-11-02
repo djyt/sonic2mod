@@ -6,7 +6,7 @@ rom_song: "$81"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [5, "fm_v01_F4.raw", 13, 0]   # VGZ: -1.2 dB at 11
-  - [10, "fm_v03_F6.raw", 29, 0]   # VGZ: -2.0 dB at 23
+  - [10, "fm_v03_F6.raw", 23, 0] # VGZ: +2.1 dB at 29
   - [11, "fm_v04_F2.raw", 18, 0]   # VGZ: -4.4 dB at 11
   - [12, "fm_v04_Eb3.raw", 21, 0]   # VGZ: -5.7 dB at 11
   - [13, "fm_v05_F3.raw", 17, 0]   # VGZ: -10.5 dB at 5

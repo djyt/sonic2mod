@@ -5,9 +5,10 @@ input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World)
 rom_song: "$8D"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [10, "fm_v06_A5.raw", 22, 0]   # VGZ: -1.7 dB at 18
   - [6, "fm_v0a_C3.raw", 14, 0]   # VGZ: -3.0 dB at 10
-  - [12, "fm_v07_E4.raw", 10, 0]   # VGZ: -1.8 dB at 8
-  - [13, "fm_v07_D5.raw", 10, 0]   # VGZ: -1.9 dB at 8
+  - [12, "fm_v07_E4.raw", 12, 0] # VGZ: -1.3 dB at 10
+  - [13, "fm_v07_D5.raw", 12, 0] # VGZ: -1.4 dB at 10
   - [14, "fm_v08_C3.raw", 22, 0]   # VGZ: +1.1 dB at 25
   - [16, "psg_$00_B3.raw", 4, 0]   # VGZ: -1.9 dB at 3
   - [17, "psg_$00_A4.raw", 4, 0]   # VGZ: -1.9 dB at 3

@@ -5,6 +5,7 @@ input_file: "input/roms/Michael Jackson's Moonwalker (World) (Rev A).md"
 rom_song: "$8A"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [10, "psg_fTone_01_E5.raw", 6, 0]   # VGZ: -1.9 dB at 5
   - [3, "dac85.raw", 49, 1]   # VGZ: +2.4 dB at 64
   - [9, "fm_v02_E6.raw", 18, 0]   # VGZ: +6.3 dB at 38
   - [11, "psg_fTone_01_E6.raw", 5, 0]   # VGZ: +1.4 dB at 6

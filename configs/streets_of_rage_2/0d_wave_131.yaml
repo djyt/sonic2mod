@@ -5,8 +5,13 @@ input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$0D"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [15, "fm_v06_Ab3.raw", 14, 0]   # VGZ: +0.9 dB at 16
+  - [16, "fm_v06_Fs4.raw", 14, 0]   # VGZ: +1.0 dB at 16
+  - [17, "fm_v06_E5.raw", 22, 0]   # VGZ: +1.0 dB at 25
+  - [23, "fm_v08_F3.raw", 10, 0]   # VGZ: +1.3 dB at 12
+  - [24, "fm_v08_Eb4.raw", 10, 0]   # VGZ: +1.5 dB at 12
   - [11, "fm_v0b_C2.raw", 16, 0]   # VGZ: +3.6 dB at 25
-  - [28, "psg_adsr_ffffffbe000a_v14_Fs3.raw", 6, 0]   # VGZ: +7.2 dB at 13
+  - [28, "psg_adsr_ffffffbe000a_v14_Fs3.raw", 5, 0] # VGZ: +0.8 dB at 6
   - [29, "psg_adsr_ffffffbe000a_v14_E4.raw", 6, 0]   # VGZ: +7.0 dB at 13
   - [30, "psg_adsr_ffffffbe000a_v14_E5.raw", 11, 0]   # VGZ: +1.2 dB at 13
   - [1, "dac81.raw", 54, 5]   # VGZ: +1.5 dB at 64

@@ -68,6 +68,9 @@ legato read after it re-pitches the note unkeyed (song 0's FM4 bass under its cr
   only the sweeps would gain, and they fit.
 - **Quality:** `window_root: highest` in every config: each window rooted as high as its range and the
   64 K limit allow (notes' mean rate ~8 kHz -> ~20 kHz; the samples about twice the bytes).
+- **Speed:** songs 1, 2, 3 and 5 derive 1 frame a row (250 BPM, speed 2): legato reads (glide,
+  portamento and sweep steps) land on odd frames.  Their keyed notes fit 2 frames: `--variant slow`
+  (125 BPM, speed 2) plays the same notes; glides step a row at a time (twice the slide misses).
 
 ## Against the rips
 

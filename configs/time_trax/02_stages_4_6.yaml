@@ -25,3 +25,9 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [25, "fm_v5f_Bb2.raw", 24, 0]   # VGZ: -0.0 dB at 27
   - [26, "fm_v60_B4.raw", 32, 0]   # VGZ: +5.1 dB at 64
   - [27, "fm_v61_B4.raw", 44, 0]   # VGZ: +2.3 dB at 64
+
+variants:
+  slow:                 # 2 frames a row (125 BPM, speed 2): the same notes; glides step a row at a time
+    name: "Stages 4, 6 slow"
+    ticks_per_row: 2
+    target_speed: 2

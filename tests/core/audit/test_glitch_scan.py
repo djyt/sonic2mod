@@ -13,7 +13,7 @@ from pathlib import Path
 from core.audit import ChannelMove, GlitchCandidate, RipShelf, SongSource, scan_glitches
 from core.drivers.reference import SONIC1_RULES
 from core.smps import TempoSegment
-from core.vgm import LiftOptions, decode_vgm, frame_log, lift_song, load_frames
+from core.vgm import DriverUpdate, LiftOptions, decode_vgm, frame_log, lift_song, load_frames
 from tests.roms import needs_golden_axe_rips, needs_space_harrier_2_rips
 from tests.vgm_build import BURST, FRAME, fm_notes, with_writes
 
@@ -92,6 +92,12 @@ class Candidate(unittest.TestCase):
         self.assertFalse(GlitchCandidate(-1, moves[:1]).every_channel)
         self.assertFalse(GlitchCandidate(-1, moves, steady=("FM4",)).every_channel)
         self.assertEqual(GlitchCandidate(-1, moves).window, (12, 14))
+
+    def test_its_frame_the_one_an_overrun_lost_in_the_window(self):
+        # The update at 11 ran past the V-int of 12, the next at 14 (the song idle at 13): 12 lost
+        moves = (ChannelMove("FM1", -1, 11, 14, 5), ChannelMove("FM2", -1, 11, 15, 5))
+        lost = DriverUpdate(14, 0, 0, 1, 0, 11, 3 * FRAME, 3.0, -500, lost=True)
+        self.assertEqual((GlitchCandidate(-1, moves).frame, GlitchCandidate(-1, moves, updates=(lost,)).frame), (14, 12))
 
 
 def _scan(game: str, stem: str):

@@ -33,6 +33,7 @@ from pathlib import Path
 from ..chips import freq_word_hz
 from ..config import ConversionConfig
 from ..smps import (
+    FM_CHANNEL_NAMES,
     Aspect,
     ChannelDiff,
     ChannelType,
@@ -195,9 +196,14 @@ def _rip_frame(lifted: PlayedSong, frames: FrameLog, offset: int) -> Callable[[i
 
 
 def _rip_clock(lifted: PlayedSong, frames: FrameLog) -> tuple[tuple[TempoSegment, ...], int]:
-    """The lift's tick schedule, and the rip frame its tick 0 is on: its first note plays on the
-    rip's first frame that writes anything."""
+    """The lift's tick schedule, and the rip frame its tick 0 is on: its first FM note plays on the
+    rip's first FM key-on (a song with none: its first note on the first frame that writes anything;
+    a ripper's opening state and its DAC writes, Time Trax's first 40 frames, key nothing)."""
     schedule = tempo_schedule(lifted.modifier, lifted.tempo_changes, lifted.tempo_phase)
+    fm = [n.tick for name, notes in lifted.channels.items() if name in FM_CHANNEL_NAMES for n in notes if not n.rest]
+    keyed = next((f.index for f in frames.frames if any(any(ch.keys) for ch in f.fm)), None)
+    if fm and keyed is not None:
+        return schedule, keyed - frame_of_tick(schedule, min(fm))
     first = min((n.tick for notes in lifted.channels.values() for n in notes if not n.rest), default=0)
     return schedule, next((f.index for f in frames.frames if f.active), 0) - frame_of_tick(schedule, first)
 

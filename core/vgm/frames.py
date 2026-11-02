@@ -12,7 +12,17 @@ phase, so a whole burst lands in one frame:
                  quarter frame early
 
 The phase is the commonest burst start (mod the frame), found from the writes themselves
-(bursts.py); the first frame is the one holding the log's first write.  This table is what the lift reads.
+(bursts.py); the first frame is the one holding the log's first write.  An update running on into
+the next window, short of the next V-int (Time Trax's, its last tracks written up to a fifth of a
+frame before it), is filed in the frame it started in: such a write in its update's frame
+(spans.py), not its window's.  Past the V-int (the updates' earliest start, spans.vint_lateness) it
+stays in its window, the next update's or the late one's (rips.yaml's glitches merge the frames):
+
+    window    |------- n -------|------- n + 1 -------|
+    update      |====FM1..FM4=====|=FM5|                    FM5's key-on: frame n, as driven
+                                  ^ n + 1 opens ^ V-int
+
+This table is what the lift reads.
 
 A DAC sample starts at a PCM seek, or where bytes resume after a pause.  A ripper's bank is the
 stream as heard, so a sample cutting into another often needs neither (Streets of Rage 2's: no
@@ -32,7 +42,6 @@ swallowed:
 
 from __future__ import annotations
 
-import bisect
 from collections import Counter, deque
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
@@ -41,7 +50,9 @@ from enum import Enum
 from ..chips import OPERATOR_SLOT_OFFSETS, split_operator_register
 from .bursts import Burst, write_bursts
 from .chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_TONE_CHANNELS, Change, ChangeKind, ChipState
+from .clock import FRAME_LEAD_DIVISOR, FrameClock
 from .reader import VGM_SAMPLE_RATE, VgmLog, VgmOp, VgmWrite
+from .spans import UpdateSpan, update_spans, vint_lateness
 from .writes import is_dac_byte
 
 NTSC_RATE = 60
@@ -54,7 +65,6 @@ class FrameCut(Enum):
     TIMER_A = "Timer A"         # after each Timer A reset ($27 bit 4): the update's last write
 
 _PHASE_WINDOW = 16              # samples either side of a phase that count towards it
-_FRAME_LEAD_DIVISOR = 4         # a frame's window opens a quarter frame before the phase
 _DAC_PAUSE_DIVISOR = 4          # DAC bytes resuming after a quarter frame's silence: a sample started
 DAC_OPENING = 16                # bytes of a sample's start that identify it in the stream
 _VOICE_FIRST = 0x30             # DT/MUL .. SSG-EG: the operator registers
@@ -152,30 +162,30 @@ class FrameLog:
                                     # last frame's, to the log's end, none); empty: a fixed cut
     bursts: tuple[Burst, ...] = ()  # the writes' bursts, as recorded (realigned: none)
 
+    @property
+    def clock(self) -> FrameClock:
+        """Where its frames' windows fall."""
+        return FrameClock(self.frame_samples, self.origin, self.cuts)
+
     def frame_of(self, sample: int) -> int:
-        if self.cuts:
-            return bisect.bisect_left(self.cuts, sample)
-        return (sample - self.origin) // self.frame_samples
+        """The frame whose window holds `sample` (a long update's late writes: filed in its own)."""
+        return self.clock.frame_of(sample)
 
     def burst_due(self, frame: int) -> int:
         """Where `frame`'s burst is due: the phase in its window (a cut log: the window's start)."""
-        if self.cuts:
-            return self.cuts[frame - 1] if frame else 0
-        return self.origin + frame * self.frame_samples + self.frame_samples // _FRAME_LEAD_DIVISOR
+        return self.clock.burst_due(frame)
 
     def burst_frame(self, sample: int) -> int:
         """The frame whose driver burst `sample` follows: what the Z80 does a little after the
         68k asked (a DAC sample started) belongs to the frame that asked."""
-        return self.frame_of(sample - self.frame_samples // _FRAME_LEAD_DIVISOR)
+        return self.frame_of(sample - self.frame_samples // FRAME_LEAD_DIVISOR)
 
     @property
     def loop_frame(self) -> int | None:
         return None if self.loop_sample is None else self.frame_of(self.loop_sample)
 
     def seconds(self, frame: int) -> float:
-        if self.cuts:
-            return (self.cuts[frame - 1] if frame else 0) / VGM_SAMPLE_RATE
-        return (self.origin + frame * self.frame_samples) / VGM_SAMPLE_RATE
+        return self.clock.opens(frame) / VGM_SAMPLE_RATE
 
     @property
     def fps(self) -> float:
@@ -199,11 +209,12 @@ def frame_log(log: VgmLog, state: ChipState | None = None, cut: FrameCut = Frame
     frame_samples = VGM_SAMPLE_RATE // (log.header.rate or NTSC_RATE)
     bursts = write_bursts(log.writes)
     phase = _burst_phase(bursts, frame_samples)
-    lead = phase - frame_samples // _FRAME_LEAD_DIVISOR
-    origin = -((frame_samples - lead % frame_samples) % frame_samples)
+    lead = phase - frame_samples // FRAME_LEAD_DIVISOR
+    clock = FrameClock(frame_samples, -((frame_samples - lead % frame_samples) % frame_samples))
 
-    builder = _FrameBuilder(state, origin, frame_samples, samples=samples)
-    return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample, log.pcm, log.end_sample,
+    spans = update_spans(bursts, clock)
+    builder = _FrameBuilder(state, clock, samples, spans, vint_lateness(spans, clock))
+    return FrameLog(list(builder.run(log)), frame_samples, clock.origin, phase, log.loop_sample, log.pcm, log.end_sample,
                     bursts=bursts)
 
 
@@ -215,7 +226,7 @@ def _cut_at_resets(log: VgmLog, state: ChipState, samples: dict[int, bytes]) -> 
     timed = [c for c in cuts if c > 0]
     mean = round((timed[-1] - timed[0]) / (len(timed) - 1)) if len(timed) > 1 else VGM_SAMPLE_RATE // NTSC_RATE
 
-    builder = _FrameBuilder(state, 0, mean, cuts, samples)
+    builder = _FrameBuilder(state, FrameClock(mean, 0, cuts), samples)
     return FrameLog(list(builder.run(log)), mean, 0, 0, log.loop_sample, log.pcm, log.end_sample, cuts,
                     write_bursts(log.writes))
 
@@ -238,20 +249,22 @@ def _burst_phase(bursts: tuple[Burst, ...], frame_samples: int) -> int:
 
 
 class _FrameBuilder:
-    """Replays the log, closing a Frame each time a write falls past the current one (`cuts`: at
-    each reset instead, the frame after the last to the log's end).  `samples` (sound -> its bytes):
-    the DAC's starts are where the stream begins one, seeks and pauses aside."""
+    """Replays the log, closing a Frame each time a write falls past the current one: its window's,
+    or the frame its update (`spans`) started in, short of the next V-int (`vint` samples from a
+    frame's due) (a cut clock: at each reset instead, the frame after the last to the log's end).  `samples` (sound -> its bytes): the DAC's starts are where the
+    stream begins one, seeks and pauses aside."""
 
-    def __init__(self, state: ChipState, origin: int, frame_samples: int, cuts: tuple[int, ...] = (),
-                 samples: dict[int, bytes] | None = None) -> None:
+    def __init__(self, state: ChipState, clock: FrameClock, samples: dict[int, bytes] | None = None,
+                 spans: list[UpdateSpan] | None = None, vint: int = 0) -> None:
         self._state = state
         self._samples = samples or {}
         self._openings = {data[:DAC_OPENING]: sound for sound, data in self._samples.items()}
         self._playing: int | None = None          # the sample the last start opened
         self._recent: deque[tuple[int, int, int]] = deque(maxlen=DAC_OPENING)   # (byte, sample, bank offset)
-        self._origin = origin
-        self._frame_samples = frame_samples
-        self._cuts = cuts
+        self._clock = clock
+        self._frame_samples = clock.frame_samples
+        self._spans = spans or []
+        self._vint = vint               # the V-int against a frame's due (spans.vint_lateness)
         self._index = 0
         self._reset_events()
         self._since_start = 0
@@ -268,20 +281,29 @@ class _FrameBuilder:
         self._gaps: Counter[int] = Counter()
 
     def run(self, log: VgmLog) -> Iterator[Frame]:
-        if self._cuts:
+        if self._clock.cuts:
             yield from self._run_cut(log)
             return
         writes = log.writes
+        spans = iter(self._spans)
+        span = next(spans, None)
         for i, w in enumerate(writes):
-            # Close every frame before this write's
-            index = (w.sample - self._origin) // self._frame_samples
+            # This write's frame: its window's, or its update's while the update runs on short of the
+            # next V-int (a DAC byte between its writes too)
+            while span is not None and span.last < w.sample:
+                span = next(spans, None)
+            index = self._clock.frame_of(w.sample)
+            if span is not None and span.first <= w.sample < self._clock.burst_due(span.frame + 1) + self._vint:
+                index = span.frame
+
+            # Close every frame before it
             while self._index < index:
                 yield self._close()
 
             self._apply(w, writes[i + 1] if i + 1 < len(writes) else None)
 
         # Frames to the log's end
-        last = (max(log.end_sample - 1, 0) - self._origin) // self._frame_samples
+        last = self._clock.frame_of(max(log.end_sample - 1, 0))
         while self._index <= last:
             yield self._close()
 
@@ -384,7 +406,5 @@ class _FrameBuilder:
 
     def _window(self) -> int:
         """Where this frame's window opens: after the reset before it, or its fixed start."""
-        if self._cuts:
-            return self._cuts[self._index - 1] if self._index else 0
-        return self._origin + self._index * self._frame_samples
+        return self._clock.opens(self._index)
 

@@ -333,7 +333,7 @@ def print_updates(log: VgmLog, state: ChipState, frames: range, max_rows: int) -
     (listed by that frame, as rips.yaml takes it)."""
     fl = frame_log(log, state)
     updates = driver_updates(fl)
-    lost = [u.frame - 1 for u in updates if u.lost]
+    lost = [u.lost_frame for u in updates if u.lost]
     possible = [f"{u.before + 1}-{u.frame - 1}" for u in updates if u.possible and u.before is not None]
     print(f"Updates: {len(updates)} in {len(fl.frames)} frames of {fl.frame_samples} samples, bursts at +{fl.phase};"
           f" {len(lost)} V-ints lost (an update running past the next V-int, then a frame with none),"

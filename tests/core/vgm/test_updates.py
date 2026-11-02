@@ -60,6 +60,12 @@ class Updates(unittest.TestCase):
         self.assertEqual((after.gap, after.lost, after.before), (2 * FRAME, True, updates[_LONG].frame))
         self.assertEqual(sum(u.lost for u in updates.values()), 1)
 
+    def test_the_lost_frame_is_the_one_after_the_overrun_though_the_song_idles_on(self):
+        fl = _log(skipped={_LONG + 1, _LONG + 2, _LONG + 3}, long_to=FRAME + _STEP)
+        after = next(u for u in driver_updates(fl) if u.lost)
+        self.assertEqual((after.skipped, after.lost_frame), (3, after.before + 1))
+        self.assertIsNone(driver_updates(fl)[1].lost_frame)
+
     def test_a_long_update_ending_just_short_then_one_frame_with_none_lost_a_v_int(self):
         fl = _log(skipped={_LONG + 1}, long_to=_NEAR)
         updates = {_by_frame(fl)[u.frame]: u for u in driver_updates(fl)}

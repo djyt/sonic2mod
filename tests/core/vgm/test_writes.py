@@ -9,7 +9,7 @@ import unittest
 
 from core.vgm import VgmLog, VgmOp, VgmWrite, decoded_writes
 from core.vgm.reader import VgmHeader
-from core.vgm.writes import tone_register
+from core.vgm.writes import tone_register, track_of
 
 _HEADER = VgmHeader(version=0x150, fm_clock=7670453, psg_clock=3579545, rate=60, total_samples=0, loop_samples=0)
 
@@ -71,3 +71,17 @@ class ToneRegister(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Tracks(unittest.TestCase):
+    def test_each_write_by_its_channel_in_track_order(self):
+        writes = {(VgmOp.FM, 0, 0xA1, 0): 1,          # FM2's frequency
+                  (VgmOp.FM, 1, 0x46, 0): 5,          # TL op3 on part II's third channel: FM6
+                  (VgmOp.FM, 0, 0x28, 0xF5): 4,       # FM5 keyed on
+                  (VgmOp.FM, 0, 0xAC, 0): 2,          # FM3's special-mode frequency
+                  (VgmOp.PSG, 0, 0, 0xC0): 8,         # PSG3's tone latch
+                  (VgmOp.PSG, 0, 0, 0x3F): None,      # a data byte: its latch's
+                  (VgmOp.FM, 0, 0x22, 0): None,       # the LFO: the chip's own
+                  (VgmOp.FM, 0, 0x2A, 0x80): None,    # a DAC byte
+                  (VgmOp.FM, 0, 0x33, 0): None}       # no channel 4 in a part
+        self.assertEqual({k: track_of(VgmWrite(0, *k)) for k in writes}, writes)

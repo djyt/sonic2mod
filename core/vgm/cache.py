@@ -2,7 +2,8 @@
 second for Green Hill), and the lift is run again and again on the same rips.
 
     <dir>/vgm_frames/<salt>/<key[:2]>/<key>.frames     zlib(pickle(FrameLog))
-        salt  a hash of the code a frame log is made by (reader, chipstate, frames, bursts, writes, core/chips)
+        salt  a hash of the code a frame log is made by (reader, chipstate, frames, bursts, writes, clock,
+              spans, core/chips)
         key   a hash of the file's bytes (and the cut, the DAC samples given)
 
 The directory is settings.yaml samples.render_cache (core/render_cache.py); None reads the rip.
@@ -24,6 +25,7 @@ _KIND = "vgm_frames"
 _SUFFIX = ".frames"
 _HERE = Path(__file__).resolve().parent
 _CODE = [_HERE / "reader.py", _HERE / "chipstate.py", _HERE / "frames.py", _HERE / "bursts.py", _HERE / "writes.py",
+         _HERE / "clock.py", _HERE / "spans.py",
          *(_HERE.parent / "chips").glob("*.py")]
 
 

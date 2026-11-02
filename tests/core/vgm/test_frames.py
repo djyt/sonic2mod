@@ -13,16 +13,37 @@ from core.vgm import (
     frame_log,
 )
 from core.vgm.frames import DAC_OPENING
+from tests.vgm_build import BURST, bursts, key, with_writes
 from tests.vgm_build import FRAME as _FRAME
 from tests.vgm_build import fm as _fm
 from tests.vgm_build import vgm as _vgm
 from tests.vgm_build import wait as _wait
+
+_FRAMES = 6
+_LONG_FRAME = 2
+_STEP = 150                     # samples between a long update's writes: one burst
+_KEY = 0x28                     # with_writes' value 0 there: FM1 keyed off
+_ON, _OFF = 0xF, 0              # FmFrame.keys' slot masks
 
 
 def _played(bank: bytes, samples: dict[int, bytes]):
     """`bank` played through from its start, a byte a sample, read with the driver's `samples`."""
     block = b"\x67\x66\x00" + struct.pack("<I", len(bank)) + bank
     return frame_log(decode_vgm(_vgm(block + b"\xE0" + struct.pack("<I", 0) + b"\x81" * len(bank))), dac_samples=samples)
+
+
+def _long_update(off_at: int):
+    """FM1 keyed on in a burst every frame, frame 2's running on to keying it off `off_at` samples in."""
+    start = _LONG_FRAME * _FRAME + BURST
+    log = decode_vgm(bursts({f: key(0, True) for f in range(_FRAMES)}, _FRAMES))
+    log = with_writes(log, list(range(start + _STEP, start + off_at, _STEP)))
+    return with_writes(log, [start + off_at], _KEY)
+
+
+def _keys(fl) -> list[tuple[int, ...]]:
+    """FM1's keys in the long update's frame and the next (the log's frames run a window ahead)."""
+    long = fl.frame_of(_LONG_FRAME * _FRAME + BURST)
+    return [fl.frames[f].fm[0].keys for f in (long, long + 1)]
 
 
 class Frames(unittest.TestCase):
@@ -91,6 +112,15 @@ class Frames(unittest.TestCase):
         sample = next(f.dac.starts[0].sample for f in fl.frames if f.dac.starts)
         self.assertEqual(fl.frame_of(sample), first + 1)
         self.assertEqual(fl.burst_frame(sample), first)
+
+    def test_a_long_updates_writes_short_of_the_next_due_stay_in_its_frame(self):
+        # FM1 keyed on every frame; frame 2's update runs on (a write every 150 samples, one burst) to
+        # keying FM1 off at +600, in frame 3's window but before its burst: frame 2's
+        self.assertEqual(_keys(frame_log(_long_update(600))), [(_ON, _OFF), (_ON,)])
+
+    def test_a_long_updates_writes_past_the_next_due_fall_in_their_window(self):
+        # As above, the key-off at +750: past frame 3's due, the V-int came first
+        self.assertEqual(_keys(frame_log(_long_update(750))), [(_ON,), (_ON, _OFF)])
 
     def test_the_bank_comes_with_the_frames(self):
         bank = bytes(range(8))

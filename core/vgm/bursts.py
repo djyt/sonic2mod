@@ -8,7 +8,9 @@ seeks are left out: the Z80 interleaves them with everything, so they would join
                     |<- gaps <= BURST_GAP ->|  > BURST_GAP: a new burst
 
 Each burst keeps its frequency writes (Tune): a driver writes a channel's frequency once an update,
-so one written again marks where the next update ran on without a pause (core/vgm/updates.py).
+so one written again marks where the next update ran on without a pause; and the tracks it opens
+and closes on (a driver updates its tracks in order: a burst carrying on an update's pass is its
+rest, core/vgm/spans.py).
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from .reader import VgmOp, VgmWrite
-from .writes import is_dac_byte, tone_register
+from .writes import is_dac_byte, tone_register, track_of
 
 BURST_GAP = 200                 # samples: writes closer than this belong to one burst
 
@@ -38,6 +40,8 @@ class Burst:
     last: int                   # ... of its last
     writes: int
     tunes: tuple[Tune, ...] = ()
+    opens: int | None = None    # the track (writes.track_of) of its first channel write; None: none
+    closes: int | None = None   # ... of its last
 
 
 def write_bursts(writes: Iterable[VgmWrite]) -> tuple[Burst, ...]:
@@ -45,20 +49,26 @@ def write_bursts(writes: Iterable[VgmWrite]) -> tuple[Burst, ...]:
     bursts: list[Burst] = []
     tunes: list[Tune] = []
     first = last = count = 0
+    opens = closes = None
     for w in writes:
         if is_dac_byte(w) or w.op is VgmOp.PCM_SEEK:
             continue
         if count and w.sample - last > BURST_GAP:
-            bursts.append(Burst(first, last, count, tuple(tunes)))
+            bursts.append(Burst(first, last, count, tuple(tunes), opens, closes))
             count = 0
             tunes = []
+            opens = closes = None
         if not count:
             first = last = w.sample
         register = tone_register(w)
         if register is not None:
             tunes.append(Tune(count, w.sample, last, register))
+        track = track_of(w)
+        if track is not None:
+            opens = track if opens is None else opens
+            closes = track
         last = w.sample
         count += 1
     if count:
-        bursts.append(Burst(first, last, count, tuple(tunes)))
+        bursts.append(Burst(first, last, count, tuple(tunes), opens, closes))
     return tuple(bursts)

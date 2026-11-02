@@ -70,9 +70,10 @@ class SpaceHarrier2(unittest.TestCase):
         self.assertEqual((check.ok, self._excused(check)), (True, {Excuse.LOG_END: 4}))
 
     def test_a_loop_re_entry_keyed_a_frame_late(self):
-        # Every channel re-enters its loop in one burst that overruns its frame: FM4 and FM5, the last, on the next
+        # Every channel re-enters its loop in one burst that overruns its frame: FM4 keyed short of the
+        # next burst's due (its update's frame), FM5, the last, past it (the next frame)
         check = self._check(0x8E, "11 - Jelly Syndrome (Boss 9 - Cragon).vgz")
-        self.assertEqual((check.ok, set(check.excused)), (True, {("FM4", Excuse.RE_ENTRY), ("FM5", Excuse.RE_ENTRY)}))
+        self.assertEqual((check.ok, set(check.excused)), (True, {("FM5", Excuse.RE_ENTRY)}))
 
     def test_the_stage_themes_glitches_undone(self):
         rip = "02 - Harrier Saga (Stage Theme).vgz"

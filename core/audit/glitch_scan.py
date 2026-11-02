@@ -18,7 +18,8 @@ alone is the song's doing (a note, a flag), not the rip's:
 
 Each candidate carries the driver's updates around its window that followed a frame with none
 (core.vgm.driver_updates): one after an update running past the next V-int is a V-int lost (or
-possible: one ending near it, then an idle stretch); none, the move is something else.
+possible: one ending near it, then an idle stretch); none, the move is something else.  A lost one
+names the candidate's frame: the frame after the overrun, though the song idles on past it.
 
 The scan prints candidates (vgm_frames.py --glitches); a human confirms one into rips.yaml.  It
 reads the rip as recorded (no glitch undone), less the notes rips.yaml says are another sound's.
@@ -89,8 +90,12 @@ class GlitchCandidate:
 
     @property
     def frame(self) -> int:
-        """The rip's first frame off (rips.yaml's `frame`): the first moved attack's."""
-        return self.window[1]
+        """The rip's first frame off (rips.yaml's `frame`): the one whose V-int an overrun lost, the
+        only one in the window; else the first moved attack's."""
+        start, end = self.window
+        lost = [u.lost_frame for u in self.updates
+                if u.lost and u.lost_frame is not None and (start is None or start < u.lost_frame) and u.lost_frame <= end]
+        return lost[0] if len(lost) == 1 else end
 
     @property
     def from_start(self) -> bool:

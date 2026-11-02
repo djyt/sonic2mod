@@ -3,6 +3,8 @@
     reader.py     the container: commands -> timestamped chip writes (VgmLog)
     chipstate.py  YM2612 + SN76489 registers replayed over the writes (ChipState, Change)
     bursts.py     the writes in bursts, one run of the driver's each
+    clock.py      where a log's frames fall (FrameClock)
+    spans.py      the bursts gathered into the driver's updates, however long each runs
     frames.py     the log cut into V-int frames: each channel's state and writes per frame (FrameLog)
     updates.py    the driver's updates, timed by their bursts: where a V-int was lost
     realign.py    a frame log with the V-ints its driver lost or gained undone (realigned)

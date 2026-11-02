@@ -19,6 +19,7 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [17, "fm_v3b_F3.raw", 12, 0]   # VGZ: -4.6 dB at 7
   - [21, "fm_v40_F3.raw", 20, 0]   # VGZ: -8.9 dB at 7
   - [22, "fm_v41_Cs2.raw", 37, 0]   # VGZ: -6.2 dB at 18
+  - [23, "fm_v43_Bb2.raw", 21, 0]   # VGZ: +7.4 dB at 49 (2 notes: set by hand, too few for measure_volumes)
   - [24, "fm_v46_Bb2.raw", 18, 0]   # VGZ: -8.4 dB at 7
   - [25, "fm_v47_Eb5.raw", 31, 0]   # VGZ: -4.8 dB at 18
   - [27, "fm_v4a_F3.raw", 26, 0]   # VGZ: -4.7 dB at 15

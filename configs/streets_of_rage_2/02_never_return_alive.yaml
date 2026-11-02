@@ -7,9 +7,9 @@ window_root: highest      # each window's root as high as its range and the 64 K
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [31, "psg_adsr_ffffffc8010a_v13_E4.raw", 8, 0]   # VGZ: +2.1 dB at 10
-  - [5, "fm_v00_B3.raw", 19, 0]   # VGZ: -15.9 dB at 3
-  - [9, "fm_v0c_E1.raw", 7, 0]   # VGZ: +5.9 dB at 14
-  - [10, "fm_v0d_E1.raw", 8, 0]   # VGZ: +5.3 dB at 14
+  - [5, "fm_v00_B3.raw", 11, 0] # VGZ: +5.0 dB at 19
+  - [9, "fm_v0c_E1.raw", 9, 0] # VGZ: -1.7 dB at 7
+  - [10, "fm_v0d_E1.raw", 9, 0] # VGZ: -0.6 dB at 8
   - [11, "fm_v0e_E1.raw", 9, 0]   # VGZ: +6.5 dB at 19
   - [12, "fm_v10_E2.raw", 9, 0]   # VGZ: +6.5 dB at 19
   - [13, "fm_v11_E2.raw", 8, 0]   # VGZ: +7.5 dB at 19
@@ -19,7 +19,7 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [18, "fm_v16_Bb1.raw", 10, 0]   # VGZ: +5.3 dB at 19
   - [19, "fm_v1a_E2.raw", 9, 0]   # VGZ: +6.6 dB at 19
   - [20, "fm_v1c_Bb1.raw", 9, 0]   # VGZ: +6.9 dB at 19
-  - [23, "fm_v21_G2.raw", 15, 0]   # VGZ: +4.6 dB at 25
+  - [23, "fm_v21_G2.raw", 12, 0] # VGZ: +1.7 dB at 15
   - [29, "psg_$00_B3.raw", 2, 0]   # VGZ: +2.6 dB at 3
   - [30, "psg_adsr_ffffffbe010a_v9_Bb4.raw", 11, 0]   # VGZ: -8.8 dB at 4
   - [1, "dac81.raw", 41, 5]   # VGZ: +3.9 dB at 64
@@ -34,7 +34,7 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [15, "fm_v02_G5.raw", 6, 0]   # VGZ: -5.6 dB at 3
   - [14, "fm_v02_F6.raw", 8, 0]   # VGZ: -6.1 dB at 4
   - [21, "fm_v03_E3.raw", 10, 0]   # VGZ: +1.8 dB at 12
-  - [25, "fm_v05_C4.raw", 18, 0]   # VGZ: +2.7 dB at 25
+  - [25, "fm_v05_C4.raw", 24, 0] # VGZ: -2.5 dB at 18
   - [26, "psg_$00_B4.raw", 2, 0]   # VGZ: +2.4 dB at 3
   - [27, "psg_$00_A5.raw", 1, 0]   # VGZ: +3.0 dB at 2
   - [28, "psg_adsr_ffffffbe010a_v15_Bb4.raw", 14, 0]   # VGZ: +1.2 dB at 16

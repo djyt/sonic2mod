@@ -6,6 +6,7 @@ rom_song: "$07"
 window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [8, "fm_v0c_Fs2.raw", 5, 0]   # VGZ: +17.6 dB at 38
   - [16, "fm_v1d_D4.raw", 4, 0]   # VGZ: +8.9 dB at 18
   - [19, "fm_v04_D5.raw", 8, 0]   # VGZ: -6.5 dB at 7
   - [22, "fm_v42_B7.raw", 7, 0]   # VGZ: +3.5 dB at 18
@@ -18,22 +19,22 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [5, "fm_v00_C5.raw", 12, 0]   # VGZ: +8.4 dB at 64
   - [5, "fm_v01_D2.raw",  5, 0] # VGZ: +1.5 dB at 10
   - [7, "fm_v01_C3.raw", 8, 0]   # VGZ: -1.6 dB at 14
-  - [6, "fm_v01_F5.raw", 3, 0] # VGZ: +0.4 dB at 5
+  - [6, "fm_v01_F5.raw", 4, 0] # VGZ: -2.5 dB at 3
   - [7, "fm_v0a_C1.raw", 5, 0] # VGZ: +0.1 dB at 9
   - [11, "fm_v0e_F1.raw", 23, 0]   # VGZ: +2.7 dB at 64
   - [9, "fm_v0e_A3.raw", 14, 0] # VGZ: +0.0 dB at 26
   - [10, "fm_v0f_C7.raw",  8, 0] # VGZ: -0.4 dB at 13
   - [11, "fm_v10_C7.raw",  9, 0] # VGZ: +0.0 dB at 16
-  - [12, "fm_v11_C4.raw", 10, 0] # VGZ: -0.2 dB at 18
+  - [12, "fm_v11_C4.raw", 14, 0] # VGZ: -3.1 dB at 10
   - [14, "fm_v02_Ab3.raw", 4, 0] # VGZ: -0.1 dB at 7
   - [18, "fm_v02_A4.raw", 8, 0]   # VGZ: +3.5 dB at 25
   - [17, "fm_v03_F0.raw", 5, 0] # VGZ: -0.3 dB at 9
-  - [18, "fm_v04_E3.raw",  8, 0] # VGZ: +1.9 dB at 17
+  - [18, "fm_v04_E3.raw",  7, 0] # VGZ: +1.7 dB at 8
   - [21, "fm_v04_E4.raw", 17, 0]   # VGZ: -3.1 dB at 25
   - [20, "fm_v05_E2.raw", 14, 0] # VGZ: -0.2 dB at 25
   - [21, "fm_v06_E2.raw", 5, 0] # VGZ: -0.3 dB at 8
   - [24, "fm_v06_B7.raw", 12, 0]   # VGZ: +8.5 dB at 64
-  - [23, "fm_v43_C2.raw",  9, 0] # VGZ: -0.3 dB at 15
+  - [23, "fm_v43_C2.raw",  8, 0] # VGZ: +1.2 dB at 9
   - [24, "fm_v45_C3.raw", 10, 0] # VGZ: +0.0 dB at 18
   - [25, "fm_v07_A1.raw", 12, 0] # VGZ: -0.0 dB at 21
   - [28, "fm_v08_B7.raw", 4, 0] # VGZ: -0.3 dB at 7

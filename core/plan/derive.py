@@ -757,11 +757,13 @@ class _Deriver:
     def _take(self, kind: str, file: str, key=None, window: tuple[int, int] | None = None,
               volume: int | None = None) -> int:
         """The next slot, its row at the level its notes (`window`'s, lowest and highest pitch)
-        mostly play at, or at `volume`."""
+        mostly play at, or at `volume`.  A window's notes are its voice's and those of what plays as it
+        (Streets of Rage 2's Go Straight: $11, $00 under the LFO, folded onto $00 at its own level)."""
         counts = Counter()
-        for (pitch, lv), n in self._levels.get((kind, key), Counter()).items():
-            if window is None or window[0] <= pitch <= window[1]:
-                counts[lv] += n
+        for sharer in self._sharing(kind, key) if window is not None else [key]:
+            for (pitch, lv), n in self._levels.get((kind, sharer), Counter()).items():
+                if window is None or window[0] <= pitch <= window[1]:
+                    counts[lv] += n
         level, panned = max(counts, key=lambda lv: (counts[lv], -lv[0])) if counts else (0, False)
         inst = self._next
         self._next += 1

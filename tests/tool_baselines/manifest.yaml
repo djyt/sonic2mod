@@ -818,8 +818,8 @@ disasm_streets_of_rage_2_z80:
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
 frames_golden_axe:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
     configs/golden_axe/82_turtle_village_1.yaml: f68728200961
@@ -866,8 +866,8 @@ frames_outrun:
     reference/vgz/outrun/04 - Last Wave.vgz: b7a88f63e71c
     reference/vgz/outrun/05 - Step on Beat.vgz: a7be399dfb8c
 frames_space_harrier_2:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
     configs/space_harrier_2/87_an_omen.yaml: 09339311b850
@@ -1002,7 +1002,7 @@ frames_streets_of_rage_2:
     reference/vgz/streets_of_rage_2/23 - Beta - Walking Bottom.vgz: ca38175a16a4
     reference/vgz/streets_of_rage_2/24 - Little Money Avenue.vgz: 2a53e8aca5fa
 glitches_golden_axe:
-  commit: dd453df-dirty
+  commit: b959be9
   date: '2026-11-02'
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
@@ -1050,7 +1050,7 @@ glitches_outrun:
     reference/vgz/outrun/04 - Last Wave.vgz: b7a88f63e71c
     reference/vgz/outrun/05 - Step on Beat.vgz: a7be399dfb8c
 glitches_space_harrier_2:
-  commit: dd453df-dirty
+  commit: b959be9
   date: '2026-11-02'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
@@ -1233,8 +1233,8 @@ lift_all:
     reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 lift_moonwalker_88_round_clear:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
@@ -1292,8 +1292,8 @@ lift_moonwalker_88_round_clear:
     reference/vgz/moonwalker/39 - Dance Attack 11 (with voice).vgz: 5fa628a91fe8
     reference/vgz/moonwalker/40 - Dance Attack 12 (with voice).vgz: 4205620b2612
 lift_moonwalker_all:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b

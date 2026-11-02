@@ -184,17 +184,21 @@ functions:
   core/audit/frame_check.py::_check_note: 7c000000000000000000000000
   core/audit/frame_check.py::_check_offset: 7c000000000000000000000000
   core/audit/frame_check.py::_chip_bits: 7c000000000000000000000000
+  core/audit/frame_check.py::_got: '14000000000000000000000000'
   core/audit/frame_check.py::_judge: 7c000000000000000000000000
-  core/audit/frame_check.py::_note_spans: '280000000000000000000000000'
+  core/audit/frame_check.py::_judge_path: '14000000000000000000000000'
+  core/audit/frame_check.py::_note_spans: '294000000000000000000000000'
+  core/audit/frame_check.py::_only: '14000000000000000000000000'
   core/audit/frame_check.py::_re_entries: 7c000000000000000000000000
-  core/audit/frame_check.py::_starts: '280000000000000000000000000'
+  core/audit/frame_check.py::_starts: '294000000000000000000000000'
   core/audit/frame_check.py::check_frames: 7c000000000000000000000000
   core/audit/frame_check.py::first_key_offset: ffc000000000000000000000000
-  core/audit/frame_check.py::note_frames: ffc000000000000000000000000
+  core/audit/frame_check.py::note_frames: fe8000000000000000000000000
   core/audit/glitch_scan.py::GlitchCandidate.every_channel: '380000000000000000000000000'
   core/audit/glitch_scan.py::GlitchCandidate.frame: '280000000000000000000000000'
   core/audit/glitch_scan.py::GlitchCandidate.from_start: '380000000000000000000000000'
   core/audit/glitch_scan.py::GlitchCandidate.lost_vints: '280000000000000000000000000'
+  core/audit/glitch_scan.py::GlitchCandidate.possible_vints: '280000000000000000000000000'
   core/audit/glitch_scan.py::GlitchCandidate.window: '380000000000000000000000000'
   core/audit/glitch_scan.py::GlitchScan.glitches: f80000000000000000000000000
   core/audit/glitch_scan.py::_across: '380000000000000000000000000'
@@ -418,13 +422,13 @@ functions:
   core/drivers/smps68k/type1a/dac.py::_Type1aDac._immediate_pitches: 400000700000c000000000000000000000000000
   core/drivers/smps68k/type1a/dac.py::_Type1aDac.samples: 400000700000c000000000000000000000000000
   core/drivers/smps68k/type1a/dac.py::type1a_dac: 400000700000c000000000000000000000000000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.__init__: 2003e3800e00011c000000000000000000000000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.byte: 2003e3800e00011c000000000000000000000000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.bytes_at: 2003e3800e00011c000000000000000000000000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.code_pointer: 2003e3800c00011c000000000000000000000000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.contains: 2003e3800e00011c000000000000000000000000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.header_pointer: 2003e3800e00011c000000000000000000000000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.rom_address: 2003e3800e00011c000000000000000000000000
+  core/drivers/smpsz80/memory.py::BankedZ80Memory.__init__: 2003e3800e000108000000000000000000000000
+  core/drivers/smpsz80/memory.py::BankedZ80Memory.byte: 2003e3800e000108000000000000000000000000
+  core/drivers/smpsz80/memory.py::BankedZ80Memory.bytes_at: 2003e3800e000108000000000000000000000000
+  core/drivers/smpsz80/memory.py::BankedZ80Memory.code_pointer: 2003e3800c000108000000000000000000000000
+  core/drivers/smpsz80/memory.py::BankedZ80Memory.contains: 2003e3800e000108000000000000000000000000
+  core/drivers/smpsz80/memory.py::BankedZ80Memory.header_pointer: 2003e3800e000108000000000000000000000000
+  core/drivers/smpsz80/memory.py::BankedZ80Memory.rom_address: 2003e3800e000108000000000000000000000000
   core/drivers/smpsz80/memory.py::window_view: '8000038000000108000000000000000000000000'
   core/drivers/smpsz80/outrun/dac.py::_entry_at: '8000038000000108000000000000000000000000'
   core/drivers/smpsz80/outrun/dac.py::_size: '8000038000000108000000000000000000000000'
@@ -458,8 +462,8 @@ functions:
   core/drivers/smpsz80/program.py::_words: 20a003e3800e00039c000000000000000000000000
   core/drivers/smpsz80/program.py::driver_ram: 20a003e3800e00039c000000000000000000000000
   core/drivers/smpsz80/program.py::fm_frequencies: 20a003e3800e00039c000000000000000000000000
-  core/drivers/smpsz80/program.py::one_match: 3e38000000118000000000000000000000000
-  core/drivers/smpsz80/program.py::one_operand: 3e38000000118000000000000000000000000
+  core/drivers/smpsz80/program.py::one_match: 3e38000000108000000000000000000000000
+  core/drivers/smpsz80/program.py::one_operand: 3e38000000108000000000000000000000000
   core/drivers/smpsz80/program.py::psg_frequencies: 208003e38000000318000000000000000000000000
   core/drivers/smpsz80/program.py::psg_read: 208003e38000000318000000000000000000000000
   core/drivers/smpsz80/program.py::psg_table: 208003e38000000318000000000000000000000000
@@ -567,10 +571,10 @@ functions:
   core/drivers/timetrax/walk.py::walk_song: '1000000000000000000000000000000000000000000'
   core/files.py::write_shared: 7c037000000000000000000000000000000000
   core/mod/cell.py::Cell.decode: 1fffffffffff0000000000000000000000000000
-  core/mod/file.py::ModFile.get_name: 1ffffffffffffd7c7fffffffffffffffffffffff
+  core/mod/file.py::ModFile.get_name: 1fffffffffff3d687fffffffffffffffffffffff
   core/mod/file.py::ModFile.get_name_bytes: 1ffffffffffffffc7fffffffffffffffffffffff
   core/mod/file.py::ModFile.set_name: 1ffffffffffffffc7fffffffffffffffffffffff
-  core/mod/file.py::ModSample.get_name: 1ffffffffffffd7c7fffffffffffffffffffffff
+  core/mod/file.py::ModSample.get_name: 1fffffffffff3d687fffffffffffffffffffffff
   core/mod/file.py::ModSample.set_name: 1ffffffffffffffc7fffffffffffffffffffffff
   core/mod/limits.py::sample_limit_bytes: 1ffffffffffffffc000000000000000000000000
   core/mod/notes.py::clamp_note: 1fffffffffff0000000000000000000000000000
@@ -755,13 +759,13 @@ functions:
   core/rom/kosinski.py::_Reader.bit: '580000000000000420000000000000000000000000'
   core/rom/kosinski.py::_Reader.byte: '580000000000000420000000000000000000000000'
   core/rom/kosinski.py::kosinski: '580000000000000420000000000000000000000000'
-  core/rom/memory.py::BankedMemory.__init__: '1208000000000000280000000000000000000000000'
-  core/rom/memory.py::BankedMemory.byte: '1208000000000000280000000000000000000000000'
-  core/rom/memory.py::BankedMemory.bytes_at: '1208000000000000280000000000000000000000000'
-  core/rom/memory.py::BankedMemory.code_pointer: '1208000000000000280000000000000000000000000'
-  core/rom/memory.py::BankedMemory.contains: '1208000000000000280000000000000000000000000'
-  core/rom/memory.py::BankedMemory.header_pointer: '1208000000000000280000000000000000000000000'
-  core/rom/memory.py::BankedMemory.rom_address: '1208000000000000280000000000000000000000000'
+  core/rom/memory.py::BankedMemory.__init__: '1208000000000000294000000000000000000000000'
+  core/rom/memory.py::BankedMemory.byte: '1208000000000000294000000000000000000000000'
+  core/rom/memory.py::BankedMemory.bytes_at: '1208000000000000294000000000000000000000000'
+  core/rom/memory.py::BankedMemory.code_pointer: '1208000000000000294000000000000000000000000'
+  core/rom/memory.py::BankedMemory.contains: '1208000000000000294000000000000000000000000'
+  core/rom/memory.py::BankedMemory.header_pointer: '1208000000000000294000000000000000000000000'
+  core/rom/memory.py::BankedMemory.rom_address: '1208000000000000294000000000000000000000000'
   core/rom/memory.py::SoundMemory.__init__: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/memory.py::SoundMemory.byte: f8607fe0700e00cef4800000000000000000000000
   core/rom/memory.py::SoundMemory.bytes_at: 1f8e07fe3f00e00cffc800000000000000000000000
@@ -798,7 +802,7 @@ functions:
   core/rom/tracks.py::_splice: '80000000000000000000000000000000000000000'
   core/rom/tracks.py::_stops_reached: '800078000000000840800000000000000000000000'
   core/rom/tracks.py::decode_tracks: 1f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/tracks.py::song_tracks: 1e08000000000000280000000000000000000000000
+  core/rom/tracks.py::song_tracks: 1e0800000000000c294000000000000000000000000
   core/rom/variant.py::DacSample.is_pitched_copy: d8c00000000000cd68000000000000000000000000
   core/rom/variant.py::HeaderLayout.entries_at: 58e00003f00e00c5ac000000000000000000000000
   core/rom/variant.py::SmpsVariant.__post_init__: 1f8fffffffffffffffc800000000000000000000000
@@ -809,7 +813,7 @@ functions:
   core/rom/variant.py::VoiceLayout.size: 1d8e07c03f00e00cdec800000000000000000000000
   core/rom/voices.py::_voice: 1d8e07c03f00e00cdec800000000000000000000000
   core/rom/voices.py::bank_voices: 1f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/voices.py::read_voice: 1c08000000000000080000000000000000000000000
+  core/rom/voices.py::read_voice: 1c0800000000000c084000000000000000000000000
   core/rom/voices.py::read_voices: d8e07c03f00e00cdec800000000000000000000000
   core/rom/voices.py::voice_from_registers: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/voices.py::voices_used: 1f8e07fe3f00e00cffc800000000000000000000000
@@ -820,12 +824,12 @@ functions:
   core/rom/z80.py::_decompressed: '580000000000000420000000000000000000000000'
   core/rom/z80.py::_kosinski: 1f8e07fe3f00e00cffe000000000000000000000000
   core/rom/z80.py::_lea_register: 1c0607c00700e00cce6000000000000000000000000
-  core/rom/z80.py::_leas_before: 1c00000000000000080000000000000000000000000
-  core/rom/z80.py::_past_bus_wait: 1c00000000000000080000000000000000000000000
+  core/rom/z80.py::_leas_before: 1c0000000000000c084000000000000000000000000
+  core/rom/z80.py::_past_bus_wait: 1c0000000000000c084000000000000000000000000
   core/rom/z80.py::_pointed: 1f8e07fe3f00e00cffe000000000000000000000000
   core/rom/z80.py::_verified: 1f8e07fe3f00e00cffe000000000000000000000000
-  core/rom/z80.py::one_match: '1208000000000000200000000000000000000000000'
-  core/rom/z80.py::one_operand: '208000000000000200000000000000000000000000'
+  core/rom/z80.py::one_match: '1208000000000000210000000000000000000000000'
+  core/rom/z80.py::one_operand: '208000000000000210000000000000000000000000'
   core/rom/z80.py::z80_loads: 1f8e07fe3f00e00cffe000000000000000000000000
   core/rom/z80.py::z80_ram: 1d8407c00700000cc62000000000000000000000000
   core/rom/z80.py::z80_word: 1f8e07fe3f00e00cffc000000000000000000000000
@@ -908,7 +912,7 @@ functions:
   core/smps/driver_track.py::DriverTrack._enveloped: '1000000000000000000000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._held: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack._holding: '1000000000000000000000000000000000000000000'
-  core/smps/driver_track.py::DriverTrack._keyed_off: 1e08000000000000000000000000000000000000000
+  core/smps/driver_track.py::DriverTrack._keyed_off: 1e0800000000000c294000000000000000000000000
   core/smps/driver_track.py::DriverTrack._law_levels: '1000000000000000000000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._level_path: '1000000000000000000000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._load_voice: 1fffffffffffffffffc000000000000000000000000
@@ -983,7 +987,7 @@ functions:
   core/smps/playback.py::_fixed_noise_apart: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_fm_voice: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_note: 1fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_pitch: e08000000000000000000000000000000000000000
+  core/smps/playback.py::_pitch: e0800000000000c294000000000000000000000000
   core/smps/playback.py::_played_channel: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_rest: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_slid: '1000000000000000000000000000000000000000000'
@@ -1003,7 +1007,7 @@ functions:
   core/smps/slide.py::PitchSlide._frame: '1000000000000000000000000000000000000000000'
   core/smps/slide.py::PitchSlide._word_at: '1000000000000000000000000000000000000000000'
   core/smps/slide.py::PitchSlide.apply: '1000000000000000000000000000000000000000000'
-  core/smps/slide.py::PitchSlide.for_channel: 1e08000000000000000000000000000000000000000
+  core/smps/slide.py::PitchSlide.for_channel: 1e0800000000000c294000000000000000000000000
   core/smps/slide.py::PitchSlide.frames: '1000000000000000000000000000000000000000000'
   core/smps/slide.py::_Rate.due: '1000000000000000000000000000000000000000000'
   core/smps/slide.py::_toward: '1000000000000000000000000000000000000000000'
@@ -1071,7 +1075,7 @@ functions:
   core/ui/song_diff.py::song_diff_lines: '5000000000000000000000000000'
   core/ui/song_diff.py::song_diff_lines.column: '5000000000000000000000000000'
   core/ui/song_diff.py::song_diff_lines.inline: '5000000000000000000000000000'
-  core/vgm/bursts.py::write_bursts: '280000000000000000000000000'
+  core/vgm/bursts.py::write_bursts: c294000000000000000000000000
   core/vgm/cache.py::_salt: fffc000000000000000000000000
   core/vgm/cache.py::load_frames: fffc000000000000000000000000
   core/vgm/chipstate.py::ChipState.__init__: 1ffffffffffffffc7fffffffffffffffffffffff
@@ -1102,12 +1106,16 @@ functions:
   core/vgm/chipstate.py::ChipState.psg_period: 1ffffffffffffffc7fffffffffffffffffffffff
   core/vgm/chipstate.py::ChipState.replay: 1fffffffffff000039ce739ce739ce739ce739ce
   core/vgm/chipstate.py::_data_byte_follows: 1ffffffffffffffc7fffffffffffffffffffffff
+  core/vgm/clock.py::FrameClock.burst_due: c294000000000000000000000000
+  core/vgm/clock.py::FrameClock.frame_of: c294000000000000000000000000
+  core/vgm/clock.py::FrameClock.opens: c294000000000000000000000000
   core/vgm/frames.py::FmFrame.operator: 7c000000000000000000000000
-  core/vgm/frames.py::Frame.active: f000000000000000000000000000
+  core/vgm/frames.py::Frame.active: '3000000000000000000000000000'
   core/vgm/frames.py::FrameLog.burst_due: '280000000000000000000000000'
   core/vgm/frames.py::FrameLog.burst_frame: f000000000000000000000000000
+  core/vgm/frames.py::FrameLog.clock: c294000000000000000000000000
   core/vgm/frames.py::FrameLog.fps: 3800000f000000000000000000000000000
-  core/vgm/frames.py::FrameLog.frame_of: f294421084230842318c6318c630
+  core/vgm/frames.py::FrameLog.frame_of: f014421084230842318c6318c630
   core/vgm/frames.py::FrameLog.loop_frame: '42108421084210842108421'
   core/vgm/frames.py::FrameLog.seconds: 28046318c6318c6318c6318c631
   core/vgm/frames.py::_FrameBuilder.__init__: 3800000fffc46318c6318c6318c6318c631
@@ -1140,21 +1148,21 @@ functions:
   core/vgm/lift/tempo.py::TempoMap.modifier: f000000000000000000000000000
   core/vgm/lift/tempo.py::TempoMap.tick: f000000000000000000000000000
   core/vgm/lift/tempo.py::_Back.__init__: f000000000000000000000000000
-  core/vgm/lift/tempo.py::_Back.copy: e000000000000000000000000000
-  core/vgm/lift/tempo.py::_Back.point: e000000000000000000000000000
-  core/vgm/lift/tempo.py::_Back.reached: e000000000000000000000000000
-  core/vgm/lift/tempo.py::_Back.schedule: e000000000000000000000000000
+  core/vgm/lift/tempo.py::_Back.copy: a000000000000000000000000000
+  core/vgm/lift/tempo.py::_Back.point: a000000000000000000000000000
+  core/vgm/lift/tempo.py::_Back.reached: a000000000000000000000000000
+  core/vgm/lift/tempo.py::_Back.schedule: a000000000000000000000000000
   core/vgm/lift/tempo.py::_Events.__init__: f000000000000000000000000000
-  core/vgm/lift/tempo.py::_Events._dp: e000000000000000000000000000
+  core/vgm/lift/tempo.py::_Events._dp: a000000000000000000000000000
   core/vgm/lift/tempo.py::_Events._driver_frames: f000000000000000000000000000
-  core/vgm/lift/tempo.py::_Events._relax: e000000000000000000000000000
-  core/vgm/lift/tempo.py::_Events._song_starts: e000000000000000000000000000
-  core/vgm/lift/tempo.py::_Events._split_bits: e000000000000000000000000000
+  core/vgm/lift/tempo.py::_Events._relax: a000000000000000000000000000
+  core/vgm/lift/tempo.py::_Events._song_starts: a000000000000000000000000000
+  core/vgm/lift/tempo.py::_Events._split_bits: a000000000000000000000000000
   core/vgm/lift/tempo.py::_Events._steps: f000000000000000000000000000
-  core/vgm/lift/tempo.py::_Events._whole: e000000000000000000000000000
+  core/vgm/lift/tempo.py::_Events._whole: a000000000000000000000000000
   core/vgm/lift/tempo.py::_Events.free_residues: f000000000000000000000000000
   core/vgm/lift/tempo.py::_Events.halves: f000000000000000000000000000
-  core/vgm/lift/tempo.py::_Events.segmented: e000000000000000000000000000
+  core/vgm/lift/tempo.py::_Events.segmented: a000000000000000000000000000
   core/vgm/lift/tempo.py::_Events.single: f000000000000000000000000000
   core/vgm/lift/tempo.py::_Events.singles: f000000000000000000000000000
   core/vgm/lift/tempo.py::_Events.song_start: f000000000000000000000000000
@@ -1214,7 +1222,15 @@ functions:
   core/vgm/realign.py::_merged: '14000000000000000000000000'
   core/vgm/realign.py::realigned: f07c000000000000000000000000
   core/vgm/realign.py::realigned.follow: '14000000000000000000000000'
-  core/vgm/updates.py::_goes_on: '280000000000000000000000000'
+  core/vgm/spans.py::_goes_on: c294000000000000000000000000
+  core/vgm/spans.py::update_spans: c294000000000000000000000000
+  core/vgm/spans.py::vint_lateness: c294000000000000000000000000
+  core/vgm/updates.py::DriverUpdate.length: '280000000000000000000000000'
+  core/vgm/updates.py::DriverUpdate.lost_frame: '280000000000000000000000000'
+  core/vgm/updates.py::DriverUpdate.overran: '280000000000000000000000000'
+  core/vgm/updates.py::DriverUpdate.skipped: '280000000000000000000000000'
+  core/vgm/updates.py::_next_due: '280000000000000000000000000'
+  core/vgm/updates.py::_verdict: '280000000000000000000000000'
   core/vgm/updates.py::driver_updates: '280000000000000000000000000'
   core/vgm/writes.py::_PsgLatch.__init__: '421084210842108421084210'
   core/vgm/writes.py::_PsgLatch._data: '421084210842108421084210'
@@ -1223,8 +1239,11 @@ functions:
   core/vgm/writes.py::_fm_name: '421084210842108421084210'
   core/vgm/writes.py::_global: '421084210842108421084210'
   core/vgm/writes.py::_key: '421084210842108421084210'
+  core/vgm/writes.py::_psg_channel: c294000000000000000000000000
   core/vgm/writes.py::decoded_writes: '421084210842108421084210'
   core/vgm/writes.py::is_dac_byte: 3800000fffc46318c6318c6318c6318c631
+  core/vgm/writes.py::tone_register: c294000000000000000000000000
+  core/vgm/writes.py::track_of: c294000000000000000000000000
   tools/rom/disasm.py::_branch_target: '1000000000000000000000000'
   tools/rom/disasm.py::_folded: '1000000000000000000000000'
   tools/rom/disasm.py::_m68k: '1000000000000000000000000'
@@ -1268,6 +1287,7 @@ functions:
   tools/vgm/vgm_frames.py::_candidate_line: '280000000000000000000000000'
   tools/vgm/vgm_frames.py::_check: 7c000000000000000000000000
   tools/vgm/vgm_frames.py::_excused: 7c000000000000000000000000
+  tools/vgm/vgm_frames.py::_gap_note: '280000000000000000000000000'
   tools/vgm/vgm_frames.py::_gaps_line: '280000000000000000000000000'
   tools/vgm/vgm_frames.py::_print_line: 7c000000000000000000000000
   tools/vgm/vgm_frames.py::_scan: f80000000000000000000000000

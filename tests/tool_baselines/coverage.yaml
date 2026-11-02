@@ -11781,7 +11781,7 @@ frames_golden_axe:
   - --all
   - --configs
   - configs/golden_axe
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -11821,10 +11821,12 @@ frames_golden_axe:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -11874,10 +11876,12 @@ frames_golden_axe:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -11918,11 +11922,13 @@ frames_golden_axe:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -11937,8 +11943,10 @@ frames_golden_axe:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -11947,6 +11955,8 @@ frames_golden_axe:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
@@ -12173,7 +12183,7 @@ frames_space_harrier_2:
   - --all
   - --configs
   - configs/space_harrier_2
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -12213,10 +12223,12 @@ frames_space_harrier_2:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -12270,10 +12282,12 @@ frames_space_harrier_2:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -12314,11 +12328,13 @@ frames_space_harrier_2:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -12333,8 +12349,10 @@ frames_space_harrier_2:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -12343,6 +12361,8 @@ frames_space_harrier_2:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
@@ -12831,7 +12851,7 @@ glitches_golden_axe:
   - --glitches
   - --configs
   - configs/golden_axe
-  commit: dd453df-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -12871,10 +12891,12 @@ glitches_golden_axe:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -12924,10 +12946,12 @@ glitches_golden_axe:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -12968,11 +12992,13 @@ glitches_golden_axe:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -12990,6 +13016,7 @@ glitches_golden_axe:
   - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -12998,6 +13025,7 @@ glitches_golden_axe:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
   - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
@@ -13227,7 +13255,7 @@ glitches_space_harrier_2:
   - --glitches
   - --configs
   - configs/space_harrier_2
-  commit: dd453df-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -13267,10 +13295,12 @@ glitches_space_harrier_2:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -13324,10 +13354,12 @@ glitches_space_harrier_2:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -13368,11 +13400,13 @@ glitches_space_harrier_2:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -13390,6 +13424,7 @@ glitches_space_harrier_2:
   - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -13398,6 +13433,7 @@ glitches_space_harrier_2:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
   - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
@@ -14275,7 +14311,7 @@ lift_moonwalker_88_round_clear:
   argv:
   - tools/vgm/vgm_lift.py
   - configs\moonwalker\88_round_clear.yaml
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -14315,10 +14351,12 @@ lift_moonwalker_88_round_clear:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -14369,10 +14407,12 @@ lift_moonwalker_88_round_clear:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -14413,11 +14453,13 @@ lift_moonwalker_88_round_clear:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -14432,8 +14474,10 @@ lift_moonwalker_88_round_clear:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -14442,6 +14486,8 @@ lift_moonwalker_88_round_clear:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_lift.py
   inputs:
@@ -14506,7 +14552,7 @@ lift_moonwalker_all:
   - --all
   - --configs
   - configs\moonwalker
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -14546,10 +14592,12 @@ lift_moonwalker_all:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -14600,10 +14648,12 @@ lift_moonwalker_all:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -14644,11 +14694,13 @@ lift_moonwalker_all:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -14663,8 +14715,10 @@ lift_moonwalker_all:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -14673,6 +14727,8 @@ lift_moonwalker_all:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_lift.py
   inputs:

@@ -240,13 +240,13 @@ sor2_game_over:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_go_straight:
-  commit: 6d5b10b
-  config: 7aca40110edd
+  commit: 766ea97
+  config: fe62fe0c89b6
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_jungle_base:
-  commit: 6d5b10b
-  config: 9401eecbdfc2
+  commit: 766ea97
+  config: 5d4f05a3dd71
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_level_complete:
@@ -255,7 +255,7 @@ sor2_level_complete:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_song_12:
-  commit: 6d5b10b
+  commit: 766ea97
   config: 51b5789bab39
   date: '2026-11-02'
   settings: f08dfd2ff1bd
@@ -315,18 +315,18 @@ tt_game_over:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 tt_mission_briefing:
-  commit: 6d5b10b
+  commit: 766ea97
   config: 5e9ddbee01ca
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 tt_stages_2_5_7:
-  commit: 719ea22
-  config: a99d438e3469
+  commit: 766ea97
+  config: cae902849f07
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 tt_stages_2_5_7_bar:
-  commit: 93e8328
-  config: cb050b2c7c20
+  commit: 766ea97
+  config: 92c48593d89e
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 tt_title_screen:

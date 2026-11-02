@@ -13,8 +13,11 @@ from core.smps import (
     NOISE_CHANNEL_NAME,
     ChannelType,
     CoordFlag,
+    PitchRules,
     PlaybackRules,
+    Portamento,
     PsgForm,
+    SetTransposition,
     SmpsChannel,
     SmpsChannelHeader,
     SmpsEvent,
@@ -224,3 +227,33 @@ class FixedRateNoise(unittest.TestCase):
         channels = self._played(self._TONE3)
         self.assertNotIn(NOISE_CHANNEL_NAME, channels)
         self.assertEqual([n.noise for n in channels["PSG1"]], [None, self._TONE3, None])
+
+
+class Slides(unittest.TestCase):
+    """A driver that slides the word (PitchRules.slide): each note's frames modelled, its path."""
+
+    @staticmethod
+    def _played(*events: SmpsEvent) -> list:
+        song = _song(*events)
+        fm = TrackRules(pitch=PitchRules(slide=_Linear()))
+        song.rules = song.channels[0].rules = dataclasses.replace(SONIC1_RULES, tracks={ChannelType.FM: fm})
+        return played_song(song).channels["FM1"]
+
+    def test_a_note_holding_its_word_has_an_empty_path(self):
+        self.assertEqual(self._played(_note(duration=4))[0].pitch_path, ())
+
+    def test_a_portamento_is_the_notes_path(self):
+        e4 = _C4 + 4
+        played = self._played(_note(duration=1), SmpsEvent(effect=Portamento(2, 1)), _note(e4, 3))
+        self.assertEqual(played[1].pitch, FM_FREQUENCIES[e4 - 0x80 - 2])
+        self.assertEqual(played[1].pitch_path, ((1, FM_FREQUENCIES[e4 - 0x80]),))
+
+    def test_a_set_transposition_set_again_adds_nothing(self):
+        set_one = SmpsEvent(effect=SetTransposition(1))
+        played = self._played(set_one, _note(duration=1), SmpsEvent(effect=SetTransposition(1)), _note(duration=1))
+        self.assertEqual(played[0].pitch, played[1].pitch)
+
+
+class _Linear:
+    def toward(self, word: int, target: int, step: int) -> int:
+        return min(word + step, target) if target >= word else max(word - step, target)

@@ -11,8 +11,9 @@ disassembler (docs/todo/time_trax.md).
                 PAL's; played as written
 
 Its playback rules: a rest writes nothing, the note sounds on to a read's key-off (rest_holds); the
-volume scales operators (volume.py: its table of squares from the ROM).  The rest are Sonic 1's for
-now: the plan's Phase 2 reviews each against the code (glides, portamento, volume envelopes).
+volume scales operators (volume.py: its table of squares from the ROM); the word slides frame by
+frame (glide.py: a glide's step across a block).  The rest are Sonic 1's for now: the plan's
+Phase 2 reviews each against the code (volume envelopes).
 """
 
 from __future__ import annotations
@@ -23,9 +24,10 @@ from core.rom.header import RomHeader
 from core.rom.image import RomImage
 from core.rom.memory import SoundMemory
 from core.rom.variant import HeaderLayout, SmpsVariant, TrackSlot
-from core.smps import FM_CHANNEL_NAMES, ChannelType, KeyOffRules, PlaybackRules, TrackRules, VolumeRules
+from core.smps import FM_CHANNEL_NAMES, ChannelType, KeyOffRules, PitchRules, PlaybackRules, TrackRules, VolumeRules
 
 from ..names import SmpsDriver
+from .glide import TimeTraxGlide
 from .grammar import FLAGS, instruction
 from .header import read_header, track_numbers
 from .locate import driver_tables, locate, time_trax_memory
@@ -64,7 +66,8 @@ TIMETRAX = SmpsVariant(
     voice_layout=VOICE,
     rules=PlaybackRules(driver=SmpsDriver.TIMETRAX, fm_frequencies=(), psg_frequencies=(), psg_read=(),
                         psg_envelopes={}, dac_names={},
-                        tracks={ChannelType.FM: TrackRules(key_off=KeyOffRules(rest_holds=True))}),
+                        tracks={ChannelType.FM: TrackRules(key_off=KeyOffRules(rest_holds=True),
+                                                           pitch=PitchRules(slide=TimeTraxGlide()))}),
     rules_from_rom=_rules_from_rom,
     grammar=instruction,
     music_header_reader=read_header,

@@ -17,6 +17,7 @@ from ..smps import (
     Pan,
     PsgForm,
     PsgVoice,
+    SetTransposition,
     SetVoice,
     SetVol,
     SmpsChannel,
@@ -387,6 +388,9 @@ class _ChannelWalk:
                 self._hard_pan = pan_is_hard(b4)
             case ChangeTransposition(semitones=delta):
                 self._transpose += delta
+                self.transpose_events.append(TransposeEvent(tick=tick, delta=delta, cumulative=self._transpose))
+            case SetTransposition(semitones=semitones) if semitones != self._transpose:
+                delta, self._transpose = semitones - self._transpose, semitones
                 self.transpose_events.append(TransposeEvent(tick=tick, delta=delta, cumulative=self._transpose))
 
     def _switch_voice(self, voice_idx: int) -> None:

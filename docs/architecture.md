@@ -150,6 +150,7 @@ How the asm is spelled and how the parser reads it: `docs/smps_format.md`.
 | `clock.py` | `UpdateClock` (`VInt`, `TimerA(value)`): what runs the driver's update; `update_hz(rules, region)`: its frames a second, the one place a frame's length comes from (`Timeline.fps`) |
 | `tempo.py` | `TempoSegment`, `tempo_schedule`: the frame each tick is read on; `NO_TEMPO_HOLDS` (SFX, a driver's no-stall tempo) |
 | `track.py` | `TrackState`: one track's driver state as its flags leave it |
+| `slide.py` | `PitchSlide`: a track's word frame by frame under a glide and a portamento (`PitchRules.slide`: Time Trax's) |
 | `playback.py` | `played_song`: each note as the driver plays it (`PlayedNote`), the asm's spelling gone |
 | `compare.py` | `compare_songs`, `align_songs`, `parse_differences`: two songs note by note per `Aspect` (the lift's yardstick) |
 

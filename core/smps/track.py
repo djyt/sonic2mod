@@ -23,6 +23,7 @@ from .effects import (
     PsgForm,
     PsgVoice,
     SetPitchEnvelope,
+    SetTransposition,
     SetVoice,
     SetVol,
     SmpsEffect,
@@ -39,7 +40,8 @@ class TrackState:
     def __init__(self, *, is_psg: bool, psg: PsgTable, transpose: int = 0, volume: int = 0) -> None:
         self.is_psg = is_psg
         self.psg = psg                      # the driver's PSG table (PlaybackRules.psg_table): where a note lands
-        self.transpose = transpose          # header pitch_offset + every smpsChangeTransposition
+        self.transpose = transpose          # header pitch_offset + every smpsChangeTransposition (a
+                                            # SetTransposition: its value)
         self.tl = 0 if is_psg else volume   # YM2612 TL offset, 0-127
         self.att = volume if is_psg else 0  # SN76489 attenuation, 0-15
         self.hard_panned = False
@@ -84,6 +86,8 @@ class TrackState:
                 self.detune = offset
             case ChangeTransposition(semitones=semitones):
                 self.transpose += semitones
+            case SetTransposition(semitones=semitones):
+                self.transpose = semitones
             case PsgForm(noise=noise):
                 # cfSetPSGNoise: a noise channel from here on, until a driver turns it back (None:
                 # Streets of Rage 2's; nothing in Sonic 1 music does)

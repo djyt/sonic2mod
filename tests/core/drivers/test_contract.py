@@ -19,6 +19,7 @@ import unittest
 from core.drivers import all_games, detect_variant, known_game, locate_sounds, read_rom_song, trial_reads
 from core.drivers.names import SmpsDriver
 from core.drivers.registry import all_drivers
+from core.drivers.timetrax.glide import TimeTraxGlide
 from core.rom import RomImage
 from core.smps import ChannelType
 from core.smps.rules import SONIC1_TRACK, OctaveWrap, PlaybackRules, SoftReleaseLaw, TrackRules
@@ -60,10 +61,10 @@ _REVIEWED: dict[SmpsDriver, dict] = {
                 "ties.exit_clears": False, "ties.late_keys_off": True, "modulation.turn_pause": False,
                 "pitch.octave_shift_from": 21, "pitch.divider_clamp": True, "pitch.noise_writes_tone3": False},
     },
-    # A rest writes nothing ($0D18): the note sounds on to a read's key-off ($1293).  Its volume law
-    # ($1343) comes from the ROM (rules_from_rom).  The rest Sonic 1's for now: docs/todo/time_trax.md
-    # Phase 2 reviews each switch against its code
-    SmpsDriver.TIMETRAX: {"FM": {"key_off.rest_holds": True}},
+    # A rest writes nothing ($0D18): the note sounds on to a read's key-off ($1293); the word slides
+    # ($1739).  Its volume law ($1343) comes from the ROM (rules_from_rom).  The rest Sonic 1's for now:
+    # docs/todo/time_trax.md Phase 2 reviews each switch against its code
+    SmpsDriver.TIMETRAX: {"FM": {"key_off.rest_holds": True, "pitch.slide": TimeTraxGlide()}},
 }
 _PLAYBACK_SWITCHES = ("tempo_phase", "key_run_out", "update_clock")
 

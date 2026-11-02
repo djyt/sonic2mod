@@ -31,6 +31,7 @@ from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK, noise_follows_tone3
 from .driver_tables import FM_TABLE_NC0, fm_note_index, fm_render_word, psg_note_index
 from .names import NOISE_CHANNEL_NAME, source_names
 from .rules import PitchRules, PlaybackRules
+from .slide import PitchSlide
 from .song import REST, ChannelType, SmpsNote, SmpsSong, SmpsVoice
 from .song_prep import prepare_song
 from .tempo import TempoSegment, frame_of_tick, tick_at_frame
@@ -154,6 +155,7 @@ def _fixed_noise(note: PlayedNote) -> bool:
 def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[TempoSegment, ...],
                     end: int) -> list[PlayedNote]:
     st = TrackState.for_channel(channel)
+    slide = PitchSlide.for_channel(channel)
     played: list[PlayedNote] = []
     base: int | None = None            # the table word of the last note: a retrigger re-keys it
     resting = True                     # the last read was a rest (the driver cleared Freq)
@@ -164,10 +166,18 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
     for ev in channel.events:
         if ev.is_effect:
             st.apply(ev.effect)
+            if slide is not None:
+                slide.apply(ev.effect, st.transpose)
             continue
         note = ev.note
         if note.duration <= 0:
             continue
+
+        # The word on each frame, where the driver slides it: through rests too
+        words = None
+        if slide is not None:
+            frames = frame_of_tick(schedule, ev.tick_position + note.duration) - frame_of_tick(schedule, ev.tick_position)
+            words = slide.frames(note, frames, st.transpose, st.detune)
 
         # A held duration re-keys the last note (a rest when there is none: TrackSetRest cleared it)
         if note.is_rest and note.is_no_attack and not resting and base is not None:
@@ -202,7 +212,7 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
         if not note.is_retrigger or base is None:
             base = _table_word(note, st, channel.rules.fm_frequencies)
         sounded = _note(ev.tick_position, note, st, base, voices, attack, _first_step(st, channel.rules),
-                        channel.rules.track(channel.header.channel_type).pitch)
+                        channel.rules.track(channel.header.channel_type).pitch, words)
 
         # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
         # read that way leaves it sounding (NoteTimeout is spent)
@@ -275,15 +285,25 @@ def _first_step(st: TrackState, rules: PlaybackRules) -> int:
 
 
 def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int, SmpsVoice],
-          attack: bool, envelope_offset: int, rules: PitchRules) -> PlayedNote:
+          attack: bool, envelope_offset: int, rules: PitchRules, words: tuple[int, ...] | None) -> PlayedNote:
     fm = voices.get(st.voice) if st.voice is not None and not st.is_psg else None
     if st.is_psg:
         voice, level = st.envelope, st.att
     else:
         voice, level = _fm_voice(fm, st.tl)
-    # The word the chip takes: a detuned one past its bits wraps (Streets of Rage's $8F PSG1: divider
-    # 0), or the driver clamps it (Streets of Rage 2's); channel 3's own registers in special mode
-    # carry its offset (OP4's); the pitch envelope's first step sounds with the key-on
+    pitch, path = _pitch(base, st, fm, envelope_offset, rules) if words is None else _slid(words)
+    return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
+                      voice=voice, level=level, pan=st.pan,
+                      modulation=st.modulation if st.modulation_on else None, fill=st.fill,
+                      noise=st.noise_form, dac="", pitch_path=path)
+
+
+def _pitch(base: int, st: TrackState, fm: SmpsVoice | None, envelope_offset: int,
+           rules: PitchRules) -> tuple[int, None]:
+    """The word the chip takes for the note's read (no path: what follows it is not modelled)."""
+    # A detuned one past its bits wraps (Streets of Rage's $8F PSG1: divider 0), or the driver clamps
+    # it (Streets of Rage 2's); channel 3's own registers in special mode carry its offset (OP4's);
+    # the pitch envelope's first step sounds with the key-on
     special = fm.channel_fnum_offset if fm is not None else 0
     word = base + st.detune
     if rules.octave_wrap is not None and not st.is_psg:
@@ -291,11 +311,16 @@ def _note(tick: int, note: SmpsNote, st: TrackState, base: int, voices: dict[int
     word += special + envelope_offset
     if st.is_psg and rules.divider_clamp:
         word = min(max(word, 1), PSG_DIVIDER_MASK)
-    pitch = word & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX)
-    return PlayedNote(tick, note.duration, rest=False, attack=attack, note=base, pitch=pitch,
-                      voice=voice, level=level, pan=st.pan,
-                      modulation=st.modulation if st.modulation_on else None, fill=st.fill,
-                      noise=st.noise_form, dac="")
+    return word & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX), None
+
+
+def _slid(words: tuple[int, ...]) -> tuple[int, tuple[tuple[int, int], ...]]:
+    """A slid note's first word, and its path: (frame, word) at each change after it.
+
+        words  $1A00 $1A10 $1A10 $1A20   ->   $1A00, ((1, $1A10), (3, $1A20))
+    """
+    chip = [w & FREQ_WORD_MAX for w in words]
+    return chip[0], tuple((i, w) for i, w in enumerate(chip) if i and w != chip[i - 1])
 
 
 def _fm_voice(voice: SmpsVoice | None, tl_offset: int) -> tuple[object, object]:

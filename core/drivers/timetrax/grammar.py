@@ -12,14 +12,15 @@ frames).
     $8A v               ScaledVolume v: the masked operators' output x v / 256 (volume.py)
     $8B / $8C           Legato off / on (a note neither keys off nor on)
     $8D n / $8E         the sync: the signal nothing, the wait a rest of the frames it waits
+    $92 s f / $93       Glide s f: the word s fnum units every f frames toward the note's / Glide 0
+    $94 s f / $95       Portamento s f: s semitones every f frames toward the note / Portamento 0
     $96 n / $97         Gate n + 1 (and KeyOffAfter cleared) / Gate 0: each frame after the countdown
     $98 n / $99         KeyOffAfter n - 1 (and Gate cleared) / KeyOffAfter 0   ($1293: n against it)
     $A8 d / $A9         Detune d (signed, added to the frequency word) / 0
     $AA m / $AB         VolumeMask m (bit 3: TL $40 ... bit 0: $4C) / None: the carriers
 
 A rest writes nothing: the note sounds on to a read's key-off (TrackRules.key_off.rest_holds).
-Read and dropped for now, each named (docs/todo/time_trax.md Phase 2): glide, portamento, vibrato,
-volume envelopes ($8A stops one: from 2.4).  Refused (no song plays
+Read and dropped for now, each named (docs/todo/time_trax.md Phase 2): vibrato, volume envelopes ($8A stops one: from 2.4).  Refused (no song plays
 them): the signalled jumps, the random jump, the portamento's transposition mode, release
 envelopes, the LFO, the DAC.
 """
@@ -36,11 +37,13 @@ from core.smps import (
     ChannelType,
     Detune,
     Gate,
+    Glide,
     KeyOffAfter,
     Legato,
     Op,
     OpKind,
     Pan,
+    Portamento,
     ScaledVolume,
     SetTransposition,
     SetVoice,
@@ -56,12 +59,16 @@ from .commands import (
     FIRST_COMMAND,
     GATE,
     GATE_OFF,
+    GLIDE,
+    GLIDE_OFF,
     KEY_OFF_AFTER,
     KEY_OFF_AFTER_OFF,
     LEGATO,
     MASK,
     MASK_CARRIERS,
     PAN,
+    PORTAMENTO,
+    PORTAMENTO_OFF,
     RE_KEY,
     REST_BYTE,
     TRANSPOSE,
@@ -172,6 +179,13 @@ def _effect(memory: TimeTraxMemory, address: int, byte: int, operand: int) -> Sm
         return Gate(0)
     if byte == KEY_OFF_AFTER_OFF:
         return KeyOffAfter(0)
+    if byte in (GLIDE, PORTAMENTO):
+        slide = Glide if byte == GLIDE else Portamento
+        return slide(operand, memory.byte(address + 2))
+    if byte == GLIDE_OFF:
+        return Glide(0)
+    if byte == PORTAMENTO_OFF:
+        return Portamento(0)
     if byte == VOLUME:
         return ScaledVolume(operand)
     if byte in (MASK, MASK_CARRIERS):

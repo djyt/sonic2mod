@@ -35,22 +35,22 @@ from .effects import (
     AdsrEnvelope,
     AlterVol,
     AlterVolumeStep,
-    ChangeTransposition,
     Detune,
     DetuneAdd,
     DriverEffect,
     EnvelopePreset,
     Fm3Special,
     Gate,
+    Glide,
     KeyOffAfter,
     Legato,
     NoiseRate,
     PlayedEffect,
+    Portamento,
     PsgForm,
     PsgVoice,
     ScaledVolume,
     SelectSample,
-    SetTransposition,
     SetVoice,
     SetVol,
     SmpsEffect,
@@ -95,7 +95,6 @@ class DriverTrack:
         self._gate = 0                             # frames before a note's end the driver keys it off
         self._after = 0                            # ... after a read starts (KeyOffAfter), a gate first
         self._sounding = False                     # a note sounds (TrackRules.key_off.rest_holds)
-        self._transposition = header.pitch_offset  # the track's, as SetTransposition sets it
         self._scaled = 0                           # ScaledVolume's level: the track RAM starts cleared
         self._mask: int | None = None              # VolumeMask's operators; None: the carriers
         self._legato = False                       # every read ties (Legato)
@@ -151,11 +150,6 @@ class DriverTrack:
             case VolumeMask(operators=operators):
                 self._mask = operators
                 return self._scaled_levels()
-            case SetTransposition(semitones=semitones):
-                delta, self._transposition = semitones - self._transposition, semitones
-                return (ChangeTransposition(delta),) if delta else ()
-            case ChangeTransposition(semitones=semitones):
-                self._transposition += semitones
             case Legato():
                 self._legato = effect.on
                 return ()
@@ -203,6 +197,8 @@ class DriverTrack:
             case Fm3Special(offsets=offsets):
                 voice = self._special_mode(offsets)
                 return () if voice is None else (voice,)
+            case Glide() | Portamento() if self._rules.pitch.slide is None:
+                raise ValueError(f"{self._header.label}: {effect}: this track's driver slides no pitch")
         if isinstance(effect, DriverEffect):
             raise ValueError(f"{self._header.label}: {effect} is no effect this track's driver plays")
         assert isinstance(effect, PlayedEffect)

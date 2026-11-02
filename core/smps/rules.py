@@ -21,7 +21,8 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
                    key_off     the gate and the rest: what they key off, a soft release instead
                    ties        what a jump and a tied read do to a tie
                    modulation  the vibrato's turns
-                   pitch       the detune word's scale, the octave it is kept in, noise on tone 3
+                   pitch       the detune word's scale, the octave it is kept in, noise on tone 3, a
+                               glide's step (SlideLaw)
 """
 
 from __future__ import annotations
@@ -76,6 +77,15 @@ class VolumeLaw(Protocol):
     def levels(self, tls: Mapping[int, int], carriers: tuple[int, ...], volume: int, mask: int | None) -> dict[int, int]:
         """Each TL register's TL as the driver writes it: `tls` the voice's (channel 0's TL registers),
         `volume` 0-255, `mask` the operators it scales (bit 3: $40 ... bit 0: $4C; None: `carriers`)."""
+        ...
+
+
+class SlideLaw(Protocol):
+    """A driver that slides the word it writes frame by frame (Glide, Portamento: core/smps/slide.py):
+    how a glide's step crosses a block (Time Trax's: core/drivers/timetrax/glide.py)."""
+
+    def toward(self, word: int, target: int, step: int) -> int:
+        """`word` (block << 11 | fnum) moved `step` fnum units toward `target`, never past it."""
         ...
 
 
@@ -168,6 +178,8 @@ class PitchRules:
     octave_wrap: OctaveWrap | None = None   # the word and its detune kept within an octave; None: added as is
     noise_writes_tone3: bool = True         # a noise note writes its pitch to tone 3; False: tone 3
                                             # keeps the last tone note's (none: divider 0, nMaxPSG)
+    slide: SlideLaw | None = None           # the word slides frame by frame (Glide, Portamento), every
+                                            # note's pitch modelled per frame; None: no slides (refused)
 
 
     def shift(self, index: int) -> int:

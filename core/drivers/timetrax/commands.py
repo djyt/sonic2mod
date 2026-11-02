@@ -47,6 +47,7 @@ class Command:
 PAN, VOICE, TRANSPOSE, RE_KEY, LEGATO, DETUNE, DETUNE_OFF = 0x87, 0x88, 0x89, 0x8B, 0x8C, 0xA8, 0xA9
 GATE, GATE_OFF, KEY_OFF_AFTER, KEY_OFF_AFTER_OFF = 0x96, 0x97, 0x98, 0x99   # each set clears the other's
 VOLUME, MASK, MASK_CARRIERS = 0x8A, 0xAA, 0xAB
+GLIDE, GLIDE_OFF, PORTAMENTO, PORTAMENTO_OFF = 0x92, 0x93, 0x94, 0x95
 
 
 COMMANDS: dict[int, Command] = {
@@ -68,10 +69,10 @@ COMMANDS: dict[int, Command] = {
     0x8F: Command(2, "jump unless signalled", Steer.REFUSED),
     0x90: Command(0, "loop end unless signalled", Steer.REFUSED),
     0x91: Command(1, "random jump", Steer.REFUSED),           # n, then n words: refused before they matter
-    0x92: Command(2, "glide", later=True),
-    0x93: Command(0, "glide off", later=True),
-    0x94: Command(2, "portamento", later=True),
-    0x95: Command(0, "portamento off", later=True),
+    GLIDE: Command(2, "glide"),
+    GLIDE_OFF: Command(0, "glide off"),
+    PORTAMENTO: Command(2, "portamento"),
+    PORTAMENTO_OFF: Command(0, "portamento off"),
     GATE: Command(1, "key off before the end"),
     GATE_OFF: Command(0, "key off before the end off"),
     KEY_OFF_AFTER: Command(1, "key off after the start"),

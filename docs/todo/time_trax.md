@@ -282,7 +282,7 @@ reached.  A glide is the same with another curve: D4 uses it.
   frames before the read's end (`Gate`), `$98 n` n - 1 after its start (`KeyOffAfter`, a gate
   first); each set clears the other's.  A rest writes nothing ($0D18): the note sounds on to a
   read's key-off; a legato read after one stays silent (`KeyOffRules.rest_holds`, DriverTrack).
-  `$89`: `SetTransposition`, played as the change.  Two notes transposed past the FM table (song 3,
+  `$89`: `SetTransposition`, kept as set (2.3: as a change, a replayed loop added it again).  Two notes transposed past the FM table (song 3,
   4: FM1) play the pitch meant.  Lift: length 1076 -> 22, note 1473 -> 18 (song 0); `vgm_frames`
   attack pitch 1470 -> 27.  Left for 2.2: levels, the modulator TLs `$AA` scales ("voice").
 - [x] 2.2 Volume law; `$AA` masks.  `vgm_frames` levels per key-on.  `$1343`: each operator's
@@ -294,7 +294,22 @@ reached.  A glide is the same with another curve: D4 uses it.
   `samples.level_patch_min` (3), in core/plan/derive.py: a law's copy within it of its voice plays
   as the voice.  `vgm_frames` level misses 2134 -> 1 (song 0), 1 / 1 / 0 (songs 2, 3, 5); left
   (songs 1, 4, and song 2's modulators): the volume envelopes (2.4).
-- [ ] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch (T2).
+- [x] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch (T2).  Each
+  frame of a read and after it (`$12B4`; not a rest's read, `$0D18`): the portamento (`$16C8`) steps
+  the table index s semitones every f frames toward the note + transposition, the glide (`$1739`)
+  the word s fnum units toward the portamento's (+ detune), never past it; up past fnum `$4D2` the
+  next block from `$269`, under `$245` the block below from `$48C` (+ the overshoot's high byte).
+  Set while off, a portamento starts at the last note, a glide at the last target.  `Glide` /
+  `Portamento` (played effects), `core/smps/slide.py` (`PitchSlide`), `PitchRules.slide`
+  (`core/drivers/timetrax/glide.py`); `played_song` fills every Time Trax note's `pitch_path`.
+  Found: `$89` replayed as a change doubled in `song_prep`'s loop replay (song 4's second pass);
+  now `SetTransposition` is a played effect, `TrackState` sets it (song 4's MOD: wrong notes
+  FM1 400 -> 0, FM4 138 -> 0).  `vgm_frames` attack pitch 25 / 43 / 50 / 12 / 94 / 4 -> 3 / 3 / 6 /
+  12 / 6 / 0, tied 338-989 -> 0-2, path 0-3; lift note 0.  Left: every attack miss is a lift onset
+  miss (a key-on the rip logs a frame late: to look at in 1.4's terms); the vibrato (`$9A`, song 2
+  and 3's FM3, `+30` frames: not read); a write the log shows a frame late (song 2 FM5 3220); song
+  3's FM1 note transposed below the table glides down to the pitch meant (the rip's reads stray
+  bytes and rises).
 - [ ] 2.4 Volume envelopes; `vgm_frames` levels per frame (T2, T3).
 
 ### Phase 3: convert

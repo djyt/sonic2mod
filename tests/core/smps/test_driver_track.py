@@ -13,7 +13,6 @@ from core.smps import (
     Adsr,
     AdsrEnvelope,
     AlterVolumeStep,
-    ChangeTransposition,
     ChannelType,
     Detune,
     EnvelopePreset,
@@ -251,12 +250,9 @@ class ScaledVolumes(unittest.TestCase):
 
 
 class Transpositions(unittest.TestCase):
-    def test_a_set_plays_as_the_change_from_the_last(self):
-        track = _track()
-        self.assertEqual(track.effect(SetTransposition(5)), (ChangeTransposition(5),))
-        self.assertEqual(track.effect(ChangeTransposition(2)), (ChangeTransposition(2),))
-        self.assertEqual(track.effect(SetTransposition(-1)), (ChangeTransposition(-8),))
-        self.assertEqual(track.effect(SetTransposition(-1)), ())
+    def test_a_set_is_kept_as_set(self):
+        """Not a change: a loop replayed from the song's start would add it again."""
+        self.assertEqual(_track().effect(SetTransposition(5)), (SetTransposition(5),))
 
 
 class SoftReleases(unittest.TestCase):

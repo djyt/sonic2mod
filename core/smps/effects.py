@@ -71,6 +71,8 @@ class CoordFlag(StrEnum):
     SET_TRANSPOSITION = auto()    # its $89
     SCALED_VOLUME = auto()        # its $8A
     VOLUME_MASK = auto()          # its $AA / $AB
+    GLIDE = auto()                # its $92 / $93
+    PORTAMENTO = auto()           # its $94 / $95
 
 
 @dataclass(frozen=True)
@@ -224,6 +226,24 @@ class SetPitchEnvelope(PlayedEffect):
 
 
 @dataclass(frozen=True)
+class Glide(PlayedEffect):
+    """The word written moves `step` fnum units every `every` frames toward the note's
+    (core/smps/slide.py); step 0: off."""
+    flag = CoordFlag.GLIDE
+    step: int
+    every: int = 0
+
+
+@dataclass(frozen=True)
+class Portamento(PlayedEffect):
+    """The note's table index moves `step` semitones every `every` frames toward the note read
+    (core/smps/slide.py); step 0: off."""
+    flag = CoordFlag.PORTAMENTO
+    step: int
+    every: int = 0
+
+
+@dataclass(frozen=True)
 class SelectSample(PlayedEffect):
     flag = CoordFlag.DAC_SAMPLE
     sound: int                    # the DAC byte the drum track's notes play
@@ -266,8 +286,8 @@ class KeyOffAfter(DriverEffect):
 
 
 @dataclass(frozen=True)
-class SetTransposition(DriverEffect):
-    """The track's transposition set, not added to: the walk's ChangeTransposition by the difference."""
+class SetTransposition(PlayedEffect):
+    """The track's transposition set, not added to (Time Trax's $89): a replayed loop sets it again."""
     flag = CoordFlag.SET_TRANSPOSITION
     semitones: int                # signed
 

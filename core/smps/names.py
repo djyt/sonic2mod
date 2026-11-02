@@ -258,6 +258,8 @@ _FLAG_MACROS = {
     CoordFlag.SET_TRANSPOSITION: "smpsSetTransposition",   # likewise
     CoordFlag.SCALED_VOLUME: "smpsScaledVolume",   # likewise
     CoordFlag.VOLUME_MASK: "smpsVolumeMask",   # likewise
+    CoordFlag.GLIDE: "smpsGlide",            # likewise
+    CoordFlag.PORTAMENTO: "smpsPortamento",  # likewise
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

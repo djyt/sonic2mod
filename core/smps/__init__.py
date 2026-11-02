@@ -15,6 +15,7 @@ whatever driver or file the song came from.
     names.py          note labels, config pitch names, DAC names, SFX channel ids, source channel names
     track.py          TrackState: one track's driver state as its coordination flags leave it
     tempo.py          TempoSegment, tempo_schedule: the frame each tick is read on
+    slide.py          PitchSlide: a track's word frame by frame under a glide and a portamento
     playback.py       played_song: what a song plays note by note, its spelling gone
     compare.py        compare_songs: where two songs play differently, aspect by aspect;
                       parse_differences: where two readings of the same bytes differ
@@ -68,6 +69,7 @@ from .effects import (
     EnvelopePreset,
     Fm3Special,
     Gate,
+    Glide,
     KeyOffAfter,
     Legato,
     Lfo,
@@ -80,6 +82,7 @@ from .effects import (
     Pan,
     PanStep,
     PlayedEffect,
+    Portamento,
     PsgForm,
     PsgVoice,
     ScaledVolume,
@@ -126,12 +129,14 @@ from .rules import (
     OctaveWrap,
     PitchRules,
     PlaybackRules,
+    SlideLaw,
     SoftReleaseLaw,
     TieRules,
     TrackRules,
     VolumeLaw,
     VolumeRules,
 )
+from .slide import PitchSlide
 from .song import (
     FIRST_FLAG,
     FIRST_NOTE,
@@ -200,6 +205,7 @@ __all__ = [
     "FmDrum",
     "FmFrame",
     "Gate",
+    "Glide",
     "KeyOffAfter",
     "KeyOffRules",
     "Legato",
@@ -219,10 +225,12 @@ __all__ = [
     "PanStep",
     "PitchEnvelope",
     "PitchRules",
+    "PitchSlide",
     "PlaybackRules",
     "PlayedEffect",
     "PlayedNote",
     "PlayedSong",
+    "Portamento",
     "PreparedSong",
     "PsgDrumFrame",
     "PsgEnvelope",
@@ -237,6 +245,7 @@ __all__ = [
     "SetTransposition",
     "SetVoice",
     "SetVol",
+    "SlideLaw",
     "SmpsChannel",
     "SmpsChannelHeader",
     "SmpsCode",

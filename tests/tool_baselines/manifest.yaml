@@ -1474,6 +1474,14 @@ pitch_ga_the_battle:
     reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
     tests/baselines/ga_the_battle_baseline.mod: 2cef3822df6d
     tests/settings.yaml: 1be2c231bd5e
+pitch_ga_the_battle_hq:
+  commit: 719ea22-dirty
+  date: '2026-11-02'
+  inputs:
+    configs/golden_axe/89_the_battle.yaml: 7fc4665f41a6
+    reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
+    tests/baselines/ga_the_battle_hq_baseline.mod: 19f728a04cef
+    tests/settings.yaml: 1be2c231bd5e
 pitch_ga_theme_of_thief:
   commit: c6d0253-dirty
   date: '2026-11-01'
@@ -1667,12 +1675,12 @@ pitch_sor2_game_over:
     tests/baselines/sor2_game_over_baseline.mod: 33767398ef02
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_go_straight:
-  commit: 47ca32b-dirty
-  date: '2026-11-01'
+  commit: 719ea22-dirty
+  date: '2026-11-02'
   inputs:
-    configs/streets_of_rage_2/00_go_straight.yaml: c98be6eef40b
+    configs/streets_of_rage_2/00_go_straight.yaml: 87420c3d5c0e
     reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
-    tests/baselines/sor2_go_straight_baseline.mod: b29de63f0e52
+    tests/baselines/sor2_go_straight_baseline.mod: 7a87b465468c
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_jungle_base:
   commit: 47ca32b-dirty
@@ -1755,28 +1763,28 @@ pitch_tt_game_over:
     tests/baselines/tt_game_over_baseline.mod: b3573f71f4de
     tests/settings.yaml: 1be2c231bd5e
 pitch_tt_mission_briefing:
-  commit: 40c7228-dirty
+  commit: 719ea22-dirty
   date: '2026-11-02'
   inputs:
-    configs/time_trax/04_mission_briefing.yaml: c3430c119404
+    configs/time_trax/04_mission_briefing.yaml: 79d1c4d13d14
     reference/vgz/time_trax/02 - Mission Briefing.vgz: d5bf3b290fa7
-    tests/baselines/tt_mission_briefing_baseline.mod: 62fd5717cf3e
+    tests/baselines/tt_mission_briefing_baseline.mod: cde265570dae
     tests/settings.yaml: 1be2c231bd5e
 pitch_tt_stages_2_5_7:
-  commit: 40c7228-dirty
+  commit: 719ea22-dirty
   date: '2026-11-02'
   inputs:
-    configs/time_trax/01_stages_2_5_7.yaml: fe0e13595303
+    configs/time_trax/01_stages_2_5_7.yaml: 4b8951400073
     reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
-    tests/baselines/tt_stages_2_5_7_baseline.mod: 1aa571ee2743
+    tests/baselines/tt_stages_2_5_7_baseline.mod: b73fa350f3c9
     tests/settings.yaml: 1be2c231bd5e
 pitch_tt_title_screen:
-  commit: 40c7228-dirty
+  commit: 719ea22-dirty
   date: '2026-11-02'
   inputs:
-    configs/time_trax/00_title_screen.yaml: ff2d216fc70c
+    configs/time_trax/00_title_screen.yaml: a335a2b90db5
     reference/vgz/time_trax/01 - Title Screen, Credits.vgz: 67a68ab4c6ca
-    tests/baselines/tt_title_screen_baseline.mod: 05c1b1b7306d
+    tests/baselines/tt_title_screen_baseline.mod: b84ed85d43ff
     tests/settings.yaml: 1be2c231bd5e
 read_golden_axe:
   commit: c6d0253-dirty

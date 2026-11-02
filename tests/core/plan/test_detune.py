@@ -13,6 +13,7 @@ from core.config import InstrumentRange
 from core.drivers.reference import FM_FREQUENCIES
 from core.mod import ModNote
 from core.plan import DetunePlan, DetuneVariant, FmCatalogue, FmInstrument, FmLayer, RenderPitch, detune_cents
+from core.plan.detune import _Wanted
 from core.plan.instruments import _add_detune_variants
 
 _NC5 = 60          # SMPS semitone of nC5 (C0 = 0): fnum 644
@@ -74,3 +75,12 @@ class DetunePlanTest(unittest.TestCase):
         _add_detune_variants(cat, plan)
         moved = cat.instruments[25]
         self.assertEqual((moved.entry.root, moved.pitch), (ModNote.C2, RenderPitch(66, 6)))
+
+
+class WantedOrderTest(unittest.TestCase):
+    """A baked sweep takes a slot before any more played variant: unbaked it is unheard."""
+
+    def test_sweeps_first(self):
+        level = _Wanted(80, 10, 0, 15, None, None)
+        sweep = _Wanted(56, 1, 0, 31, None, None, sweep=True)
+        self.assertEqual(sorted([level, sweep], key=_Wanted.order), [sweep, level])

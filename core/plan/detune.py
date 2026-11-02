@@ -158,12 +158,13 @@ def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
         special = base.layers[0].special_offset
         for (d, e), n in per.items():
             played = chips[(inst, (d, e))]
-            rendered = None if (d, e) == own else _rendered(base, d + special, _commonest(played), fm, e in sweeps)
+            sweep = e in sweeps
+            rendered = None if (d, e) == own else _rendered(base, d + special, _commonest(played), fm, sweep)
             apart = _apart(base, d + special, rendered, played, fm)
             rest = n - sum(sum(at.values()) for at in apart.values())
             if (d, e) != own and rest:
-                wanted.append(_Wanted(rest, inst, d, e, None, rendered))
-            wanted += [_Wanted(sum(at.values()), inst, d, e, pc, _in_class(base, pc)) for pc, at in apart.items()]
+                wanted.append(_Wanted(rest, inst, d, e, None, rendered, sweep))
+            wanted += [_Wanted(sum(at.values()), inst, d, e, pc, _in_class(base, pc), sweep) for pc, at in apart.items()]
 
     slots = free_slots(conv, song)
     for w in sorted(wanted, key=_Wanted.order):
@@ -209,10 +210,13 @@ class _Wanted:
     envelope: int
     pitch_class: int | None     # the notes it plays: this pitch class; None: the pair's other notes
     rendered: int | None        # the pitch (SMPS semitone) it is rendered at; None: its base's
+    sweep: bool = False         # a baked sweep (core.plan.baked): with no slot it is unheard, where a
+                                # level shape falls back to Cxx
 
     def order(self) -> tuple:
-        """The most played first (a song short of slots loses its rarest), then by instrument, pair, class."""
-        return (-self.notes, self.base, self.detune, self.envelope, -1 if self.pitch_class is None else self.pitch_class)
+        """Sweeps first, then the most played (a song short of slots loses its rarest), then by
+        instrument, pair, class."""
+        return (not self.sweep, -self.notes, self.base, self.detune, self.envelope, -1 if self.pitch_class is None else self.pitch_class)
 
 
 def _rendered(base, detune: int, played: int, fm_frequencies: tuple[int, ...], sweep: bool = False) -> int | None:

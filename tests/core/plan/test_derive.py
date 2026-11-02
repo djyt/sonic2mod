@@ -335,26 +335,36 @@ class StreetsOfRage2(unittest.TestCase):
                 self.assertTrue(any(e.low <= res.chip <= e.high for e in entries), (source, event.tick_position))
 
 
-_TIME_TRAX_STATED = {"name": "Mission Briefing", "input_file": str(TIME_TRAX_ROM), "rom_song": "$04"}
+_TIME_TRAX_STATED = {"input_file": str(TIME_TRAX_ROM), "region": "pal"}
 
 
 @needs_time_trax
 class TimeTrax(unittest.TestCase):
-    """The Mission Briefing ($04): its volume law's voice copies, a slot each only where a TL misses
-    its voice by level_patch_min."""
+    """Time Trax's song keys: the Mission Briefing ($04)'s volume law's voice copies, a slot each only
+    where a TL misses its voice by level_patch_min; Stages 2, 5, 7 ($01): slots kept by baked_slots."""
 
     @classmethod
     def setUpClass(cls):
-        cls.song = read_rom_song(RomImage.load(TIME_TRAX_ROM), 0x04)
+        rom = RomImage.load(TIME_TRAX_ROM)
+        cls.songs = {n: read_rom_song(rom, n) for n in (0x01, 0x04)}
         cls.settings = load_settings(str(ROOT / "tests" / "settings.yaml"))[0]
 
-    def _derive(self, patch_min: int):
-        return derive_config(_TIME_TRAX_STATED, self.song, "configs/time_trax/04_mission_briefing.yaml",
-                             replace(self.settings, level_patch_min=patch_min))
+    def _derive(self, patch_min: int, baked_slots: int = 0, song: int = 0x04):
+        stated = _TIME_TRAX_STATED | {"rom_song": f"${song:02X}", "level_patch_min": patch_min, "baked_slots": baked_slots}
+        return derive_config(stated, self.songs[song], "configs/time_trax/song.yaml", self.settings)
+
+    def _slots(self, baked_slots: int) -> int:
+        return len(self._derive(3, baked_slots, 0x01).data["sample_list"])
+
+    def test_baked_slots_left_free(self):
+        self.assertEqual(self._slots(0) - self._slots(4), 4)
+
+    def test_baked_slots_only_as_far_as_folding_frees(self):
+        self.assertGreater(self._slots(31), 0)
 
     def test_a_copy_close_to_its_voice_plays_as_it(self):
         out = self._derive(3)
-        voices = {v.index: v for v in self.song.voices}
+        voices = {v.index: v for v in self.songs[0x04].voices}
         self.assertTrue(out.levels_folded)
         for copy, (voice, _) in out.levels_folded.items():
             self.assertEqual(voices[copy].unpatched, voice)

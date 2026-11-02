@@ -295,7 +295,7 @@ reached.  A glide is the same with another curve: D4 uses it.
   table of x² / 256 at Z80 $0100: a product as it rounds).  A track starts at volume 0.
   `VolumeRules.law` (core/drivers/timetrax/volume.py): the walk plays it as a `SetVol` of the
   loudest carrier's change and a voice copy with each TL that misses written exact.  D3's threshold:
-  `samples.level_patch_min` (3), in core/plan/derive.py: a law's copy within it of its voice plays
+  `level_patch_min` (3, a song key), in core/plan/derive.py: a law's copy within it of its voice plays
   as the voice.  `vgm_frames` level misses 2134 -> 1 (song 0), 1 / 1 / 0 (songs 2, 3, 5); left
   (songs 1, 4, and song 2's modulators): the volume envelopes (2.4).
 - [x] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch (T2).  Each
@@ -344,11 +344,20 @@ reached.  A glide is the same with another curve: D4 uses it.
     TL changes per frame), planned as variants (detune.py; an instrument's own sample only where
     it plays no plain note); `render_layers(levels=)` writes the TLs each frame.  No slot: the
     note plays its own sample (the sweep unheard) and the level moves by Cxx (`LevelCurve`, D5's
-    fallback; before a slide on the same row).  Songs 0-4 have no free slot (voice copies,
-    merged pitch windows): own samples bake 1-6 instruments a song; the rest fall back.
+    fallback; before a slide on the same row).  Own samples bake 1-6 instruments a song.
+  - Slot budget: a derived config fills every slot (voice copies, pitch windows); what
+    `level_patch_min` frees goes to fewer merges and folds, none to shapes.  Song keys (settings.yaml
+    once another driver needs them): `baked_slots` leaves slots free, as far as folding and merging
+    frees them; 4, songs 3 and 4 6.  Sweeps take them first (an unbaked sweep is unheard, a level
+    shape falls back to Cxx).  Sweep notes unbaked: 0, 0, 1, 4, 1 of 85, 317, 444, 405, 453; for
+    2-4 more window merges or copy folds a song.
+  - Banks (`9xx`, as the merged build's) considered, not built: only the sweeps gain (one-shots,
+    their rows free), and they now fit; the shapes left are levels on looped samples (one loop a
+    bank).  Revisit if slots run short.
+  - Derive skips a legato read the driver glides: its note is where the glide heads, not what
+    sounds (song 3's `A#-1`, under the table, broke its window names).
   - The pitch audit models a baked sweep (`mod_pitch_timeline`).
-  Left: measure levels (`measure_volumes`), the slot budget (`samples.level_patch_min` against
-  slots for shapes), song 3 (a note transposed below the table: `Bb-1`).
+  Left: measure levels (`measure_volumes`).
 - [ ] 3.2 `vgm_pitch_audit` clean, slides too (T4); `measure_volumes --configs configs/time_trax`, one pass.
 - [ ] 3.3 Regression cases by coverage; tool cases `read_`, `frames_`, `glitches_`.
 - [ ] 3.4 Listen in the FT2 clone (the user).

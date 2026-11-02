@@ -4,3 +4,5 @@ name: "Mission Briefing"
 input_file: "input/roms/Time Trax (USA) (Proto).md"
 rom_song: "$04"
 region: pal               # the rips run at 50 Hz (docs/todo/time_trax.md D2)
+level_patch_min: 3        # a voice copy within 3 TL steps (2.25 dB) of its voice plays as it
+baked_slots: 6            # slots kept for baked drum sweeps and envelopes (core/plan/baked.py): 4 left sweeps unbaked

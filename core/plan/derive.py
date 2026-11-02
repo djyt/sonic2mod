@@ -75,7 +75,9 @@ from ..smps import (
 )
 from .conversion import ConversionPlan
 from .driver_state import walk_channel
+from .glides import channel_reads
 from .slot_fit import fold_volumes, merge_windows, windows
+from .timeline import Timeline
 
 MAX_INSTRUMENTS = 31
 _MOD_SPAN = 35               # C1 ... B3
@@ -209,7 +211,11 @@ class _Deriver:
         self._top = settings.top_note
         self._max_window = settings.max_window
         # A volume law's copies (Time Trax's) fold under level_patch_min; a written TL's (Streets of Rage 2's $FA) keep theirs
-        self._patch_min = settings.level_patch_min if self._song.rules.track(ChannelType.FM).volume.law else 0
+        fm_rules = self._song.rules.track(ChannelType.FM)
+        self._patch_min = stated.get("level_patch_min", ConversionConfig.level_patch_min) if fm_rules.volume.law else 0
+        # Slots for baked sweeps and envelopes (core.plan.baked) where the driver makes either
+        bakes = fm_rules.pitch.slide is not None or fm_rules.volume.envelopes is not None
+        self._baked_slots = stated.get("baked_slots", ConversionConfig.baked_slots) if bakes else 0
         self._voices = {v.index: v for v in self._song.voices}
         self._level_misses: dict[int, float] = {}    # a TL-only copy -> the most its TLs miss its voice's
         self._drum_root = ModNote(settings.drum_root).name
@@ -235,7 +241,7 @@ class _Deriver:
 
         fm, tone, noise, dac_names = self._notes(sources)
         self._dac_samples(dac_names)
-        fm, tone = self._fit(fm, tone, MAX_INSTRUMENTS - (self._next - 1) - sum(len(e) for e in noise.values()))
+        fm, tone = self._reserved_fit(fm, tone, MAX_INSTRUMENTS - (self._next - 1) - sum(len(e) for e in noise.values()))
         voice_map = self._windows(fm, ChannelType.FM, _FM_STEM.format)
         folded = self._out.folded | self._out.levels_folded
         self._items("voice_map", voice_map | {copy: voice_map[self._folded_to(copy)] for copy in folded})
@@ -266,9 +272,10 @@ class _Deriver:
         channels = source_map(self._song)
         for source in sources:
             ch = channels[source]
+            glided = self._glided(ch, bare.config)
             for event, st, res in walk_channel(ch, bare, ChannelConfig(source=source, mod_channel=0)):
                 note = event.note
-                if note is None or note.is_rest:
+                if note is None or note.is_rest or id(event) in glided:
                     continue
                 if note.is_dac:
                     dac[note.dac_name] += 1
@@ -284,6 +291,12 @@ class _Deriver:
                     levels[(ChannelType.FM, st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
                     self._level_miss(st.voice, st.tl)
         return fm, tone, noise, dac
+
+    def _glided(self, channel, config: ConversionConfig) -> set[int]:
+        """The legato reads whose word the driver slides (Time Trax's glides): the sounding sample
+        slides on, so the note read is only where it heads (Stages 1, 3, 8: A#-1, under the table)."""
+        walked = channel_reads(channel, Timeline(self._song, config), self._voices)
+        return {id(r.event) for r in walked or () if r.event.note and r.event.note.is_no_attack and len(set(r.words)) > 1}
 
     def _level_miss(self, index: int, tl: int) -> None:
         """How far voice copy `index`, played at track level `tl`, misses its voice there, where it
@@ -380,6 +393,15 @@ class _Deriver:
             out[key] = entries
         return out
 
+    def _reserved_fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> tuple[dict, dict]:
+        """`fm` and `tone` fitted to `slots` less the config's baked_slots, fewer kept where folding and merging
+        cannot free them all (Time Trax's Stages 2, 5, 7: 3 of 4)."""
+        for reserve in range(min(self._baked_slots, slots), 0, -1):
+            fitted = self._fit(fm, tone, slots - reserve)
+            if self._merged_fit(*fitted, slots - reserve):
+                return fitted
+        return self._fit(fm, tone, slots)
+
     def _fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> tuple[dict, dict]:
         """`fm` and `tone` fitted to `slots`, as far as they go (core.plan.slot_fit), what sounds
         least changed first: envelopes at their most played volume, LFO copies as their voices,
@@ -387,6 +409,7 @@ class _Deriver:
         as the voice they patch (a patch can change the sound wholly: Never Return Alive's $1F
         lets $09's feedback modulator decay; folded, a 5 s note played 19 dB loud), last
         special-mode copies (their notes' pitch moves)."""
+        self._out.folded, self._out.levels_folded = {}, {}       # a try's own (_reserved_fit)
         fm = self._fold_levels(fm)
         tone, self._out.volumes_folded = fold_volumes(tone, slots - self._fm_slots(fm), volume_family, self._tone_slots)
         fm = self._fold_copies(fm, slots - self._tone_slots(tone), (_lfo_voice,))
@@ -398,7 +421,7 @@ class _Deriver:
         return fm, tone
 
     def _fold_levels(self, fm: dict[int, Counter]) -> dict[int, Counter]:
-        """`fm` with each TL-only copy that misses its voice by less than level_patch_min played as
+        """`fm` with each TL-only copy that misses its voice by less than the config's level_patch_min played as
         that voice, at its own level (Derivation.levels_folded)."""
         fm = {key: Counter(pitches) for key, pitches in fm.items()}
         for copy in [k for k in fm if self._level_misses.get(k, math.inf) < self._patch_min]:

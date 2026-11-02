@@ -1778,6 +1778,14 @@ pitch_tt_stages_2_5_7:
     reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
     tests/baselines/tt_stages_2_5_7_baseline.mod: b73fa350f3c9
     tests/settings.yaml: 1be2c231bd5e
+pitch_tt_stages_2_5_7_bar:
+  commit: '6213233'
+  date: '2026-11-02'
+  inputs:
+    configs/time_trax/01_stages_2_5_7.yaml: 096eda1b525c
+    reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
+    tests/baselines/tt_stages_2_5_7_bar_baseline.mod: 6cdbfb7ea38e
+    tests/settings.yaml: 1be2c231bd5e
 pitch_tt_title_screen:
   commit: 719ea22-dirty
   date: '2026-11-02'

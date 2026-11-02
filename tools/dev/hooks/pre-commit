@@ -1,7 +1,10 @@
 #!/bin/sh
-# Git pre-commit hook: lint, types, dead code and import layers (tools/dev/check.py --fast).
+# Git pre-commit hook: text encoding; lint, types, dead code and import layers (tools/dev/check.py --fast).
 # Enabled per clone by: git config core.hooksPath tools/dev/hooks.  Skip once: git commit --no-verify
 # It checks the working tree, not only what is staged.
+
+# Any text garbled (UTF-8 read as cp1252): every commit, docs too
+python tools/dev/text_encoding.py || exit 1
 
 # Nothing Python staged (docs, configs, MODs): nothing these checks read changed
 git diff --cached --name-only --diff-filter=ACMR | grep -qE '\.(py|toml)$' || exit 0

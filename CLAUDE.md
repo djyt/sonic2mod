@@ -93,10 +93,12 @@ rebuilt `build/*.dll` into `prebuilt/` and commit them with it.
 ## Linting
 
 Enforced: the git pre-commit hook (`tools/dev/hooks/pre-commit`) runs `tools/dev/check.py --fast` when a
-`.py` / `.toml` file is staged; `tools/dev/hooks/commit-msg` refuses a `Co-Authored-By` trailer (Claude
-Code adds none: `attribution` in `.claude/settings.json`); a Claude Code hook there runs ruff on each
-Python file Claude edits and hands the findings back.  Every rule in `pyproject.toml` carries a
-plain-English line saying what it flags (an ignored one: and why it is off).
+`.py` / `.toml` file is staged, and `tools/dev/text_encoding.py` on every commit;
+`tools/dev/hooks/commit-msg` refuses a `Co-Authored-By` trailer (Claude Code adds none: `attribution`
+in `.claude/settings.json`); a Claude Code hook there runs ruff on each Python file Claude edits and
+hands the findings back, and `env` sets `PYTHONUTF8=1` (a script's `open()` reads UTF-8, not cp1252).
+Every rule in `pyproject.toml` carries a plain-English line saying what it flags (an ignored one: and
+why it is off).
 
 ```bash
 python tools/dev/check.py          # all of the below + unit tests, side by side; --fast: without the unit tests
@@ -105,6 +107,7 @@ ruff check .   # style + lint
 pyright        # type checking
 python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)
 python -m pytest tests/test_layers.py -q   # import layers (pyproject.toml [tool.importlinter]; or lint-imports)
+python tools/dev/text_encoding.py   # every text file UTF-8, none garbled (UTF-8 read as cp1252 and written back)
 ```
 
 ## Quick Usage

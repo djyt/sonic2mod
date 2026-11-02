@@ -8,7 +8,8 @@ length, note; core/audit/rip_diff.py), up to the rip's last whole frame.  A note
 voice and pan the lift does not read: tools/vgm/vgm_frames.py checks them on the rip's frames.  A tie that changes nothing compared is merged into the note
 before it on both sides.  The lift is given the song's tempo (modifier and divider; inferred
 only where it fits no schedule, said so); the channels compared are those both play.  --all's
-verdict is per channel kind, FM (what the lift reads in full) first.
+verdict is per channel kind, FM (what the lift reads in full) first, then the song's tempo or loop
+span where they differ (a rip whose loop spans more frames lost V-ints: vgm_frames.py --glitches).
 
 Pairs (core/audit/rips.py): a config and its rip share a number, or the rips.yaml beside the
 configs names it (configs/moonwalker/).  A rip's song is its config's input_file (and rom_song)
@@ -179,11 +180,19 @@ def _print_line(result: _Result) -> None:
         print(f"  {title:<26} {found.error}")
         return
     notes = sum(c.notes for c in found.diff.channels)
-    song = "  song: " + ", ".join(what for what, _, _ in found.diff.song) if found.diff.song else ""
+    song = "  song: " + ", ".join(_song_part(*d) for d in found.diff.song) if found.diff.song else ""
     refused = _tempo(found) if found.tempo and found.tempo.refused else ""
     extra = "".join(f"  [{line}]" for line in (refused, _unshared(found)) if line)
     verdict = kind_verdicts(found.diff, found.kinds, LIFTED_KINDS)
     print(f"  {title:<26} {notes:>5} notes   {verdict}{song}{extra}")
+
+
+def _song_part(what: str, want: object, got: object) -> str:
+    """A song-wide difference, its numbers where short: 'loop span 5376 -> 5386' (a rip that lost
+    frames loops long), 'tempo changes'."""
+    if isinstance(want, int) and isinstance(got, int):
+        return f"{what} {want} -> {got}"
+    return what
 
 
 def _lift_options(args: argparse.Namespace) -> LiftOptions | None:

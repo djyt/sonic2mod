@@ -81,8 +81,9 @@ whose rate keeps `samples.root_harmonics` harmonics of it (never under E1, the a
 line); the window ends at `samples.top_note` (A3) and narrows, to an octave at least, to reach
 that note; one that still cannot sits as high as it fits.  `samples.max_window` caps every
 window's span: a sample played d semitones from the pitch it was rendered at runs its envelope
-2^(d/12) times too fast or slow (`docs/todo/user_improvements.md` item 7).  A bass voice stays at E1; a lead moves
-up and its sample grows with its rate (§ 8).
+2^(d/12) times too fast or slow (`docs/todo/user_improvements.md` item 7); a config's own `max_window`
+replaces the setting (Golden Axe's `hq` variants: the narrowest each song fits in 31 slots without a merge).
+A bass voice stays at E1; a lead moves up and its sample grows with its rate (§ 8).
 
 A MOD holds 31 instruments.  Where the windows need more, these give way in turn, what sounds
 least changed first and, among copies, the one whose notes sound the fewest ticks (a long note
@@ -520,7 +521,7 @@ regression runner exits 2 otherwise); add a new key to both.
 | `resample_taps` | `32` | `32` | Resampler kernel width |
 | `render_cache` | off | `output/cache` | Directory (relative to the project root) caching chip renders by a hash of their inputs |
 | `root_harmonics` | `8` | `8` | Minimal configs: harmonics a window's lowest note keeps below Nyquist (§ 2); 0 = every window at E1, the smallest samples |
-| `max_window` | `0` | `9` | Minimal configs: the widest window in semitones, so no note plays far from its render pitch (§ 2); 0 = no cap |
+| `max_window` | `0` | `9` | Minimal configs: the widest window in semitones, so no note plays far from its render pitch (§ 2); 0 = no cap.  A config's `max_window` replaces it |
 | `top_note` | `A3` | `A3` | Minimal configs: the highest MOD note a window reaches.  A#3 (period 120) and B3 (113) are past Paula's period-124 DMA limit and sound bad on an Amiga |
 | `drum_root` | `C3` | `C3` | Minimal configs: the MOD note an FM drum (Type 0 FM's drum programs, rendered whole) is rendered for and played at: its sample's rate (C2 ~8.3 kHz, C3 ~16.6, A3 ~27.9) |
 

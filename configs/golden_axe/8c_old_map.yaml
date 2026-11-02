@@ -3,3 +3,23 @@
 name: "Old Map"
 input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$8C"
+
+variants:
+  hq:                    # no window wider than 1 semitone: the narrowest that fits 31 slots unmerged
+    name: "Old Map HQ"
+    max_window: 1
+    sample_list:              # the hq windows' own, measured on the hq build
+      - [1, "fm_v00_E2.raw", 64, 0]   # VGZ: -0.2 dB at 64
+      - [2, "fm_v00_G2.raw", 64, 0]   # VGZ: -0.4 dB at 64
+      - [3, "fm_v00_A2.raw", 64, 0]   # VGZ: -0.8 dB at 64
+      - [4, "fm_v00_B2.raw", 64, 0]   # VGZ: -0.6 dB at 64
+      - [5, "fm_v00_Cs3.raw", 64, 0]   # VGZ: -0.7 dB at 64
+      - [6, "fm_v00_E3.raw", 64, 0]   # VGZ: -1.1 dB at 64
+      - [7, "fm_v00_A3.raw", 64, 0]   # VGZ: -2.7 dB at 64
+      - [8, "fm_v00_B3.raw", 64, 0]   # VGZ: -3.2 dB at 64
+      - [9, "fm_v00_D4.raw", 64, 0]   # VGZ: -1.7 dB at 64
+      - [10, "fm_v00_E4.raw", 55, 0]   # VGZ: +1.3 dB at 64
+      - [11, "fm_v00_G4.raw", 64, 0]   # VGZ: -0.1 dB at 64
+      - [12, "fm_v00_A4.raw", 64, 0]   # VGZ: +1.5 dB at 64
+      - [13, "fm_v00_B4.raw", 64, 0]   # VGZ: +0.0 dB at 64
+      - [14, "fm_v00_D5.raw", 64, 0]   # VGZ: -0.2 dB at 64

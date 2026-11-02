@@ -5,8 +5,34 @@ input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$89"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
-  - [1, "drum88.raw", 15, 0]   # VGZ: +12.6 dB at 64
-  - [2, "drum8B.raw", 36, 0]   # VGZ: +4.9 dB at 64
-  - [5, "fm_v01_A3.raw", 50, 0]   # VGZ: -2.4 dB at 38
-  - [6, "fm_v01_A4.raw", 50, 0]   # VGZ: -2.4 dB at 38
+  - [7, "fm_v02_G2.raw", 48, 0]   # VGZ: -0.1 dB at 64
+  - [8, "fm_v03_G4.raw", 44, 0]   # VGZ: +0.8 dB at 64
+  - [9, "fm_v03_Fs5.raw", 43, 0]   # VGZ: +0.9 dB at 64
+  - [1, "drum88.raw", 10, 0] # VGZ: +1.2 dB at 15
+  - [2, "drum8B.raw", 25, 0] # VGZ: +0.6 dB at 36
+  - [5, "fm_v01_A3.raw", 34, 0] # VGZ: +0.7 dB at 50
+  - [6, "fm_v01_A4.raw", 34, 0] # VGZ: +0.8 dB at 50
   - [10, "fm_v06_F1.raw", 64, 0]   # VGZ: -7.1 dB at 32
+
+variants:
+  hq:                    # no window wider than 1 semitone: the narrowest that fits 31 slots unmerged
+    name: "The Battle HQ"
+    max_window: 1
+    sample_list:              # the hq windows' own, measured on the hq build
+      - [1, "drum88.raw", 10, 0]   # VGZ: +0.3 dB at 10
+      - [2, "drum8B.raw", 25, 0]   # VGZ: +0.0 dB at 25
+      - [3, "fm_v00_Ab5.raw", 64, 0]
+      - [4, "fm_v00_Ab6.raw", 64, 0]
+      - [5, "fm_v01_A3.raw", 34, 0]   # VGZ: +0.0 dB at 34
+      - [6, "fm_v01_A4.raw", 34, 0]   # VGZ: +0.2 dB at 34
+      - [7, "fm_v01_Eb5.raw", 34, 0]   # VGZ: -0.1 dB at 34
+      - [8, "fm_v02_G2.raw", 48, 0]   # VGZ: +0.0 dB at 48
+      - [9, "fm_v02_A2.raw", 48, 0]   # VGZ: -0.1 dB at 48
+      - [10, "fm_v02_C3.raw", 48, 0]   # VGZ: -0.2 dB at 48
+      - [11, "fm_v03_G4.raw", 44, 0]   # VGZ: -0.0 dB at 44
+      - [12, "fm_v03_A4.raw", 44, 0]   # VGZ: +0.2 dB at 44
+      - [13, "fm_v03_C5.raw", 44, 0]   # VGZ: +0.2 dB at 44
+      - [14, "fm_v03_D5.raw", 43, 0]   # VGZ: -0.1 dB at 43
+      - [15, "fm_v03_E5.raw", 43, 0]   # VGZ: +0.1 dB at 43
+      - [16, "fm_v03_Fs5.raw", 43, 0]   # VGZ: +0.1 dB at 43
+      - [17, "fm_v06_F1.raw", 64, 0]   # VGZ: -1.9 dB at 64

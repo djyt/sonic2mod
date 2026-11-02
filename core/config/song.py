@@ -28,7 +28,7 @@ _KEYS = frozenset({
     "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
     "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_vacate", "merge_output_file",
     "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "merge_loop_timbre", "loop_drift_db",
-    "treble_shelf_db", "dac_stall",
+    "treble_shelf_db", "dac_stall", "max_window",
 })
 
 _TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
@@ -170,6 +170,9 @@ class ConversionConfig:
     loop_drift_db: float | None = None
     # Song-level override of settings.yaml treble_shelf_db (a brightness shelf; None: the settings')
     treble_shelf_db: float | None = None
+    # Song-level override of settings.yaml max_window (a minimal config's widest window, semitones; 0:
+    # any): a build with slots to spare plays its notes nearer their samples' pitch
+    max_window: int | None = None
     # The share of the DAC's time its driver's update holds the play loop (measured from the song's
     # rip: core/audit/dac_stall.py): a derived DAC note plays its loop's rate times 1 - it.  0: none
     dac_stall: float = 0.0
@@ -323,6 +326,10 @@ class ConversionConfig:
             self.loop_drift_db = max(0.0, float(data['loop_drift_db']))
         if data.get('treble_shelf_db') is not None:
             self.treble_shelf_db = float(data['treble_shelf_db'])
+        if data.get('max_window') is not None:
+            self.max_window = int(data['max_window'])
+            if self.max_window < 0:
+                raise ValueError(f"max_window: {self.max_window} is not a number of semitones (0: no cap)")
         self.dac_stall = float(data.get('dac_stall', self.dac_stall))
         if not 0.0 <= self.dac_stall < 1.0:
             raise ValueError(f"dac_stall: {self.dac_stall} is not a share of the time (0 to under 1)")

@@ -141,6 +141,14 @@ the FM-drum Z80 games: Flicky, Fighting Masters).  No disassembly: read from its
   Path of Fiend matches to 38 s, where the rip loses a V-int (frame 2304: the burst before re-keys
   every channel and runs past its frame); `rips.yaml` logs it, the rip tools undo it
   (`docs/pipeline.md` § The rip's own faults).  Death Adder: one tie to another pitch the lift cannot see.
+- `vgm_frames`: every attacking FM note's pitch, level, voice and pan as recorded, all 13.
+- Levels (`measure_volumes`, 2026-11-02): within 2 dB but for Turtle Village 1's FM1, 16 dB quiet - 240
+  four-tick arpeggio notes on voice `$02` (carrier AR 16): the chip re-keys before the envelope falls, so
+  the level builds; every MOD note restarts its sample from silence.  No volume reaches it.
+- Battle Field's drum track loops at 6096 ticks, its FM at 6720: the game drifts them apart; the MOD
+  replays both from its loop (the converter's warning).
+- `variants: hq` (each config): `max_window` the narrowest the song fits in 31 slots without a merge
+  (1-4 semitones, against 9), its `sample_list` measured on that build.
 
 ---
 

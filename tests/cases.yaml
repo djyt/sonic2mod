@@ -55,6 +55,7 @@ moonwalker:  # SMPS 68k Type 1a, minimal configs; chosen by line coverage over i
 
 golden_axe:  # SMPS Z80 Type 0 FM, minimal configs; chosen by line coverage over its 13 songs (2026-10-09)
   - {name: ga_the_battle, config: golden_axe/89_the_battle, why: the driver's common path}
+  - {name: ga_the_battle_hq, config: golden_axe/89_the_battle, variant: hq, why: "a config's max_window (windows of 1 semitone)"}
   - {name: ga_theme_of_thief, config: golden_axe/8b_theme_of_thief, why: 47 lines no other Golden Axe song runs}
   - {name: ga_conclusion, config: golden_axe/8d_conclusion, why: 23 more (FM drums)}
 

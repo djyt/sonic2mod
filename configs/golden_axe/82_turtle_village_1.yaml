@@ -11,3 +11,33 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [5, "drum8C.raw", 28, 0]   # VGZ: +5.8 dB at 64
   - [11, "fm_v02_G3.raw", 36, 0]   # VGZ: +3.7 dB at 64
   - [12, "fm_v02_F4.raw", 38, 0]   # VGZ: +3.3 dB at 64
+
+variants:
+  hq:                    # no window wider than 1 semitone: the narrowest that fits 31 slots unmerged
+    name: "Turtle Village 1 HQ"
+    max_window: 1
+    sample_list:              # the hq windows' own, measured on the hq build
+      - [1, "drum81.raw", 64, 0]   # VGZ: -1.1 dB at 64
+      - [2, "drum86.raw", 33, 0]   # VGZ: -0.6 dB at 33
+      - [3, "drum87.raw", 42, 0]   # VGZ: +0.1 dB at 42
+      - [4, "drum88.raw", 55, 0]   # VGZ: +0.0 dB at 55
+      - [5, "drum8C.raw", 28, 0]   # VGZ: +0.1 dB at 28
+      - [6, "fm_v00_F1.raw", 64, 0]   # VGZ: -0.9 dB at 64
+      - [7, "fm_v00_G1.raw", 64, 0]   # VGZ: -0.8 dB at 64
+      - [8, "fm_v00_A1.raw", 64, 0]   # VGZ: -0.8 dB at 64
+      - [9, "fm_v01_D3.raw", 64, 0]   # VGZ: +0.3 dB at 64
+      - [10, "fm_v01_E3.raw", 64, 0]   # VGZ: +0.1 dB at 64
+      - [11, "fm_v01_D4.raw", 64, 0]   # VGZ: +0.6 dB at 64
+      - [12, "fm_v02_A1.raw", 36, 0]
+      - [13, "fm_v02_A2.raw", 64, 0]   # VGZ: -5.7 dB at 36
+      - [14, "fm_v02_B2.raw", 36, 0]   # VGZ: -15.6 dB at 36
+      - [15, "fm_v02_D3.raw", 36, 0]   # VGZ: -0.1 dB at 36
+      - [16, "fm_v02_E3.raw", 36, 0]   # VGZ: -15.2 dB at 36
+      - [17, "fm_v02_G3.raw", 36, 0]   # VGZ: -0.1 dB at 36
+      - [18, "fm_v02_A3.raw", 36, 0]   # VGZ: -2.2 dB at 36
+      - [19, "fm_v02_B3.raw", 36, 0]   # VGZ: -0.1 dB at 36
+      - [20, "fm_v02_D4.raw", 36, 0]   # VGZ: -0.1 dB at 36
+      - [21, "fm_v02_E4.raw", 36, 0]   # VGZ: -0.2 dB at 36
+      - [22, "fm_v02_G4.raw", 36, 0]   # VGZ: -0.3 dB at 36
+      - [23, "fm_v02_A4.raw", 36, 0]   # VGZ: -0.3 dB at 36
+      - [24, "fm_v02_B4.raw", 36, 0]   # VGZ: -0.4 dB at 36

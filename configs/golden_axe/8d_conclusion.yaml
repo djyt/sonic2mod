@@ -8,3 +8,35 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [3, "drum8C.raw", 39, 0]   # VGZ: +3.6 dB at 64
   - [6, "fm_v01_Eb3.raw", 33, 0]   # VGZ: +5.0 dB at 64
   - [10, "fm_v03_C4.raw", 52, 0]   # VGZ: +1.1 dB at 64
+
+variants:
+  hq:                    # no window wider than 1 semitone: the narrowest that fits 31 slots unmerged
+    name: "Conclusion HQ"
+    max_window: 1
+    sample_list:              # the hq windows' own, measured on the hq build
+      - [1, "drum86.raw", 64, 0]   # VGZ: +0.4 dB at 64
+      - [2, "drum87.raw", 64, 0]   # VGZ: +0.4 dB at 64
+      - [3, "drum8C.raw", 39, 0]   # VGZ: -0.2 dB at 39
+      - [4, "fm_v00_C3.raw", 64, 0]   # VGZ: -1.9 dB at 64
+      - [5, "fm_v00_Eb3.raw", 64, 0]   # VGZ: -1.9 dB at 64
+      - [6, "fm_v00_F3.raw", 64, 0]   # VGZ: -1.9 dB at 64
+      - [7, "fm_v00_G3.raw", 64, 0]   # VGZ: -1.8 dB at 64
+      - [8, "fm_v00_Bb3.raw", 64, 0]   # VGZ: -2.0 dB at 64
+      - [9, "fm_v00_C4.raw", 64, 0]   # VGZ: -2.0 dB at 64
+      - [10, "fm_v01_Eb3.raw", 33, 0]   # VGZ: +0.1 dB at 33
+      - [11, "fm_v01_F3.raw", 33, 0]   # VGZ: +0.1 dB at 33
+      - [12, "fm_v01_G3.raw", 33, 0]   # VGZ: +0.0 dB at 33
+      - [13, "fm_v01_Bb3.raw", 33, 0]   # VGZ: -0.7 dB at 33
+      - [14, "fm_v02_Bb2.raw", 64, 0]   # VGZ: -1.4 dB at 64
+      - [15, "fm_v02_C3.raw", 64, 0]   # VGZ: -1.4 dB at 64
+      - [16, "fm_v02_D3.raw", 64, 0]   # VGZ: -1.2 dB at 64
+      - [17, "fm_v02_F3.raw", 64, 0]   # VGZ: -2.2 dB at 64
+      - [18, "fm_v02_G3.raw", 64, 0]   # VGZ: -0.9 dB at 64
+      - [19, "fm_v02_Bb3.raw", 64, 0]   # VGZ: -0.8 dB at 64
+      - [20, "fm_v02_C4.raw", 64, 0]   # VGZ: -0.7 dB at 64
+      - [21, "fm_v02_D4.raw", 64, 0]   # VGZ: -0.8 dB at 64
+      - [22, "fm_v02_F4.raw", 64, 0]   # VGZ: -0.7 dB at 64
+      - [23, "fm_v02_G4.raw", 64, 0]   # VGZ: -0.7 dB at 64
+      - [24, "fm_v02_Bb4.raw", 64, 0]   # VGZ: -0.7 dB at 64
+      - [25, "fm_v03_C4.raw", 52, 0]   # VGZ: +0.2 dB at 52
+      - [26, "fm_v03_D4.raw", 52, 0]   # VGZ: +0.8 dB at 52

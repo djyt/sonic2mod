@@ -10,14 +10,16 @@ from ...diagnostics import WarningKind
 from ...merge import Composite
 from ...mod import MOD_MAX_VOLUME, MOD_NOTE_MAP, PERIOD_TABLE, ModNote, note_rate
 from ...plan import DriverState, ResolvedNote, detune_cents, walk_channel
-from ...smps import AlterVol, ChannelType, NoteFill, PanStep, SetVol, SmpsChannel
+from ...smps import AlterVol, ChannelType, LevelPath, NoteFill, PanStep, SetVol, SmpsChannel
 from .cells import Cells
 from .context import WriterContext
 from .fades import Fades
+from .level_curve import LevelCurve
 from .levels import Levels
 from .modulation import Modulation
 from .note import FillCut, NoteOn
 from .note_warnings import warn_resolution
+from .pitch_curve import PitchCurve
 from .router import ColumnRouter
 
 # A pan's 8xx: FT2's panning, 00 left .. 80 centre .. FF right
@@ -43,6 +45,8 @@ class _Ring:
     gain_db: float = 0.0                    # dB a unison chord adds to it (ResolvedNote.gain_db)
     member: Composite | None = None         # the banked composite it plays (core.merge.banks): measured
                                             # under its own id, released at its primary's rate
+    swept: bool = False                     # its sample carries its pitch curve (a sweep: core.plan.baked)
+    leveled: bool = False                   # ... its level (a volume envelope)
 
 
 class ChannelWriter:
@@ -77,6 +81,11 @@ class ChannelWriter:
         self._levels = Levels(ctx, channel, chan_cfg, self._st)
         self._modulation = Modulation(ctx, self._cells, channel, chan_cfg.source, self._track)
         self._fades = Fades(ctx, self._cells)
+        self._curve = PitchCurve.for_channel(ctx, self._cells, channel)   # its driver's glides
+        self._voices = {v.index: v for v in ctx.song.voices}
+        self._level_curve = LevelCurve(ctx, self._cells, self._levels, self._voices)   # its volume envelopes
+        self._pending_path: tuple = ()             # the next note's TLs after its read (LevelPath)
+        self._path: tuple = ()                     # ... the note being written's
         self._ring = _Ring()
         self._dac_map = {dac_cfg.name: dac_cfg for dac_cfg in ctx.config.dac_samples}
 
@@ -132,6 +141,9 @@ class ChannelWriter:
                 continue
             if not event.is_note:
                 continue
+            self._path, self._pending_path = self._pending_path, ()
+            if self._curve is not None and event.spliced is None:
+                self._curve.select(event)
 
             note = event.note
             if not note.is_rest and not self._router.plays_here(event):
@@ -184,6 +196,8 @@ class ChannelWriter:
             self._levels.on_change(eff, self._st)
         elif isinstance(eff, NoteFill):
             self._note_fill = eff.frames
+        elif isinstance(eff, LevelPath):
+            self._pending_path = eff.steps
         else:
             self._modulation.apply(eff, event.tick_position)
 
@@ -230,7 +244,10 @@ class ChannelWriter:
         # is_no_attack=True marks an FM/DAC standalone-duration continuation — the YM2612
         # envelope sustains naturally; do not emit C00.
         if note.is_no_attack:
-            if self._ring.cents is not None and self._ring.inst is not None and not self._st.is_psg:
+            self._level_tie(tick, tick + note.duration)
+            if self._sliding():
+                self._slide_tie(tick + note.duration)
+            elif self._ring.cents is not None and self._ring.inst is not None and not self._st.is_psg:
                 self._retune_tie(tick)
             return
         self._stop_ringing(event)
@@ -350,6 +367,10 @@ class ChannelWriter:
         lookup in the config's range_space, root + (key - low) for an anchored entry, the channel
         transpose otherwise), then the note-on and the commands on its rows."""
         n = self._melodic_note(event, res)
+        if self._glides_on(n):
+            self._level_tie(n.tick, n.tick + n.duration)
+            self._slide_tie(n.tick + n.duration)          # no key-on: the sounding sample glides on
+            return True
         self._resolve_legato(n)
         # After legato: a strict legato plays the sounding instrument, whose level is what counts
         n.volume = self._emit_volume(n.instrument)
@@ -381,6 +402,18 @@ class ChannelWriter:
         self._modulation.write(n, self._st, self._range_entry, self._col, not slot_used and not n.needs_cxx,
                                fill, cxx_cell)
 
+        # The volume envelope's Cxx (none where the sample carries it), then the glide's slides on the rows left
+        span = range(n.row_total, self._next_note_row(n.tick))
+        if not self._ring.leveled:
+            self._ring.volume = self._level_curve.write(self._path, self._col, span, n.tick, n.tick + n.duration,
+                                                        self._st, n.instrument, self._ring.gain_db, self._ring.member,
+                                                        n.volume)
+        curve = self._curve
+        if curve is not None and curve.moving and curve.reaches(n.mod_note.value, n.res.chip, n.instrument):
+            reached = curve.write(self._col, span, n.tick + n.duration, PERIOD_TABLE[n.mod_note.value],
+                                  n.mod_note.value, n.res.chip, n.instrument)
+            self._ring.period, self._ring.cents = round(reached), None
+
         # A sliding loop's fall, and a banked sound's end
         self._write_decay(n, fill)
         self._cut_banked(n)
@@ -391,9 +424,10 @@ class ChannelWriter:
         ring = self._ring
         ring.inst, ring.volume = n.instrument, n.volume
         ring.index, ring.chip, ring.voice = n.mod_note.value, n.res.chip, self._st.voice
+        ring.period = PERIOD_TABLE[n.mod_note.value]
+        ring.swept, ring.leveled = self._baked(n.instrument)
         if self._ctx.detune is not None and not n.psg:
             ring.cents = self._ctx.sample_cents(n.instrument)
-            ring.period = PERIOD_TABLE[n.mod_note.value]
 
     def _played(self, inst: int, tick: int) -> None:
         """Note which source plays `inst`: this channel, or the follower a solo note came from."""
@@ -631,6 +665,56 @@ class ChannelWriter:
                                                            self._next_note_row(tick))
 
     # --- ties -----------------------------------------------------------------------------------
+    def _baked(self, inst: int) -> tuple[bool, bool]:
+        """Whether `inst`'s sample carries its notes' pitch curve, and their level (core.plan.baked)."""
+        baked, detune = self._ctx.conv.baked, self._ctx.detune
+        if baked is None or detune is None:
+            return False, False
+        shape = detune.envelope_of(inst)
+        return shape in baked.sweeps, bool(baked.levels(shape))
+
+    def _sliding(self, ties: bool = False) -> bool:
+        """The event's word moves (a glide, a portamento) under a note still sounding, whose sample
+        can follow it (`ties`: through the ties after it too)."""
+        ring, curve = self._ring, self._curve
+        if curve is None or not curve.moving or ring.inst is None or ring.chip is None or ring.swept:
+            return False
+        return curve.reaches(ring.index, ring.chip, ring.inst, ties)
+
+    def _glides_on(self, n: NoteOn) -> bool:
+        """A legato read whose word moves (a glide, a portamento) slides the sounding sample on,
+        whatever settings.yaml `legato` says of a jump: the chip never re-keys it.  Not onto another
+        voice (the operators rewritten under the running envelope), nor a merged or banked note."""
+        assert n.event.note is not None
+        if not n.event.note.is_no_attack or not self._sliding(ties=True) or n.res.path == "merged" or n.region is not None:
+            return False
+        return self._base_voice(self._ring.voice) == self._base_voice(self._st.voice)
+
+    def _base_voice(self, index: int | None) -> int | None:
+        """The voice a patched copy (a level's, a register write's) was copied from."""
+        voice = self._voices.get(index) if index is not None else None
+        return index if voice is None or voice.unpatched is None else voice.unpatched
+
+    def _level_tie(self, tick: int, end: float) -> None:
+        """A tie or legato read under a volume envelope: Cxx where the sounding note's level moves."""
+        ring = self._ring
+        if ring.inst is None or self._st.is_psg or ring.leveled:
+            return
+        span = range(int(tick // self._timeline.ticks_per_row), self._next_note_row(tick))
+        ring.volume = self._level_curve.write(self._path, self._col, span, tick, end, self._st, ring.inst, ring.gain_db,
+                                              ring.member, ring.volume)
+
+    def _slide_tie(self, end: float) -> None:
+        """A tie or legato read whose word moves: the sounding sample slides along it, row by row
+        (PitchCurve), from the period it reached."""
+        ring = self._ring
+        assert ring.inst is not None and ring.chip is not None
+        assert self._curve is not None
+        tick = self._curve.tick
+        rows = range(int(tick // self._timeline.ticks_per_row), self._next_note_row(tick))
+        reached = self._curve.write(self._col, rows, end, ring.period, ring.index, ring.chip, ring.inst)
+        ring.period, ring.cents = round(reached), None
+
     def _retune_tie(self, tick: int) -> None:
         """A tie sounding at a detune the note-on did not: E1x / E2x on the tie's row."""
         ring = self._ring

@@ -13,10 +13,12 @@
     timeline.py      driver tick -> MOD pattern / row / seconds
 """
 
+from .baked import BakedPlan, BakedShape, plan_baked
 from .conversion import ConversionPlan, MergeRouting, RenderPitch, SampleTable
 from .derive import Derivation, complete_config, derive_config, load_config, starting_volume
 from .detune import DetunePlan, DetuneVariant, detune_cents, detune_variants_wanted, plan_detune_variants
 from .driver_state import DriverState, ResolvedNote, enabled_channels, walk_channel
+from .glides import Read, channel_reads, reaches, with_ties, word_period
 from .instrument_plan import InstrumentPitch, InstrumentPlan, prepare_instruments, rendered_pitches, sounding_pitches
 from .instruments import (
     FmCatalogue,
@@ -34,6 +36,8 @@ from .synth_roots import ResolvedRoots, SynthRoot, resolve_synth_roots
 from .timeline import Timeline
 
 __all__ = [
+    "BakedPlan",
+    "BakedShape",
     "ConversionPlan",
     "Derivation",
     "DetunePlan",
@@ -49,12 +53,14 @@ __all__ = [
     "NoiseEnvelope",
     "PsgInstrument",
     "Rate3Divider",
+    "Read",
     "RenderPitch",
     "ResolvedNote",
     "ResolvedRoots",
     "SampleTable",
     "SynthRoot",
     "Timeline",
+    "channel_reads",
     "complete_config",
     "derive_config",
     "derive_noise_envelopes",
@@ -66,12 +72,16 @@ __all__ = [
     "fm_drum_catalogue",
     "free_slots",
     "load_config",
+    "plan_baked",
     "plan_detune_variants",
     "prepare_instruments",
     "psg_catalogue",
+    "reaches",
     "rendered_pitches",
     "resolve_synth_roots",
     "sounding_pitches",
     "starting_volume",
-    "walk_channel"
+    "walk_channel",
+    "with_ties",
+    "word_period"
 ]

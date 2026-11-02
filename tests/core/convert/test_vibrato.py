@@ -9,6 +9,7 @@ from __future__ import annotations
 import unittest
 
 from core.convert import modulation_offset, modulation_slides, vibrato_depth
+from core.convert.vibrato import curve_slides
 from core.drivers.reference import SONIC1_RULES
 from core.smps import ModSet, ModulationRules, PitchRules, TrackRules
 
@@ -107,3 +108,19 @@ class Modulation(unittest.TestCase):
         drift = ModSet(wait=0, speed=4, delta=1, steps=251)                # Dilapidated Town: 1 unit / 4 frames
         slides = modulation_slides(drift, 400, [(0, 8)], lambda t: t, lambda units: 2.0 * units, 5)
         self.assertEqual(slides, [(0, 0xE, 0x11)])                            # E11: 2 units, 4 c, ~1 period
+
+
+class CurveSlides(unittest.TestCase):
+    """Any pitch curve as row slides: each row to the curve's period at its end, what was reached carried."""
+
+    def test_each_row_to_its_end(self):
+        # 400 -> 380 -> 370: 1xx 10 on row 0's two ticks, then 1xx 5
+        slides, reached = curve_slides(400, [(0, 3), (3, 6)], {3: 380, 6: 370}.__getitem__, 2)
+        self.assertEqual((slides, reached), ([(0, 0x1, 10), (3, 0x1, 5)], 370))
+
+    def test_under_a_period_a_tick_a_fine_slide(self):
+        slides, reached = curve_slides(400, [(0, 3)], lambda _t: 401, 2)
+        self.assertEqual((slides, reached), ([(0, 0xE, 0x21)], 401))
+
+    def test_a_row_already_there_slides_nothing(self):
+        self.assertEqual(curve_slides(400, [(0, 3)], lambda _t: 400, 2), ([], 400))

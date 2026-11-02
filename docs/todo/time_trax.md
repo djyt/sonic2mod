@@ -275,6 +275,10 @@ reached.  A glide is the same with another curve: D4 uses it.
   --updates` (a frequency rewrite starts an update; an update's reach past the V-int estimated
   from the log) finds all but those the writes cannot place: song 3's 3592 and song 4's 6688 sit
   in idle frames (6688: "possible"), song 4's 11303 at the rip's end (the loop's jump, as at 280).
+  Later (3.1): the late key-ons left (52) were the frame log's: a long update's last tracks
+  written before the V-int but past the window's start.  `core/vgm/spans.py` groups bursts into
+  updates, `frames.py` files a write in its update's frame; 8 glitches moved a frame or more
+  earlier, 2 added (songs 2, 5 at their start).  Lift onsets 0; `vgm_frames` attack misses 0.
 
 ### Phase 2: the walk
 - [x] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.  A read (note or
@@ -327,7 +331,24 @@ reached.  A glide is the same with another curve: D4 uses it.
 
 ### Phase 3: convert
 - [ ] 3.1 Writer: `modulation_slides` taking any pitch curve (frame -> word), fed the walk's
-  glide / portamento word (D4); envelopes baked (D5).
+  glide / portamento word (D4); envelopes baked (D5).  Done so far (2026-11-02):
+  - Pitch: `curve_slides` (vibrato.py; `modulation_slides` one case of it).  `core/plan/glides.py`:
+    each read's word and TLs frame by frame (`channel_reads`), whether a sample at a MOD note
+    plays them (`reaches`: B-3 .. C-1).  The writer's `PitchCurve`: a note or tie whose word moves
+    slides row by row to the word on the row's last frame; a legato read the sounding sample can
+    follow (with its held rests) glides on, no key-on, whatever `legato` says (the chip never
+    re-keys it); slides stop before the next note-on's row.
+  - Sweeps (four octaves in four frames: the drum figures, 5-13 shapes a song, hundreds of uses)
+    and volume envelopes' levels: `core/plan/baked.py` (`BakedPlan`, `ConversionPlan.baked`), a
+    shape per keyed read (pitch offsets from its table word, rendered in its notes' pitch class;
+    TL changes per frame), planned as variants (detune.py; an instrument's own sample only where
+    it plays no plain note); `render_layers(levels=)` writes the TLs each frame.  No slot: the
+    note plays its own sample (the sweep unheard) and the level moves by Cxx (`LevelCurve`, D5's
+    fallback; before a slide on the same row).  Songs 0-4 have no free slot (voice copies,
+    merged pitch windows): own samples bake 1-6 instruments a song; the rest fall back.
+  - The pitch audit models a baked sweep (`mod_pitch_timeline`).
+  Left: measure levels (`measure_volumes`), the slot budget (`samples.level_patch_min` against
+  slots for shapes), song 3 (a note transposed below the table: `Bb-1`).
 - [ ] 3.2 `vgm_pitch_audit` clean, slides too (T4); `measure_volumes --configs configs/time_trax`, one pass.
 - [ ] 3.3 Regression cases by coverage; tool cases `read_`, `frames_`, `glitches_`.
 - [ ] 3.4 Listen in the FT2 clone (the user).

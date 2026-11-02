@@ -40,8 +40,10 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..audio import pitch_name, semitone_to_hz
+from ..chips import freq_word_hz
 from ..mod import FINETUNE_STEPS, PERIOD_TABLE, TICK_SECS_AT_1_BPM, ModImage, edx_delay, timed_pass
 from ..plan import ConversionPlan, sounding_pitches
+from ..smps import fm_render_word, update_hz
 from ..vgm import Segment
 
 _SLIDE_UP, _SLIDE_DOWN = 0x1, 0x2          # 1xx / 2xx
@@ -68,13 +70,16 @@ class PairStep:
 
 def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[int, list[tuple]], float]:
     """Per MOD channel list of (time, Hz, instrument, attack), as `conv` (the conversion's rendering
-    pitches and detune variants) made the samples; follows Bxx/Dxx and stops at the loop."""
+    pitches and detune variants) made the samples; follows Bxx/Dxx and stops at the loop.  A sample
+    that carries a sweep (core.plan.baked) moves by its envelope each frame, to the next note-on."""
     cfg = conv.config
     inst = sounding_pitches(song, conv)
+    swept = _swept(song, conv, inst)
     finetune = {slot: row.finetune for slot, row in conv.samples.rows().items()}
     known = set(PERIOD_TABLE)
     out: dict[int, list[tuple]] = defaultdict(list)
     sounding: dict[int, tuple[int, int]] = {}         # channel -> (period, instrument) of its note
+    sweeps: dict[int, list[tuple[float, list[tuple]]]] = defaultdict(list)    # channel -> (note-on, its sweep)
 
     def pitch(period: int, ins: int) -> float:
         root, synth, cents = inst[ins]
@@ -86,7 +91,10 @@ def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[
         for c, (period, ins, eff, par) in enumerate(r.cells):
             if period in known and ins in inst:
                 sounding[c] = (period, ins)
-                out[c].append((r.start + edx_delay(eff, par, r.bpm), pitch(period, ins), ins, True))
+                start = r.start + edx_delay(eff, par, r.bpm)
+                out[c].append((start, pitch(period, ins), ins, True))
+                if ins in swept:
+                    sweeps[c].append((start, [(start + t, pitch(period, ins) * ratio, ins, False) for t, ratio in swept[ins]]))
             if eff in (_SLIDE_UP, _SLIDE_DOWN) and par and c in sounding:
                 # 1xx / 2xx: the period moves by xx on each tick after the row's first (a sweep)
                 p, ins_s = sounding[c]
@@ -100,7 +108,35 @@ def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[
                 p = p - (par & 15) if par >> 4 == 1 else p + (par & 15)
                 sounding[c] = (p, ins_s)
                 out[c].append((r.start, pitch(p, ins_s), ins_s, False))
-    return out, end
+    return _with_sweeps(out, sweeps), end
+
+
+def _swept(song, conv: ConversionPlan, inst: dict) -> dict[int, list[tuple[float, float]]]:
+    """{instrument: [(seconds after its note-on, its pitch ratio)]} of each sample rendered with a
+    sweep's envelope: a word offset each frame from the word its notes' pitch class plays."""
+    if conv.baked is None or conv.detune is None:
+        return {}
+    frame = 1 / update_hz(song.rules, conv.config.region)
+    out = {}
+    for ins, (_root, semitone, _cents) in inst.items():
+        envelope = conv.baked.pitch_envelopes().get(conv.detune.envelope_of(ins))
+        if envelope is None:
+            continue
+        word = fm_render_word(semitone, song.rules.fm_frequencies)
+        offsets = envelope.offsets(len(envelope.steps))
+        out[ins] = [(f * frame, freq_word_hz(word + o) / freq_word_hz(word)) for f, o in enumerate(offsets) if f]
+    return out
+
+
+def _with_sweeps(out: dict[int, list[tuple]], sweeps: dict[int, list[tuple[float, list[tuple]]]]) -> dict[int, list[tuple]]:
+    """Each channel's pitches with its sweeps' in, each cut at the channel's next note-on."""
+    for c, swept in sweeps.items():
+        attacks = sorted(p[0] for p in out[c] if p[3])
+        for start, points in swept:
+            later = [t for t in attacks if t > start]
+            out[c] += [p for p in points if not later or p[0] < later[0]]
+        out[c].sort(key=lambda p: p[0])
+    return dict(out)
 
 
 _OPENING_SECS = 30.0            # the chip note starts that decide where the song starts

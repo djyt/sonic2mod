@@ -1,8 +1,9 @@
 """What the instruments are before anything is rendered: the decisions the converter makes on the
 config, and what pitch each MOD instrument sounds once they are made.
 
-    prepare_instruments   every rooted entry's rendering pitch (resolve_synth_roots), then the detune
-                          variants the settings ask for (plan_detune_variants) - the converter's first
+    prepare_instruments   every rooted entry's rendering pitch (resolve_synth_roots), the shapes baked
+                          into samples (plan_baked), then the detune variants the settings ask for
+                          (plan_detune_variants: a sweep's among them) - the converter's first
                           steps, and the audit tools' whole preparation, so the two cannot drift
     sounding_pitches      per MOD instrument: the note it is anchored at, the pitch that note sounds
                           and its sample's cents off it (the driver's table word or divider off equal
@@ -21,6 +22,7 @@ from ..audio import semitone_to_hz
 from ..chips import MD_PSG_CLOCK, freq_word_hz, psg_frequency_hz
 from ..config import ConversionConfig
 from ..smps import fm_render_word, psg_render_divider
+from .baked import plan_baked
 from .conversion import ConversionPlan
 from .detune import detune_cents, detune_variants_wanted, plan_detune_variants
 from .instruments import RENDER_INDEX_C1, TONE, fm_catalogue, psg_catalogue
@@ -47,6 +49,7 @@ def prepare_instruments(song, config: ConversionConfig, synth) -> InstrumentPlan
     roots = resolve_synth_roots(song, conv)
     conv = conv.with_pitches(roots.pitches)
     if detune_variants_wanted(synth):
+        conv = conv.with_baked(plan_baked(song, conv))
         conv = conv.with_detune(plan_detune_variants(song, conv))
     return InstrumentPlan(conv, roots.report)
 

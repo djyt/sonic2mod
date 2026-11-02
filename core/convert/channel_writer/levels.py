@@ -8,6 +8,7 @@ driver holds for the channel (SynthesisSettings.fm_volume_mode, psg_volume_mode)
 """
 
 from ...audio import db_to_gain
+from ...chips import TL_STEP_DB
 from ...config import ChannelConfig
 from ...merge import Composite
 from ...mod import MOD_MAX_VOLUME, clamp_mod_volume
@@ -60,8 +61,9 @@ class Levels:
             moved = self._volume - (eff.level - self._header_volume)
         self._current_volume = max(0, min(MOD_MAX_VOLUME, moved))
 
-    def emit(self, st: DriverState, inst: int, gain_db: float, member: Composite | None) -> int:
-        """MOD volume for a note on `inst` now (equals the sample volume → no Cxx).
+    def emit(self, st: DriverState, inst: int, gain_db: float, member: Composite | None, tl_shift: int = 0) -> int:
+        """MOD volume for a note on `inst` now (equals the sample volume → no Cxx); `tl_shift`: TL
+        steps an FM note's loudest carrier has moved since its read (a volume envelope).
 
         Read off `st`: this channel's state or, for a follower's solo note on a merged channel,
         the follower's (so a PSG hat on the drum channel keeps its law).  `gain_db`: what a
@@ -69,9 +71,10 @@ class Levels:
         (core.merge.banks), measured under its own id.
         """
         sv = self.sample(inst)
+        shifted = db_to_gain(-TL_STEP_DB * tl_shift) if tl_shift and not st.is_psg else 1.0
         baked = self._psg_baked if st.is_psg else self._fm_baked
         if not baked:
-            return round(self._current_volume * sv / MOD_MAX_VOLUME)
+            return clamp_mod_volume(self._current_volume * sv / MOD_MAX_VOLUME * shifted)
         if st.is_psg and st.is_silent:
             return 0
 
@@ -81,7 +84,7 @@ class Levels:
         rel_db = level - baseline.get(key, level)
         # A banked sound's bytes carry its own volume against the bank's (sv): at its own level
         # it needs no Cxx either
-        return clamp_mod_volume(sv * db_to_gain(rel_db) * self._volume / MOD_MAX_VOLUME)
+        return clamp_mod_volume(sv * db_to_gain(rel_db) * self._volume / MOD_MAX_VOLUME * shifted)
 
     def _level_volume(self, st: DriverState) -> int:
         """The MOD volume st's level stands for outside baked mode: the PSG attenuation, or the

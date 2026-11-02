@@ -26,10 +26,14 @@ def print_audit(res: dict, min_ms: float, listing: bool = False, indent: str = "
         kinds = Counter((w["chip"], w["mod"], round(w["cents"] / 100) * 100, w["instrument"]) for w in st["wrong_notes"])
         for (a, b, c100, ins), k in kinds.most_common(8):
             print(f"{indent}        chip {a:<4} MOD {b:<4} ({c100:+5d} c)  inst {ins:<3} x{k}")
+        if st.get("slide_ok") or st.get("slide_off"):
+            print(f"{indent}      slides: ok {st['slide_ok']:>4}   off {st['slide_off']:>3}")
         if listing:
             rows = [(w["t_s"], f"chip {w['chip']:<4}  MOD {w['mod']:<4} {w['cents']:+6.0f} c  inst {w['instrument']} "
                                f"(placed {w['placed_s']:.2f} s)") for w in st["wrong_notes"]]
             rows += [(m["t_s"], f"chip {m['chip']:<4}  no MOD note yet") for m in st["missing_notes"]]
+            rows += [(m["t_s"], f"chip {m['chip']:<4}  MOD {m['mod']:<4} {m['cents']:+6.0f} c  (a slide)")
+                     for m in st.get("slide_notes", ())]
             for t, text in sorted(rows):
                 print(f"{indent}      {t:7.2f} s  {text}")
 

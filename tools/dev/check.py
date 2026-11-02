@@ -1,6 +1,6 @@
 """Every static check, and the unit tests: what a commit must pass.
 
-    python tools/dev/check.py             lint, types, dead code, import layers, unit tests (~40 s)
+    python tools/dev/check.py             lint, types, dead code, import layers, text encoding, unit tests (~40 s)
     python tools/dev/check.py --fast      the same without the unit tests (~7 s): the git pre-commit hook
     python tools/dev/check.py --regress   all of it, then the regression suites (tests/regression.py,
                                           tests/tool_regression.py): the cases the change can move
@@ -38,6 +38,7 @@ _CHECKS = (
     _Check("pyright (types)", (_PYTHON, "-m", "pyright"), fast=True),
     _Check("vulture (dead code)", (_PYTHON, "-m", "vulture"), fast=True),
     _Check(_LAYERS, (_PYTHON, "-m", "pytest", "tests/test_layers.py", "-q"), fast=True),
+    _Check("text encoding", (_PYTHON, "tools/dev/text_encoding.py"), fast=True),
     _Check("unit tests", (_PYTHON, "-m", "pytest", "tests", "-q"), fast=False),
 )
 

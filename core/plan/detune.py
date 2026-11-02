@@ -35,6 +35,12 @@ Channel 3's special mode adds an FNUM offset of its own (the voice's, core.smps.
 Streets of Rage's OP4 at +100 on its FM3 drums): the intervals above count it with the detune,
 so its notes in another pitch class get a variant of their own at the instrument's own detune too.
 
+A sweep (core.plan.baked: a pitch curve no slide follows) is a shape its notes key: its
+variant is rendered in its notes' pitch class, where its offsets (word differences, across blocks)
+hold.  A baked shape (a sweep, a volume envelope's level) is an instrument's own sample only where
+the instrument plays no note without one: a note left without a slot plays the own sample, and
+should not take a curve it does not have.
+
 A tie (smpsNoAttack + a duration) re-writes the frequency with the Detune in force, so a
 scoop rises on its tie while the MOD note keeps its sample: the converter moves that note's
 period with E1x / E2x on the tie's row (SmpsToModConverter._fine_slide).
@@ -90,6 +96,11 @@ class DetunePlan:
              or self.variants.get((inst, detune, envelope, None)))
         return v.inst if v is not None else inst
 
+    def envelope_of(self, inst: int) -> int:
+        """The pitch envelope a slot's sample is rendered with; 0: none."""
+        variant = next((v for v in self.variants.values() if v.inst == inst), None)
+        return variant.envelope if variant is not None else self.own_envelopes.get(inst, 0)
+
     def base_of(self, inst: int) -> int:
         """The instrument a variant is a copy of; any other instrument itself."""
         return self._bases.get(inst, inst)
@@ -141,9 +152,12 @@ def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
     plan.own |= {inst: d for inst, d in psg.own.items() if d}
     wanted = list(psg.wanted)
     fm = song.rules.fm_frequencies
+    sweeps = conv.baked.sweeps if conv.baked is not None else set()
+    shaped = set(conv.baked.shapes) if conv.baked is not None else set()
     for inst, per in counts.items():
-        # The most played pair; ties: the smaller detune, then no envelope
-        own = max(per, key=lambda pair: (per[pair], -abs(pair[0]), pair[0], -pair[1]))
+        # The most played pair, a baked shape's last (it would play its curve on every note left
+        # without a slot); ties: the smaller detune, then no envelope
+        own = max(per, key=lambda pair: (pair[1] not in shaped, per[pair], -abs(pair[0]), pair[0], -pair[1]))
         if own[0]:
             plan.own[inst] = own[0]
         if own[1]:
@@ -152,12 +166,13 @@ def plan_detune_variants(song, conv: ConversionPlan) -> DetunePlan:
         special = base.layers[0].special_offset
         for (d, e), n in per.items():
             played = chips[(inst, (d, e))]
-            rendered = None if (d, e) == own else _rendered(base, d + special, _commonest(played), fm)
+            sweep = e in sweeps
+            rendered = None if (d, e) == own else _rendered(base, d + special, _commonest(played), fm, sweep)
             apart = _apart(base, d + special, rendered, played, fm)
             rest = n - sum(sum(at.values()) for at in apart.values())
             if (d, e) != own and rest:
-                wanted.append(_Wanted(rest, inst, d, e, None, rendered))
-            wanted += [_Wanted(sum(at.values()), inst, d, e, pc, _in_class(base, pc)) for pc, at in apart.items()]
+                wanted.append(_Wanted(rest, inst, d, e, None, rendered, sweep))
+            wanted += [_Wanted(sum(at.values()), inst, d, e, pc, _in_class(base, pc), sweep) for pc, at in apart.items()]
 
     slots = free_slots(conv, song)
     for w in sorted(wanted, key=_Wanted.order):
@@ -237,18 +252,23 @@ class _Wanted:
     envelope: int
     pitch_class: int | None     # the notes it plays: this pitch class; None: the pair's other notes
     rendered: int | None        # the pitch (SMPS semitone) it is rendered at; None: its base's
+    sweep: bool = False         # a baked sweep (core.plan.baked): with no slot it is unheard, where a
+                                # level shape falls back to Cxx
 
     def order(self) -> tuple:
-        """The most played first (a song short of slots loses its rarest), then by instrument, pair, class."""
-        return (-self.notes, self.base, self.detune, self.envelope, -1 if self.pitch_class is None else self.pitch_class)
+        """Sweeps first, then the most played (a song short of slots loses its rarest), then by
+        instrument, pair, class."""
+        return (not self.sweep, -self.notes, self.base, self.detune, self.envelope, -1 if self.pitch_class is None else self.pitch_class)
 
 
-def _rendered(base, detune: int, played: int, fm_frequencies: tuple[int, ...]) -> int | None:
+def _rendered(base, detune: int, played: int, fm_frequencies: tuple[int, ...], sweep: bool = False) -> int | None:
     """Where a variant is rendered: in its notes' commonest pitch class when its base's pitch
-    puts them more than a finetune step off; else None (its base's).  `detune`: the FNUM offset
-    its notes sound at (special mode's in)."""
+    puts them more than a finetune step off, or (`sweep`) its envelope's offsets hold only there;
+    else None (its base's).  `detune`: the FNUM offset its notes sound at (special mode's in)."""
     if base.root_idx is None:
         return None
+    if sweep:
+        return _in_class(base, played)
     at_base = base.rendered_semitone
     if abs(detune_cents(played, detune, fm_frequencies) - detune_cents(at_base, detune, fm_frequencies)) <= _FINETUNE_CENTS:
         return None

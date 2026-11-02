@@ -13,9 +13,9 @@ from pathlib import Path
 from core.audit import ChannelMove, GlitchCandidate, RipShelf, SongSource, scan_glitches
 from core.drivers.reference import SONIC1_RULES
 from core.smps import TempoSegment
-from core.vgm import LiftOptions, decode_vgm, frame_log, lift_song, load_frames
+from core.vgm import DriverUpdate, LiftOptions, decode_vgm, frame_log, lift_song, load_frames
 from tests.roms import needs_golden_axe_rips, needs_space_harrier_2_rips
-from tests.vgm_build import fm_notes
+from tests.vgm_build import BURST, FRAME, fm_notes, with_writes
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -36,8 +36,17 @@ _NOTES = {0: _frames(list(itertools.accumulate([0, *[2, 4, 6] * 9]))[:-1]),
 _LENGTH = TempoSegment(0, 0, _MODIFIER).frame_of(_END)
 
 
-def _log(late: tuple[int, ...] = ()):
-    return frame_log(decode_vgm(fm_notes(_NOTES, _LENGTH, _A4, _LOST, late)))
+_STEP = 150                     # samples between a long update's writes: one burst
+
+
+def _log(late: tuple[int, ...] = (), overrun: bool = False):
+    """The song's log, `late` channels a frame late from _LOST on; `overrun`: the update before _LOST
+    written on into _LOST's (the V-int lost inside it)."""
+    log = decode_vgm(fm_notes(_NOTES, _LENGTH, _A4, _LOST, late))
+    if overrun:
+        start = (_LOST - 1) * FRAME + BURST
+        log = with_writes(log, list(range(start, start + FRAME + _STEP, _STEP)))
+    return frame_log(log)
 
 
 class Scan(unittest.TestCase):
@@ -57,6 +66,15 @@ class Scan(unittest.TestCase):
         self.assertTrue(start is not None and start < log.frame_of(_LOST * 735) < end)
         self.assertEqual(glitch.frame, end)
 
+    def test_an_overrun_before_the_glitch_is_its_evidence(self):
+        glitch = scan_glitches(self.song, _log(late=(0, 1, 2), overrun=True)).glitches[0]
+        self.assertEqual(glitch.lost_vints, 1)
+        self.assertTrue(any(u.lost for u in glitch.updates))
+
+    def test_a_glitch_with_no_overrun_shows_none_lost(self):
+        glitch = scan_glitches(self.song, _log(late=(0, 1, 2))).glitches[0]
+        self.assertEqual(glitch.lost_vints, 0)
+
     def test_one_channel_moving_alone_is_the_songs(self):
         scan = scan_glitches(self.song, _log(late=(0,)))
         self.assertEqual(scan.glitches, [])
@@ -74,6 +92,12 @@ class Candidate(unittest.TestCase):
         self.assertFalse(GlitchCandidate(-1, moves[:1]).every_channel)
         self.assertFalse(GlitchCandidate(-1, moves, steady=("FM4",)).every_channel)
         self.assertEqual(GlitchCandidate(-1, moves).window, (12, 14))
+
+    def test_its_frame_the_one_an_overrun_lost_in_the_window(self):
+        # The update at 11 ran past the V-int of 12, the next at 14 (the song idle at 13): 12 lost
+        moves = (ChannelMove("FM1", -1, 11, 14, 5), ChannelMove("FM2", -1, 11, 15, 5))
+        lost = DriverUpdate(14, 0, 0, 1, 0, 11, 3 * FRAME, 3.0, -500, lost=True)
+        self.assertEqual((GlitchCandidate(-1, moves).frame, GlitchCandidate(-1, moves, updates=(lost,)).frame), (14, 12))
 
 
 def _scan(game: str, stem: str):

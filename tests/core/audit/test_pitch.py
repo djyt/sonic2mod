@@ -86,3 +86,46 @@ class Pairing(unittest.TestCase):
         _, steps = _audit([(0.0, 880.0), *beat, (0.7, None)], beat)
         self.assertEqual([s.paired for s in steps[1:]], [t for t, _ in beat])
         self.assertTrue(all(abs(s.deviation) < 0.01 for s in steps[1:]))
+
+
+class Slides(unittest.TestCase):
+    """A glide: a pitch each frame (20 ms), every step shorter than min_ms."""
+
+    _FRAME = 0.02
+
+    def _glide(self, mod_offset_cents: float):
+        # 440 held 0.5 s, five steps up a semitone each, 466 held; the MOD slides alike (attack False)
+        steps = [(0.5 + k * self._FRAME, 440.0 * 2 ** (k / 60)) for k in range(1, 6)]
+        chip = [(0.0, 440.0), *steps, (0.62, 466.16), (1.2, None)]
+        shifted = [(t, f * 2 ** (mod_offset_cents / 1200)) for t, f in steps]
+        mod = [(0.0, 440.0, 1, True), *[(t, f, 1, False) for t, f in shifted], (0.62, 466.16, 1, False)]
+        res = audit_pitches({"FM1": chip}, 1.2, {0: mod}, 99.0, {"FM1": 0}, 0.0, slide_tolerance=50.0)
+        return res, res["channels"]["FM1"]
+
+    def test_each_step_judged_against_the_mod_slide(self):
+        res, st = self._glide(0.0)
+        self.assertEqual((st["slide_ok"], st["slide_off"], st["short"], res["bad"]), (5, 0, 0, 0))
+
+    def test_a_step_off_the_slide_is_counted(self):
+        res, st = self._glide(80.0)
+        self.assertEqual((st["slide_off"], res["bad"]), (5, 5))
+
+    def test_unjudged_without_a_tolerance(self):
+        res = audit_pitches({"FM1": [(0.0, 440.0), (0.5, 445.0), (0.52, 450.0), (0.54, None)]}, 1.0,
+                            {0: [(0.0, 440.0, 1, True)]}, 99.0, {"FM1": 0}, 0.0)
+        st = res["channels"]["FM1"]
+        self.assertEqual((st["short"], "slide_ok" in st), (2, False))
+
+
+class StartOffset(unittest.TestCase):
+    def test_a_rip_that_starts_before_its_song(self):
+        """Time Trax's rips run 0.8 s ahead of their song's first note: the lag is found below -0.5 s."""
+        from core.audit.pitch import note_start_offset
+
+        rng = random.Random(3)
+        t, mod = 1.0, []
+        for _ in range(80):
+            t += rng.choice((0.12, 0.24, 0.36))
+            mod.append((t, 110.0 * 2 ** (rng.randint(0, 24) / 12), 1, True))
+        chip = {"FM1": [(n[0] + 0.8, n[1]) for n in mod]}
+        self.assertAlmostEqual(note_start_offset(chip, {0: mod}, {"FM1": 0}), -0.8, places=2)

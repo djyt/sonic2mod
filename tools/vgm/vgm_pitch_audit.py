@@ -20,7 +20,8 @@ Both sides are in real Hz: FM frequencies come from core.vgm.fm_frequency_hz and
 The rip is the config's (rips.yaml beside it, or the one sharing its number) unless named.  The
 MOD audited is the one on disk: --convert writes it first.  --trace shows why a note was judged
 as it was: each chip segment near a time, the MOD note it paired with (or looked up), the running
-MOD-minus-chip deviation.
+MOD-minus-chip deviation.  --slides judges slides too (Time Trax's glides: a pitch each frame, every
+segment shorter than --min-ms): each step against the MOD's 1xx / 2xx at its midpoint.
 
 Usage::
 
@@ -29,6 +30,7 @@ Usage::
     python tools/vgm/vgm_pitch_audit.py cfg.yaml ref.vgz --mod output/x.mod --min-ms 40 --list
     python tools/vgm/vgm_pitch_audit.py --all --configs configs/streets_of_rage_2 --convert       # every pair, a line each
     python tools/vgm/vgm_pitch_audit.py cfg.yaml --trace PSG2 --at 29.9                           # how 29.4-30.4 s was paired
+    python tools/vgm/vgm_pitch_audit.py cfg.yaml --slides --list                                   # glides judged too
 """
 
 from __future__ import annotations
@@ -47,7 +49,16 @@ ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core.audio import pitch_name
-from core.audit import PairStep, audit_pitches, mod_pitch_timeline, named, note_start_offset, rip_on_song_clock, workers
+from core.audit import (
+    PairStep,
+    RipFaults,
+    audit_pitches,
+    mod_pitch_timeline,
+    named,
+    note_start_offset,
+    rip_on_song_clock,
+    workers,
+)
 from core.config import ConversionConfig
 from core.convert import prepare_conversion
 from core.mod import read_mod
@@ -57,6 +68,8 @@ from core.vgm import decode_vgm, pitch_segments
 
 _TRACE_SPAN = 0.5                 # s either side of --at a trace shows
 _WORST_CHANNELS = 4               # channels a --all line names
+_SLIDE_CENTS = 50.0               # --slides: cents a slide's step may sit off the MOD's (a row's slide meets the
+                                  # chip only at the row's end)
 
 
 @dataclass(frozen=True)
@@ -69,6 +82,7 @@ class _Options:
     settings: str | None = None
     convert: bool = False
     trace: tuple[str, float] | None = None      # (channel, seconds)
+    slides: float | None = None                 # cents a slide's step may be off; None: slides not judged
 
 
 @dataclass
@@ -81,8 +95,8 @@ class _Audit:
     error: str = ""
 
 
-def audit(config: Path, rip: Path, opt: _Options) -> _Audit:
-    """One config's MOD against `rip` (a worker's job)."""
+def audit(config: Path, rip: Path, opt: _Options, faults: RipFaults | None = None) -> _Audit:
+    """One config's MOD against `rip` (a worker's job), the rip's `faults` (rips.yaml) undone."""
     out = _Audit(config.stem)
     if opt.convert:
         done = _convert(config, opt)
@@ -102,7 +116,9 @@ def audit(config: Path, rip: Path, opt: _Options) -> _Audit:
         return out
 
     # Both timelines; a rip whose timer ran off its driver's retimed onto it
-    played, scale = rip_on_song_clock(str(rip), song, cfg.region)
+    played, scale = rip_on_song_clock(str(rip), song, cfg.region, faults)
+    if faults is not None and faults.glitches:
+        out.header.append(f"glitches undone: {len(faults.glitches)} (rips.yaml)")
     if scale != 1.0:
         out.header.append(f"VGM retimed x{scale:.5f} onto the driver's clock (its frames {scale - 1:+.2%} off)")
     chip, vgm_end = pitch_segments(decode_vgm(played))
@@ -113,9 +129,11 @@ def audit(config: Path, rip: Path, opt: _Options) -> _Audit:
     out.header.append(f"VGM {vgm_end:.1f} s   MOD one pass {mod_end:.1f} s   MOD lags by {out.offset * 1000:+.0f} ms ({how})"
                       f"   ({mod_path})")
     out.header.append(f"chip segments >= {opt.min_ms:g} ms; wrong = more than {opt.tolerance:g} cents from the chip")
+    if opt.slides is not None:
+        out.header.append(f"slides: runs of shorter segments, off = more than {opt.slides:g} cents from the MOD's slide")
 
     out.res = audit_pitches(chip, vgm_end, mod, mod_end, chan_map, out.offset, opt.min_ms, opt.tolerance,
-                            trace=_tracer(opt.trace, out.steps) if opt.trace else None)
+                            trace=_tracer(opt.trace, out.steps) if opt.trace else None, slide_tolerance=opt.slides)
     return out
 
 
@@ -159,7 +177,11 @@ def _line(a: _Audit) -> str:
     bad = sorted(((c["wrong"] + c["missing"], name) for name, c in a.res["channels"].items() if c["wrong"] + c["missing"]),
                  reverse=True)
     worst = ", ".join(f"{name} {n}" for n, name in bad[:_WORST_CHANNELS])
-    return f"  {a.title:<30} ok {ok:>5}   wrong {wrong:>4}   missing {missing:>3}" + (f"   ({worst})" if worst else "")
+    slides = ""
+    if any("slide_ok" in c for c in chans):
+        slides = f"   slides ok {sum(c['slide_ok'] for c in chans):>5} off {sum(c['slide_off'] for c in chans):>4}"
+    return (f"  {a.title:<30} ok {ok:>5}   wrong {wrong:>4}   missing {missing:>3}{slides}"
+            + (f"   ({worst})" if worst else ""))
 
 
 def _options(args: argparse.Namespace) -> _Options:
@@ -168,7 +190,8 @@ def _options(args: argparse.Namespace) -> _Options:
         if args.at is None:
             raise SystemExit("--trace needs --at SECONDS")
         trace = (args.trace, args.at)
-    return _Options(args.mod, args.offset, args.min_ms, args.tolerance, args.variant, args.settings, args.convert, trace)
+    return _Options(args.mod, args.offset, args.min_ms, args.tolerance, args.variant, args.settings, args.convert, trace,
+                    args.slides)
 
 
 def main() -> None:
@@ -185,6 +208,9 @@ def main() -> None:
     ap.add_argument("--min-ms", type=float, default=60.0,
                     help="ignore chip segments shorter than this (grace notes, vibrato steps; default 60)")
     ap.add_argument("--tolerance", type=float, default=35.0, help="cents before a note counts as wrong (default 35)")
+    ap.add_argument("--slides", type=float, nargs="?", const=_SLIDE_CENTS, metavar="CENTS",
+                    help=f"judge slides too: runs of segments shorter than --min-ms, each within CENTS of the MOD's "
+                         f"slide (default {_SLIDE_CENTS:g})")
     ap.add_argument("--list", action="store_true", help="print every wrong / missing segment with its time")
     ap.add_argument("--trace", metavar="CHANNEL", help="how CHANNEL's chip segments near --at were paired and judged")
     ap.add_argument("--at", type=float, metavar="SECONDS", help=f"--trace: the time (±{_TRACE_SPAN:g} s shown)")
@@ -207,7 +233,8 @@ def main() -> None:
         if not pairs:
             raise SystemExit("no rip pairs with a config")
         with ProcessPoolExecutor(workers(len(pairs))) as pool:
-            audits = list(pool.map(audit, [c for c, _ in pairs], [r for _, r in pairs], [opt] * len(pairs)))
+            audits = list(pool.map(audit, [c for c, _ in pairs], [r for _, r in pairs], [opt] * len(pairs),
+                                   [shelf.faults_for(c) for c, _ in pairs]))
         for a in audits:
             print(_line(a))
         clean = sum(a.res is not None and not a.res["bad"] for a in audits)
@@ -216,10 +243,11 @@ def main() -> None:
 
     # One config: its rip named, or the shelf's
     config = Path(args.config)
-    rip = Path(args.vgz) if args.vgz else rip_shelf(args, configs=config.parent).rip_for(config)
+    shelf = rip_shelf(args, configs=config.parent)
+    rip = Path(args.vgz) if args.vgz else shelf.rip_for(config)
     if rip is None:
         raise SystemExit(f"{config}: no rip pairs with it (name one)")
-    a = audit(config, rip, opt)
+    a = audit(config, rip, opt, None if args.vgz else shelf.faults_for(config))
     if a.res is None:
         raise SystemExit(f"ERROR: {a.error}")
     for line in a.header:

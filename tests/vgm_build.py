@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 import struct
+
+from core.vgm import VgmLog, VgmOp, VgmWrite
 
 HEADER_BYTES = 0x80
 FRAME = 735                     # samples per NTSC frame
@@ -44,6 +47,12 @@ def fm_freq(ch: int, fnum: int, block: int) -> bytes:
 def key(ch: int, on: bool) -> bytes:
     """FM1-3 keyed on (all slots) or off."""
     return fm(0, 0x28, (KEY_ON if on else KEY_OFF) | ch)
+
+
+def with_writes(log: VgmLog, samples: list[int], reg: int = 0x22) -> VgmLog:
+    """`log` with an FM register (LFO, by default: no note moves) written at each of `samples`."""
+    extra = [VgmWrite(sample, VgmOp.FM, 0, reg, 0) for sample in samples]
+    return dataclasses.replace(log, writes=sorted(log.writes + extra, key=lambda w: w.sample))
 
 
 def bursts(writes: dict[int, bytes], frames: int, loop_frame: int | None = None) -> bytes:

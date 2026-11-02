@@ -29,6 +29,8 @@ from ..chips import (
     MD_FM_CLOCK,
     OPERATOR_SLOT_OFFSETS,
     REG_CH3_MODE,
+    TL_MASK,
+    OperatorReg,
     fnum_block_for_hz,
     freq_word,
     split_freq_word,
@@ -51,6 +53,7 @@ from .fm_voice import program_voice
 _CHANNELS = 6
 _HIGH_BYTE_REG = 4             # a frequency's high byte (block | fnum bits 8-10): 4 above its low byte's
 _QUARTER = 4
+_TL, _TL_END = OperatorReg.TL, OperatorReg.KS_AR     # channel 0's TL registers: $40 .. $4C
 
 
 # ---------------------------------------------------------------------------
@@ -188,11 +191,14 @@ def _render_raw_mono(opn2: OPN2, sustain_n: int, release_n: int, channels, keyof
 
 
 def _render_stepped(opn2: OPN2, sustain_n: int, release_n: int, channels, keyoffs,
-                    stepped: Sequence[tuple[int, int, tuple[int, ...]]], frame_samples: float) -> array.array:
+                    stepped: Sequence[tuple[int, int, tuple[int, ...]]], frame_samples: float,
+                    leveled: Sequence[tuple[int, dict[int, int], Sequence[tuple[tuple[int, int], ...]]]] = ()
+                    ) -> array.array:
     """As _render_raw_mono, each of `stepped`'s channels (channel, word, envelope) at its word plus
-    its envelope's step every frame from key-on, the release included; the first frame's step is
-    written before the key-on (the driver's read writes it, then keys).  A register write's chip
-    time stays in the render."""
+    its envelope's step every frame from key-on, and each of `leveled`'s (channel, its TLs, steps)
+    at its TLs moved by its step's changes ((register, change) ...), the release included; the
+    first frame's are written before the key-on (the driver's read writes them, then keys).  A
+    register write's chip time stays in the render."""
     total = sustain_n + release_n
     stops = sorted((min(sustain_n, k if k is not None else sustain_n), ch)
                    for ch, k in zip(channels, [*keyoffs, *[None] * len(channels)], strict=False))
@@ -205,6 +211,10 @@ def _render_stepped(opn2: OPN2, sustain_n: int, release_n: int, channels, keyoff
             for ch, word, envelope in stepped:
                 step = envelope[min(frame, len(envelope) - 1)]
                 _set_freq(opn2, *split_freq_word(max(0, min(FREQ_WORD_MAX, word + step))), ch)
+            for ch, tls, steps in leveled:
+                moved = dict(steps[min(frame, len(steps) - 1)])
+                for reg, tl in tls.items():
+                    opn2.write_reg(reg + ch % 3, max(0, min(TL_MASK, tl + moved.get(reg, 0))), bank=ch // 3)
             if frame == 0:
                 for ch in channels:
                     opn2.key_on(ch)
@@ -271,6 +281,7 @@ def render_layers(
     envelopes: Sequence[tuple[int, ...] | None] = (),
     frame_hz: float = 60.0,
     octave_wrap: OctaveWrap | None = None,
+    levels: Sequence[Sequence[tuple[tuple[int, int], ...]] | None] = (),
 ) -> tuple[array.array, int]:
     """Render several voices keyed together on one chip → (mono, out_rate) before int8 packing.
 
@@ -280,8 +291,9 @@ def render_layers(
     mode on channel 3), all are keyed on together and the chip sums them as the hardware does.
     One layer is an ordinary note render.  `envelopes`: a layer's pitch envelope as the offset
     each frame from key-on adds to its frequency word (core.smps.pitch_envelope), stepped at
-    `frame_hz` through the release too; () or None: none.  `octave_wrap`: the driver's octave a
-    detuned word is kept in.
+    `frame_hz` through the release too; () or None: none.  `levels`: a layer's TL changes each
+    frame ((register, change) ...: a volume envelope baked, core.plan.baked), stepped likewise.
+    `octave_wrap`: the driver's octave a detuned word is kept in.
 
     ``mono`` is an ``array('i')``; it slices, iterates and measures like the list it
     used to be, so the callers' trim / peak / int8 steps are unchanged.
@@ -318,8 +330,10 @@ def render_layers(
     stepped = [(ch, word, env) for ch, word, env in zip(channels, words, envelopes or (), strict=False) if env]
     if any(layers[channels.index(ch)][0].fnum_offsets is not None for ch, _, _ in stepped):
         raise ValueError("a pitch envelope on a voice in channel 3's special mode: not rendered")
-    if stepped:
-        mono = _render_stepped(opn2, sustain_n, release_n, channels, keyoffs, stepped, native_rate / frame_hz)
+    leveled = [(ch, {r: v for r, v in layer[0].registers(layer[3]).items() if _TL <= r < _TL_END}, steps)
+               for ch, layer, steps in zip(channels, layers, levels or (), strict=False) if steps]
+    if stepped or leveled:
+        mono = _render_stepped(opn2, sustain_n, release_n, channels, keyoffs, stepped, native_rate / frame_hz, leveled)
     else:
         mono = _render_raw_mono(opn2, sustain_n, release_n, channels, keyoffs)
 

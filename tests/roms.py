@@ -43,6 +43,7 @@ GAMES = (
     GameFiles("space_harrier_2", _ROMS / "Space Harrier II (World).md", _RIPS / "space_harrier_2"),
     GameFiles("outrun", _ROMS / "OutRun (USA, Europe).md", _RIPS / "outrun"),
     GameFiles("streets_of_rage_2", _ROMS / "Streets of Rage 2 (USA).md", _RIPS / "streets_of_rage_2"),
+    GameFiles("time_trax", _ROMS / "Time Trax (USA) (Proto).md", _RIPS / "time_trax"),
 )
 _BY_NAME = {g.name: g for g in GAMES}
 
@@ -59,6 +60,7 @@ SPACE_HARRIER_2_RIPS = _BY_NAME["space_harrier_2"].rips
 OUTRUN_ROM = _BY_NAME["outrun"].rom
 OUTRUN_RIPS = _BY_NAME["outrun"].rips
 STREETS_OF_RAGE_2_ROM = _BY_NAME["streets_of_rage_2"].rom
+TIME_TRAX_ROM = _BY_NAME["time_trax"].rom
 
 
 def needs(*paths: Path):
@@ -78,3 +80,4 @@ needs_space_harrier_2 = needs(SPACE_HARRIER_2_ROM)
 needs_space_harrier_2_rips = needs(SPACE_HARRIER_2_ROM, SPACE_HARRIER_2_RIPS)
 needs_outrun = needs(OUTRUN_ROM)
 needs_streets_of_rage_2 = needs(STREETS_OF_RAGE_2_ROM)
+needs_time_trax = needs(TIME_TRAX_ROM)

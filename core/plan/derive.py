@@ -42,6 +42,7 @@ from typing import NamedTuple
 from ..audio import db_to_gain, semitone_to_hz
 from ..chips import DEFAULT_FM_PAN_LAW_DB, TL_MASK, OperatorReg, fm_level_db, keyed_carriers, psg_level_db
 from ..config import (
+    HIGHEST_ROOT,
     SAMPLE_FILE,
     SAMPLE_FINETUNE,
     SAMPLE_SLOT,
@@ -50,6 +51,7 @@ from ..config import (
     ConversionConfig,
     DacSample,
     SampleSettings,
+    SynthesisSettings,
     bpm_rounding_options,
     find_settings,
     load_settings,
@@ -76,7 +78,9 @@ from ..smps import (
 )
 from .conversion import ConversionPlan
 from .driver_state import walk_channel
+from .glides import channel_reads
 from .slot_fit import fold_volumes, merge_windows, windows
+from .timeline import Timeline
 
 MAX_INSTRUMENTS = 31
 _MOD_SPAN = 35               # C1 ... B3
@@ -87,6 +91,7 @@ _MAX_GRID_STEPS = 32           # the coarsest row grid tried: 32 x the exact one
 _WIDE_SPEEDS = range(2, 17)    # speeds tried where none of 2-8 gives a BPM within _BPM_CLOSE
 _BPM_CLOSE = 0.1               # % off the driver's tempo
 _FIRST_NOTE = 0x81           # the note byte of C0
+_TL_REGISTERS = range(OperatorReg.TL, OperatorReg.KS_AR)   # channel 0's operator TLs
 _FINETUNES = range(-8, 8)    # a MOD sample's finetune
 
 # Derived sample files.  A stated row naming one follows that sample to its slot
@@ -141,6 +146,15 @@ class _Window(NamedTuple):
 
 
 @dataclass
+class _Ring:
+    """A note sounding, ties and legato reads carried: its voice (envelope), pitch, start, length."""
+    key: tuple
+    chip: int
+    start: int
+    ticks: int
+
+
+@dataclass
 class Derivation:
     data: dict                                              # the config's YAML, stated and derived
     derived: list[str] = field(default_factory=list)        # the sections the song filled
@@ -149,6 +163,8 @@ class Derivation:
                                                             # cut (another max_window's, or stale): left out
     folded: dict[int, tuple[int, int]] = field(default_factory=dict)   # {voice copy: (the voice it plays
                                                             # as, the ticks its notes sound)}: no slot for it
+    levels_folded: dict[int, tuple[int, int]] = field(default_factory=dict)   # likewise a copy whose TLs
+                                                            # miss its voice's by less than level_patch_min
     volumes_folded: dict[str, tuple[str, int]] = field(default_factory=dict)   # {envelope at a volume:
                                                             # (the volume it plays as, the ticks its notes sound)}: no slot
     windows_merged: dict[str, int] = field(default_factory=dict)   # {voice / envelope: windows merged}
@@ -207,6 +223,21 @@ class _Deriver:
         self._harmonics = settings.root_harmonics
         self._top = settings.top_note
         self._max_window = settings.max_window
+        # window_root: highest: each window as high as the sample limit lets its longest ring play whole
+        self._highest = stated.get("window_root", ConversionConfig.window_root) == HIGHEST_ROOT
+        self._max_bytes = settings.max_sample_bytes
+        self._release = settings.release_padding if isinstance(settings, SynthesisSettings) else 0.0
+        self._timeline = Timeline(self._song, ConversionConfig(region=str(stated.get("region", ConversionConfig.region)).lower()))
+        self._timeline.collect_segments()           # the song's tempo steps: a ring's frames
+        self._longest: dict[tuple, dict[int, float]] = defaultdict(dict)   # (kind, voice / envelope) -> {chip: s}
+        # A volume law's copies (Time Trax's) fold under level_patch_min; a written TL's (Streets of Rage 2's $FA) keep theirs
+        fm_rules = self._song.rules.track(ChannelType.FM)
+        self._patch_min = stated.get("level_patch_min", ConversionConfig.level_patch_min) if fm_rules.volume.law else 0
+        # Slots for baked sweeps and envelopes (core.plan.baked) where the driver makes either
+        bakes = fm_rules.pitch.slide is not None or fm_rules.volume.envelopes is not None
+        self._baked_slots = stated.get("baked_slots", ConversionConfig.baked_slots) if bakes else 0
+        self._voices = {v.index: v for v in self._song.voices}
+        self._level_misses: dict[int, float] = {}    # a TL-only copy -> the most its TLs miss its voice's
         self._drum_root = ModNote(settings.drum_root).name
         # Lowest MOD note a window starts at: the first above the sample audit's low-rate line
         self._floor = next(i for i, period in enumerate(PERIOD_TABLE) if period_rate(period, self._clock) >= LOW_RATE_HZ)
@@ -230,9 +261,10 @@ class _Deriver:
 
         fm, tone, noise, dac_names = self._notes(sources)
         self._dac_samples(dac_names)
-        fm, tone = self._fit(fm, tone, MAX_INSTRUMENTS - (self._next - 1) - sum(len(e) for e in noise.values()))
+        fm, tone = self._reserved_fit(fm, tone, MAX_INSTRUMENTS - (self._next - 1) - sum(len(e) for e in noise.values()))
         voice_map = self._windows(fm, ChannelType.FM, _FM_STEM.format)
-        self._items("voice_map", voice_map | {copy: voice_map[self._folded_to(copy)] for copy in self._out.folded})
+        folded = self._out.folded | self._out.levels_folded
+        self._items("voice_map", voice_map | {copy: voice_map[self._folded_to(copy)] for copy in folded})
         envelopes = self._windows(tone, "tone", _TONE_STEM.format)
         self._items("psg_voice_map", envelopes | {label: envelopes[head] for label, (head, _) in self._out.volumes_folded.items()})
         self._items("psg_map", {form: self._noise(form, noise[form]) for form in sorted(noise)})
@@ -260,9 +292,14 @@ class _Deriver:
         channels = source_map(self._song)
         for source in sources:
             ch = channels[source]
+            glided = self._glided(ch, bare.config)
+            ring: _Ring | None = None
             for event, st, res in walk_channel(ch, bare, ChannelConfig(source=source, mod_channel=0)):
                 note = event.note
-                if note is None or note.is_rest:
+                if note is None:
+                    continue
+                ring = self._ringing(ring, note, event.tick_position, st, res)
+                if note.is_rest or id(event) in glided:
                     continue
                 if note.is_dac:
                     dac[note.dac_name] += 1
@@ -276,7 +313,49 @@ class _Deriver:
                 elif res is not None and st.voice is not None:
                     fm[st.voice][res.chip] += note.duration
                     levels[(ChannelType.FM, st.voice)][(res.chip, (st.tl, st.hard_panned))] += 1
+                    self._level_miss(st.voice, st.tl)
+            self._rang(ring)
         return fm, tone, noise, dac
+
+    def _ringing(self, ring: _Ring | None, note, tick: int, st, res) -> _Ring | None:
+        """The ring sounding after `note` (window_root: highest weighs each window's longest): a tie or
+        a legato read carries it on, a rest ends it, a pitched FM or tone note starts one."""
+        if note.is_no_attack and ring is not None:
+            ring.ticks += note.duration
+            return ring
+        self._rang(ring)
+        if note.is_rest or note.is_dac or res is None or st.noise_form is not None:
+            return None
+        if st.is_psg:
+            return _Ring(("tone", st.envelope or _NO_ENVELOPE), res.chip, tick, note.duration)
+        return None if st.voice is None else _Ring((ChannelType.FM, st.voice), res.chip, tick, note.duration)
+
+    def _rang(self, ring: _Ring | None) -> None:
+        """`ring` over: the longest its voice (envelope) rings at its pitch."""
+        if ring is None:
+            return
+        longest = self._longest[ring.key]
+        secs = ring.ticks / self._timeline.ticks_per_frame_at(ring.start) / self._timeline.fps    # the driver's frames
+        longest[ring.chip] = max(longest.get(ring.chip, 0.0), secs)
+
+    def _glided(self, channel, config: ConversionConfig) -> set[int]:
+        """The legato reads whose word the driver slides (Time Trax's glides): the sounding sample
+        slides on, so the note read is only where it heads (Stages 1, 3, 8: A#-1, under the table)."""
+        walked = channel_reads(channel, Timeline(self._song, config), self._voices)
+        return {id(r.event) for r in walked or () if r.event.note and r.event.note.is_no_attack and len(set(r.words)) > 1}
+
+    def _level_miss(self, index: int, tl: int) -> None:
+        """How far voice copy `index`, played at track level `tl`, misses its voice there, where it
+        differs in its TLs alone (a driver's volume law); a register patch: never close."""
+        copy = self._voices[index]
+        if copy.unpatched is None:
+            return
+        mine, theirs = copy.chip_registers(tl), self._voices[copy.unpatched].chip_registers(tl)
+        moved = [r for r in mine if mine[r] != theirs[r]]
+        miss = max((abs(mine[r] - theirs[r]) for r in moved), default=0)
+        if any(r not in _TL_REGISTERS for r in moved):
+            miss = math.inf
+        self._level_misses[index] = max(self._level_misses.get(index, 0), miss)
 
     # --- sections ---------------------------------------------------------------------
 
@@ -354,11 +433,38 @@ class _Deriver:
             entries = []
             for lo, hi in self._cut(kind, key, notes[key]):
                 inst = self._take(kind, _WINDOW_FILE.format(file_stem(key), _pitch_name(lo)), key, (lo, hi))
-                root = min(self._lowest_root(lo), self._top - (hi - lo))
+                root = self._root(kind, key, lo, hi)
                 entries.append({"low": _pitch_name(lo), "high": _pitch_name(hi),
                                 "mod_instrument": inst, "root": synth_note_name(C1_SEMITONE + root)})
             out[key] = entries
         return out
+
+    def _root(self, kind: str, key, lo: int, hi: int) -> int:
+        """The MOD note window lo..hi's lowest pitch plays at: the first keeping root_harmonics
+        harmonics; window_root: highest, as high as its top (top_note) and the sample limit allow:
+        each ring, its release after, whole at the rate its pitch plays the sample."""
+        lowest = min(self._lowest_root(lo), self._top - (hi - lo))
+        if not self._highest:
+            return lowest
+        rings = {c: s for k in self._sharing(kind, key) for c, s in self._longest[(kind, k)].items() if lo <= c <= hi}
+        return next((root for root in range(self._top - (hi - lo), lowest, -1)
+                     if all((secs + self._release) * note_rate(root + c - lo, self._clock) <= self._max_bytes
+                            for c, secs in rings.items())), lowest)
+
+    def _sharing(self, kind: str, key) -> list:
+        """`key` and what plays as it: the copies folded onto a voice, the envelopes onto one."""
+        if kind == ChannelType.FM:
+            return [key, *(c for c in self._out.folded | self._out.levels_folded if self._folded_to(c) == key)]
+        return [key, *(label for label, (head, _) in self._out.volumes_folded.items() if head == key)]
+
+    def _reserved_fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> tuple[dict, dict]:
+        """`fm` and `tone` fitted to `slots` less the config's baked_slots, fewer kept where folding and merging
+        cannot free them all (Time Trax's Stages 2, 5, 7: 3 of 4)."""
+        for reserve in range(min(self._baked_slots, slots), 0, -1):
+            fitted = self._fit(fm, tone, slots - reserve)
+            if self._merged_fit(*fitted, slots - reserve):
+                return fitted
+        return self._fit(fm, tone, slots)
 
     def _fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> tuple[dict, dict]:
         """`fm` and `tone` fitted to `slots`, as far as they go (core.plan.slot_fit), what sounds
@@ -367,6 +473,8 @@ class _Deriver:
         as the voice they patch (a patch can change the sound wholly: Never Return Alive's $1F
         lets $09's feedback modulator decay; folded, a 5 s note played 19 dB loud), last
         special-mode copies (their notes' pitch moves)."""
+        self._out.folded, self._out.levels_folded = {}, {}       # a try's own (_reserved_fit)
+        fm = self._fold_levels(fm)
         tone, self._out.volumes_folded = fold_volumes(tone, slots - self._fm_slots(fm), volume_family, self._tone_slots)
         fm = self._fold_copies(fm, slots - self._tone_slots(tone), (_lfo_voice,))
         for fallback in (_unpatched_voice, _special_voice):
@@ -375,6 +483,17 @@ class _Deriver:
         self._out.windows_merged = {(f"${key:02X}" if kind == ChannelType.FM else key): n
                                     for (kind, key), n in self._merges.items()}
         return fm, tone
+
+    def _fold_levels(self, fm: dict[int, Counter]) -> dict[int, Counter]:
+        """`fm` with each TL-only copy that misses its voice by less than the config's level_patch_min played as
+        that voice, at its own level (Derivation.levels_folded)."""
+        fm = {key: Counter(pitches) for key, pitches in fm.items()}
+        for copy in [k for k in fm if self._level_misses.get(k, math.inf) < self._patch_min]:
+            voice = self._voices[copy].unpatched
+            assert voice is not None
+            self._out.levels_folded[copy] = (voice, fm[copy].total())
+            fm.setdefault(voice, Counter()).update(fm.pop(copy))
+        return fm
 
     def _merged_fit(self, fm: dict[int, Counter], tone: dict[str, Counter], slots: int) -> bool:
         """The windows merged as far as `slots` asks (self._merges): whether they fit."""
@@ -415,8 +534,9 @@ class _Deriver:
 
     def _folded_to(self, copy: int) -> int:
         """The voice a folded copy plays as: its fallback's, where that was folded too."""
-        while copy in self._out.folded:
-            copy = self._out.folded[copy][0]
+        folded = self._out.folded | self._out.levels_folded
+        while copy in folded:
+            copy = folded[copy][0]
         return copy
 
     def _fm_slots(self, fm: dict[int, Counter]) -> int:

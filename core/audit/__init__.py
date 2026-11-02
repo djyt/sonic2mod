@@ -11,7 +11,7 @@
     rips.py     which rip records which config's song, and the rip's own faults
 """
 
-from .frame_check import Excuse, FrameAspect, FrameCheck, FrameMiss, check_frames
+from .frame_check import FRAME_ASPECTS, Excuse, FrameAspect, FrameCheck, FrameMiss, check_frames
 from .glitch_scan import ChannelMove, GlitchCandidate, GlitchScan, scan_glitches
 from .levels import LEVEL_MAX_ERR, LEVEL_MAX_SPREAD, instrument_levels, mod_note_events, suggest_volumes, write_volumes
 from .onsets import OnsetMatch, audio_onsets, keyon_onsets, onset_match
@@ -67,6 +67,7 @@ from .signal import (
 __all__ = [
     "CONFIG_ROOT",
     "DEFAULT_SET",
+    "FRAME_ASPECTS",
     "LEVEL_MAX_ERR",
     "LEVEL_MAX_SPREAD",
     "RIPS_MAP",

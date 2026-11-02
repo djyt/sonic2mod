@@ -3,6 +3,7 @@
 name: "Spin on the Bridge"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$07"
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [16, "fm_v1d_D4.raw", 4, 0]   # VGZ: +8.9 dB at 18

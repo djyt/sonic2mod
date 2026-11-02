@@ -2,13 +2,19 @@
 
     reader.py     the container: commands -> timestamped chip writes (VgmLog)
     chipstate.py  YM2612 + SN76489 registers replayed over the writes (ChipState, Change)
+    bursts.py     the writes in bursts, one run of the driver's each
+    clock.py      where a log's frames fall (FrameClock)
+    spans.py      the bursts gathered into the driver's updates, however long each runs
     frames.py     the log cut into V-int frames: each channel's state and writes per frame (FrameLog)
-    realign.py    a frame log with the V-ints its driver lost or gained undone (realigned)
+    updates.py    the driver's updates, timed by their bursts: where a V-int was lost
+    realign.py    a frame log with the V-ints its driver lost or gained undone (realigned); the VGM's
+                  waits likewise (unshifted)
     notes.py      where notes start (NoteStart), each channel's pitch timeline (pitch_segments)
     cache.py      a rip's frame log kept on disk (load_frames)
     lift/         the frame log lifted back into the SmpsSong the driver played (lift_song)
 """
 
+from .bursts import Burst
 from .cache import load_frames
 from .chipstate import (
     DAC_CHANNEL,
@@ -45,10 +51,12 @@ from .reader import (
     decode_vgm,
     is_vgm_path,
     read_vgm,
+    remapped,
     retimed,
     vgm_bytes,
 )
-from .realign import realigned
+from .realign import realigned, unshifted
+from .updates import DriverUpdate, driver_updates
 from .writes import DecodedWrite, decoded_writes
 
 __all__ = [
@@ -64,11 +72,13 @@ __all__ = [
     "PSG_SILENT",
     "PSG_TONE_CHANNELS",
     "VGM_SAMPLE_RATE",
+    "Burst",
     "Change",
     "ChangeKind",
     "ChipState",
     "DacFrame",
     "DecodedWrite",
+    "DriverUpdate",
     "FmFrame",
     "Frame",
     "FrameCut",
@@ -86,6 +96,7 @@ __all__ = [
     "VgmWrite",
     "decode_vgm",
     "decoded_writes",
+    "driver_updates",
     "frame_log",
     "is_vgm_path",
     "lift_song",
@@ -96,6 +107,8 @@ __all__ = [
     "pitch_segments",
     "read_vgm",
     "realigned",
+    "remapped",
     "retimed",
+    "unshifted",
     "vgm_bytes"
 ]

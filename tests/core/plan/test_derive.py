@@ -1,5 +1,5 @@
-"""A minimal config completed from its song (core/plan/derive.py).  The Moonwalker, GoldenAxe and
-StreetsOfRage classes read their ROMs when they are present.
+"""A minimal config completed from its song (core/plan/derive.py).  The Moonwalker, GoldenAxe,
+StreetsOfRage and TimeTrax classes read their ROMs when they are present.
 
     python -m pytest tests/core/plan/test_derive.py -q
 """
@@ -41,11 +41,13 @@ from tests.roms import (
     SPACE_HARRIER_2_ROM,
     STREETS_OF_RAGE_2_ROM,
     STREETS_OF_RAGE_ROM,
+    TIME_TRAX_ROM,
     needs_golden_axe,
     needs_moonwalker,
     needs_space_harrier_2,
     needs_streets_of_rage,
     needs_streets_of_rage_2,
+    needs_time_trax,
 )
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -342,3 +344,60 @@ class StreetsOfRage2(unittest.TestCase):
                     continue
                 entries = config.psg_voice_map[st.envelope or "$00"] if st.is_psg else config.voice_map[st.voice]
                 self.assertTrue(any(e.low <= res.chip <= e.high for e in entries), (source, event.tick_position))
+
+
+_TIME_TRAX_STATED = {"input_file": str(TIME_TRAX_ROM), "region": "pal"}
+
+
+@needs_time_trax
+class TimeTrax(unittest.TestCase):
+    """Time Trax's song keys: the Mission Briefing ($04)'s volume law's voice copies, a slot each only
+    where a TL misses its voice by level_patch_min; Stages 2, 5, 7 ($01): slots kept by baked_slots."""
+
+    @classmethod
+    def setUpClass(cls):
+        rom = RomImage.load(TIME_TRAX_ROM)
+        cls.songs = {n: read_rom_song(rom, n) for n in (0x01, 0x04)}
+        cls.settings = load_settings(str(ROOT / "tests" / "settings.yaml"))[0]
+
+    def _derive(self, patch_min: int, baked_slots: int = 0, song: int = 0x04):
+        stated = _TIME_TRAX_STATED | {"rom_song": f"${song:02X}", "level_patch_min": patch_min, "baked_slots": baked_slots}
+        return derive_config(stated, self.songs[song], "configs/time_trax/song.yaml", self.settings)
+
+    def _slots(self, baked_slots: int) -> int:
+        return len(self._derive(3, baked_slots, 0x01).data["sample_list"])
+
+    def test_baked_slots_left_free(self):
+        self.assertEqual(self._slots(0) - self._slots(4), 4)
+
+    def test_baked_slots_only_as_far_as_folding_frees(self):
+        self.assertGreater(self._slots(31), 0)
+
+    def test_a_copy_close_to_its_voice_plays_as_it(self):
+        out = self._derive(3)
+        voices = {v.index: v for v in self.songs[0x04].voices}
+        self.assertTrue(out.levels_folded)
+        for copy, (voice, _) in out.levels_folded.items():
+            self.assertEqual(voices[copy].unpatched, voice)
+            self.assertEqual(out.data["voice_map"][copy], out.data["voice_map"][voice])
+
+    def test_at_0_every_copy_keeps_its_own(self):
+        self.assertFalse(self._derive(0).levels_folded)
+
+    def test_window_root_highest_raises_each_root_within_the_range_and_the_limit(self):
+        """Each window's root as high as top_note and the sample limit allow, never lower."""
+        def roots(how: str) -> dict:
+            stated = _TIME_TRAX_STATED | {"rom_song": "$04", "level_patch_min": 3, "window_root": how}
+            data = derive_config(stated, self.songs[0x04], "configs/time_trax/song.yaml", self.settings).data
+            return {e["mod_instrument"]: e for entries in data["voice_map"].values() for e in entries}
+
+        low, high = roots("lowest"), roots("highest")
+        top = self.settings.top_note
+        raised = 0
+        for inst, entry in high.items():
+            root, floor = ModNote[entry["root"]].value, ModNote[low[inst]["root"]].value
+            span = parse_smps_note(entry["high"]) - parse_smps_note(entry["low"])
+            self.assertGreaterEqual(root, floor)
+            self.assertLessEqual(root + span, top)
+            raised += root > floor
+        self.assertGreater(raised, len(high) // 2)

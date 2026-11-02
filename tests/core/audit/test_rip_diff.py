@@ -176,7 +176,5 @@ class Moonwalker(unittest.TestCase):
         self.assertTrue(found.ok)
 
     def test_round_clear(self):
-        found = self._found(0x88, "04 - Round Clear.vgz")
-        counts = {c.name: c.counts() for c in found.diff.channels}
-        self.assertEqual([n for n, c in counts.items() if c], ["FM5"])           # its first note, a tick late
-        self.assertEqual(counts["FM5"][Aspect.ONSET], 2)
+        # FM5's first note, written last in a long first update short of the next burst's due: on time
+        self.assertTrue(self._found(0x88, "04 - Round Clear.vgz").ok)

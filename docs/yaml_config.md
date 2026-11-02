@@ -100,6 +100,15 @@ weighs more than many short ones) until the song fits (`core/plan/slot_fit.py`; 
 5. copies in channel 3's special mode play as their plain voice: the operators' offsets are lost,
    and with them the notes' pitch (Alien Power's FM3 300-400 c).
 
+Song keys tune it (settings.yaml keys once every game wants them): where a window's root sits,
+and two for a driver whose volume law and slides make samples of their own (Time Trax's):
+
+| Key | Default | Meaning |
+|---|---|---|
+| `window_root` | `lowest` | Where each derived window's `root` sits.  `lowest`: the first MOD note keeping `samples.root_harmonics` harmonics (the smallest samples, E1 at worst: ~5.5 kHz); `highest`: as high as the window reaches (its top at `samples.top_note`) and the sample limit allows, the window's longest ring (ties and legato reads carried) and its release whole at the rate each note plays — the most rate, two to three times the samples' bytes (Streets of Rage 2's and Time Trax's configs) |
+| `level_patch_min` | `0` | TL steps a voice copy the volume law makes, differing from its voice in its TLs alone, must miss it by somewhere to keep a slot; the rest play as their voice at their level.  0 = every copy keeps one |
+| `baked_slots` | `0` | Slots left free, as far as the folds and merges above free them, for samples a sweep or volume envelope is baked into (`core/plan/baked.py`); the most played shapes take them, the rest play their instrument's own sample |
+
 A song that still does not fit is an error.  Banks (`9xx`) would hold one looped sound each, and
 these are looped or seconds long: the plain build does not bank.
 

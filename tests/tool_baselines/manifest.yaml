@@ -818,8 +818,8 @@ disasm_streets_of_rage_2_z80:
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
 frames_golden_axe:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
     configs/golden_axe/82_turtle_village_1.yaml: f68728200961
@@ -866,8 +866,8 @@ frames_outrun:
     reference/vgz/outrun/04 - Last Wave.vgz: b7a88f63e71c
     reference/vgz/outrun/05 - Step on Beat.vgz: a7be399dfb8c
 frames_space_harrier_2:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
     configs/space_harrier_2/87_an_omen.yaml: 09339311b850
@@ -1001,9 +1001,27 @@ frames_streets_of_rage_2:
     reference/vgz/streets_of_rage_2/22 - Go Straight (Beatmix).vgz: fe6212d3074a
     reference/vgz/streets_of_rage_2/23 - Beta - Walking Bottom.vgz: ca38175a16a4
     reference/vgz/streets_of_rage_2/24 - Little Money Avenue.vgz: 2a53e8aca5fa
+frames_time_trax:
+  commit: 40c7228-dirty
+  date: '2026-11-02'
+  inputs:
+    configs/time_trax/00_title_screen.yaml: ff2d216fc70c
+    configs/time_trax/01_stages_2_5_7.yaml: fe0e13595303
+    configs/time_trax/02_stages_4_6.yaml: 58ec6696676e
+    configs/time_trax/03_stages_1_3_8.yaml: 97a2aa7d6cef
+    configs/time_trax/04_mission_briefing.yaml: c3430c119404
+    configs/time_trax/05_game_over.yaml: bea18d219259
+    configs/time_trax/rips.yaml: bc861f78e14f
+    input/roms/Time Trax (USA) (Proto).md: 830410ab309d
+    reference/vgz/time_trax/01 - Title Screen, Credits.vgz: 67a68ab4c6ca
+    reference/vgz/time_trax/02 - Mission Briefing.vgz: d5bf3b290fa7
+    reference/vgz/time_trax/03 - Stages 1, 3, 8.vgz: 87b8b4032ea4
+    reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
+    reference/vgz/time_trax/05 - Stages 4, 6.vgz: d53c8a99d546
+    reference/vgz/time_trax/06 - Game Over.vgz: d048ec8120e5
 glitches_golden_axe:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
     configs/golden_axe/82_turtle_village_1.yaml: f68728200961
@@ -1050,8 +1068,8 @@ glitches_outrun:
     reference/vgz/outrun/04 - Last Wave.vgz: b7a88f63e71c
     reference/vgz/outrun/05 - Step on Beat.vgz: a7be399dfb8c
 glitches_space_harrier_2:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
     configs/space_harrier_2/87_an_omen.yaml: 09339311b850
@@ -1185,6 +1203,24 @@ glitches_streets_of_rage_2:
     reference/vgz/streets_of_rage_2/22 - Go Straight (Beatmix).vgz: fe6212d3074a
     reference/vgz/streets_of_rage_2/23 - Beta - Walking Bottom.vgz: ca38175a16a4
     reference/vgz/streets_of_rage_2/24 - Little Money Avenue.vgz: 2a53e8aca5fa
+glitches_time_trax:
+  commit: 40c7228-dirty
+  date: '2026-11-02'
+  inputs:
+    configs/time_trax/00_title_screen.yaml: ff2d216fc70c
+    configs/time_trax/01_stages_2_5_7.yaml: fe0e13595303
+    configs/time_trax/02_stages_4_6.yaml: 58ec6696676e
+    configs/time_trax/03_stages_1_3_8.yaml: 97a2aa7d6cef
+    configs/time_trax/04_mission_briefing.yaml: c3430c119404
+    configs/time_trax/05_game_over.yaml: bea18d219259
+    configs/time_trax/rips.yaml: bc861f78e14f
+    input/roms/Time Trax (USA) (Proto).md: 830410ab309d
+    reference/vgz/time_trax/01 - Title Screen, Credits.vgz: 67a68ab4c6ca
+    reference/vgz/time_trax/02 - Mission Briefing.vgz: d5bf3b290fa7
+    reference/vgz/time_trax/03 - Stages 1, 3, 8.vgz: 87b8b4032ea4
+    reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
+    reference/vgz/time_trax/05 - Stages 4, 6.vgz: d53c8a99d546
+    reference/vgz/time_trax/06 - Game Over.vgz: d048ec8120e5
 lift_02:
   commit: c6d0253-dirty
   date: '2026-11-01'
@@ -1233,8 +1269,8 @@ lift_all:
     reference/vgz/sonic_1/18 - Continue.vgz: bc4a60482c1e
     reference/vgz/sonic_1/19 - Game Over.vgz: a6a8d7a60226
 lift_moonwalker_88_round_clear:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
@@ -1292,8 +1328,8 @@ lift_moonwalker_88_round_clear:
     reference/vgz/moonwalker/39 - Dance Attack 11 (with voice).vgz: 5fa628a91fe8
     reference/vgz/moonwalker/40 - Dance Attack 12 (with voice).vgz: 4205620b2612
 lift_moonwalker_all:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: b959be9
+  date: '2026-11-02'
   inputs:
     configs/moonwalker/81_smooth_criminal.yaml: b2a6d52c2d16
     configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
@@ -1437,6 +1473,14 @@ pitch_ga_the_battle:
     configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
     reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
     tests/baselines/ga_the_battle_baseline.mod: 2cef3822df6d
+    tests/settings.yaml: 1be2c231bd5e
+pitch_ga_the_battle_hq:
+  commit: 719ea22-dirty
+  date: '2026-11-02'
+  inputs:
+    configs/golden_axe/89_the_battle.yaml: 7fc4665f41a6
+    reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
+    tests/baselines/ga_the_battle_hq_baseline.mod: 19f728a04cef
     tests/settings.yaml: 1be2c231bd5e
 pitch_ga_theme_of_thief:
   commit: c6d0253-dirty
@@ -1631,12 +1675,12 @@ pitch_sor2_game_over:
     tests/baselines/sor2_game_over_baseline.mod: 33767398ef02
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_go_straight:
-  commit: a750fdc-dirty
+  commit: 719ea22-dirty
   date: '2026-11-02'
   inputs:
-    configs/streets_of_rage_2/00_go_straight.yaml: 9f1189d1ab9f
+    configs/streets_of_rage_2/00_go_straight.yaml: 87420c3d5c0e
     reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
-    tests/baselines/sor2_go_straight_baseline.mod: 8f263482fb8a
+    tests/baselines/sor2_go_straight_baseline.mod: 7a87b465468c
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_jungle_base:
   commit: 47ca32b-dirty
@@ -1710,6 +1754,38 @@ pitch_title_screen:
     reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
     tests/baselines/title_screen_baseline.mod: 25257e55e372
     tests/settings.yaml: 1be2c231bd5e
+pitch_tt_game_over:
+  commit: 40c7228-dirty
+  date: '2026-11-02'
+  inputs:
+    configs/time_trax/05_game_over.yaml: bea18d219259
+    reference/vgz/time_trax/06 - Game Over.vgz: d048ec8120e5
+    tests/baselines/tt_game_over_baseline.mod: b3573f71f4de
+    tests/settings.yaml: 1be2c231bd5e
+pitch_tt_mission_briefing:
+  commit: 719ea22-dirty
+  date: '2026-11-02'
+  inputs:
+    configs/time_trax/04_mission_briefing.yaml: 79d1c4d13d14
+    reference/vgz/time_trax/02 - Mission Briefing.vgz: d5bf3b290fa7
+    tests/baselines/tt_mission_briefing_baseline.mod: cde265570dae
+    tests/settings.yaml: 1be2c231bd5e
+pitch_tt_stages_2_5_7:
+  commit: 719ea22-dirty
+  date: '2026-11-02'
+  inputs:
+    configs/time_trax/01_stages_2_5_7.yaml: 4b8951400073
+    reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
+    tests/baselines/tt_stages_2_5_7_baseline.mod: b73fa350f3c9
+    tests/settings.yaml: 1be2c231bd5e
+pitch_tt_title_screen:
+  commit: 719ea22-dirty
+  date: '2026-11-02'
+  inputs:
+    configs/time_trax/00_title_screen.yaml: a335a2b90db5
+    reference/vgz/time_trax/01 - Title Screen, Credits.vgz: 67a68ab4c6ca
+    tests/baselines/tt_title_screen_baseline.mod: b84ed85d43ff
+    tests/settings.yaml: 1be2c231bd5e
 read_golden_axe:
   commit: c6d0253-dirty
   date: '2026-11-01'
@@ -1721,8 +1797,8 @@ read_moonwalker:
   inputs:
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
 read_outrun:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 54302c1
+  date: '2026-11-02'
   inputs:
     input/roms/OutRun (USA, Europe).md: 231f52844398
 read_sonic1_asm_music:
@@ -1835,17 +1911,22 @@ read_sonic1_rom_shipped:
   inputs:
     input/roms/sonic_rev01.bin: c30832bccae0
 read_space_harrier_2:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 54302c1
+  date: '2026-11-02'
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
 read_streets_of_rage:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 54302c1
+  date: '2026-11-02'
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
 read_streets_of_rage_2:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 54302c1
+  date: '2026-11-02'
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
+read_time_trax:
+  commit: 40c7228-dirty
+  date: '2026-11-02'
+  inputs:
+    input/roms/Time Trax (USA) (Proto).md: 830410ab309d

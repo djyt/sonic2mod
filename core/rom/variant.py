@@ -37,9 +37,9 @@ class SoundIndex:
     def address(self, sound_id: int) -> int:
         found = self.music.get(sound_id, self.sfx.get(sound_id))
         if found is None:
-            raise RomError(f"sound ${sound_id:02X}: not in the ROM's indexes "
-                           f"(music ${min(self.music):02X}-${max(self.music):02X}, "
-                           f"SFX ${min(self.sfx):02X}-${max(self.sfx):02X})")
+            held = ", ".join(f"{what} ${min(ids):02X}-${max(ids):02X}" for what, ids in (("music", self.music), ("SFX", self.sfx))
+                             if ids)
+            raise RomError(f"sound ${sound_id:02X}: not in the ROM's indexes ({held})")
         return found
 
     def is_sfx(self, sound_id: int) -> bool:
@@ -174,6 +174,10 @@ class SmpsVariant:
     music_header_reader: Callable[[SoundMemory, int], RomHeader] | None = None
     sfx_header_reader: Callable[[SoundMemory, int], RomHeader] | None = None
     voice_reader: Callable[[SoundMemory, int, int], list[SmpsVoice]] | None = None
+    # A driver whose instructions read by state their bytes do not hold (Time Trax's: a fixed duration
+    # drops a note's duration byte, a loop's end names no start): the memory one song's tracks are
+    # read through, knowing that state at each address.  None: each address reads alone
+    song_memory: Callable[[SoundMemory, RomHeader], SoundMemory] | None = None
 
     def __post_init__(self) -> None:
         if self.voice_layout is None and self.voice_reader is None:

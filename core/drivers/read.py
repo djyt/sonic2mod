@@ -10,7 +10,7 @@ from core.rom.fixes import apply_fixes
 from core.rom.header import music_header, sfx_header
 from core.rom.image import RomImage
 from core.rom.memory import SoundMemory
-from core.rom.tracks import decode_tracks
+from core.rom.tracks import song_tracks
 from core.rom.variant import DacSample, SmpsVariant, SoundIndex
 from core.rom.voices import bank_voices, voices_used
 from core.smps import PlaybackRules, SmpsSong, SongCode
@@ -43,7 +43,7 @@ def read_rom_code(rom: RomImage, sound_id: int, index: SoundIndex | None = None,
     read_header = sfx_header if index.is_sfx(sound_id) else music_header
     head = read_header(memory, address, variant)
 
-    tracks = decode_tracks(memory, head.tracks, variant, splices, head.loops)
+    tracks = song_tracks(memory, head, variant, splices)
     voices = []
     if head.voices is not None:
         voices = bank_voices(memory, head.voices, voices_used(tracks.code), variant)

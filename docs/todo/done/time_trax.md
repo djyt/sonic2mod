@@ -1,7 +1,7 @@
 # Time Trax (prototype): Tim Follin's Z80 driver
 
-Probed 2026-11-01.  Goal: `convert.py` reads Time Trax's six songs from the ROM.  Nothing implemented;
-this is the probe and the plan.
+Probed 2026-11-01, closed 2026-11-02 (listening open: 3.4).  Goal: `convert.py` reads Time Trax's six
+songs from the ROM.  The driver as built: `docs/timetrax_driver.md`; this is the probe and the plan.
 
 **Verdict.**  Not SMPS: Tim Follin's own Z80 driver, a new family.  *Reading* it is small: a 100-line
 scratch walker decodes all six songs, and their key-ons land on the rips' frames with the rips'
@@ -231,48 +231,155 @@ reached.  A glide is the same with another curve: D4 uses it.
 
 ### Phase 0
 - [x] 0.1 Decisions § 7 (2026-11-01).
-- [ ] 0.2 Unzip the rips; branch `time_trax` in a worktree (other sessions share this
-  checkout).
-- [ ] 0.3 Check the rip tools on 50 Hz rips (`vgm_frames` / `vgm_lift` frame detection; `region: pal`).
-- [ ] 0.4 Tools (each its own commit, before the phase that needs it):
-  - T1 `core/rom/z80.py`: the copied load with its leas before the bus request (Phase 1; also
-    `disasm.py --z80`).
-  - T2 `vgm_frames`: every frame of a note, not only its first: the word (glide, portamento) and
-    the TLs (envelopes) against the walk's (Phase 2.3, 2.4).  Today a glide's path goes unchecked.
-  - T3 `vgm_frames` level: all four TLs, not the carriers' only: `$AA` scales modulators (2.2).
-  - T4 `vgm_pitch_audit`: a slide check.  It judges chip segments of 60 ms or more; a glide's
-    pitch lasts a frame (20 ms), so no glide is judged.  `mod_pitch_timeline` already follows
-    `1xx` / `2xx` / `E1x` / `E2x` per tick: compare it with the rip's word per frame while a
-    note slides (3.2).
-  - T5 `disasm.py --table` on Z80 tables (little-endian absolute words: the flags at `$0DC8` /
-    `$0E20`).  Optional: § 2.3 is decoded.
-  - Check, likely fine: `vgm_lift` on a song with no tempo holds (durations are frames);
-    `flag_census` on flags `$80`-`$AB`.
+- [x] 0.2 Rips unzipped; branch `time_trax` (checked out in the main checkout, no other session).
+- [x] 0.3 The rip tools on 50 Hz rips: 882-sample frames, the bursts' phase jitter (-26 to +150
+  samples) inside the cut's window.  Each rip loops 9-24 frames longer than its song (6144 -> 6153,
+  7440 -> 7464, 7040 -> 7052, 5376 -> 5386, 11008 -> 11023); `vgm_frames --glitches` finds a
+  frame lost on every channel at once, in song 3 every ~240 frames.  Likely V-ints the driver
+  drops: its main loop takes the V-int count after each update ($06F4: `ld a,(hl)` / `cp (hl)`),
+  so one during a long update is never seen.  To confirm and record in `rips.yaml` (1.4).
+- [x] 0.4 Tools (branch `time_trax`):
+  - T1 `core/rom/z80.py`: the copied load with a bus grant wait between its leas and the count
+    (`disasm.py --z80` reads it).
+  - T2 `vgm_frames`: a note with a path (`PlayedNote.pitch_path` / `level_path`: what the walk
+    writes after the first frame) judged on every frame it spans ("pitch path", "level path").
+    Phase 2.3 / 2.4 fill the paths.
+  - T3 dropped: modulator TLs are already checked, under "voice" (every register but the
+    carriers' TL).
+  - T4 `vgm_pitch_audit --slides [CENTS]`: a run of chip segments shorter than `--min-ms`, each
+    against the MOD's `1xx` / `2xx` at its midpoint (default 50 cents).
+  - T5 `disasm.py --z80 --table`: little-endian Z80 addresses.
+  - Checked: `vgm_lift` on a song with no tempo holds (durations are frames); `flag_census` on
+    `$80`-`$AB`.
 
 ### Phase 1: read
-- [ ] 1.1 5.1 items 1-4; `rom_import.py` lists six songs; `song_dump.py` reads, walks and plays each;
+- [x] 1.1 `core/drivers/timetrax/` (a family of one): locate (bank, tables by code), memory
+  (big-endian; `core.rom.memory.BankedMemory`, shared with SMPS Z80), header, commands, walk,
+  grammar, voices.  Framework: `SmpsVariant.song_memory` (a song's tracks read through its walk),
+  `core.rom.tracks.song_tracks`.  Sounds from 0; the table ends at the first header; a sound of one
+  track is an SFX (not read).  `rom_import.py` lists six songs, `song_dump.py` reads each;
   `read_time_trax` snapshot.
-- [ ] 1.2 Unknown-effect policy: the grammar maps every § 2.3 byte; unused ones (`$91`, `$A6`, `$A7`,
-  PSG) refused with a message.
-- [ ] 1.3 The sync (5.1.5).  `configs/time_trax/rips.yaml`, minimal configs, `region` (D2).
-- [ ] 1.4 `vgm_lift --aspects onset length note`; `vgm_frames` on all six.
+- [x] 1.2 Every § 2.3 byte read: Pan, SetVoice, Legato, Detune as the IR has them; Phase 2's
+  (transposition, volume, mask, glide, portamento, key-off timing, vibrato, envelopes) dropped by
+  name ("... (not converted yet)"); the unused refused ($8F $90 $91 $9D $9E $A2-$A7); a PSG track
+  refused.
+- [x] 1.3 The sync: song 0's FM5 waits 636 frames each pass, read as a rest (walk.py: FM3's
+  signal, FM5 reading `$8E` every other frame).  Every channel of every song loops its song's pass.
+  `configs/time_trax/` (minimal, `region: pal`) and `rips.yaml`.
+- [x] 1.4 Run: `vgm_lift --all --configs configs/time_trax --aspects onset length note` and
+  `vgm_frames --all`: 0 of 6 clean, as expected before Phase 2.  Pitch misses a semitone (the
+  transposition dropped); level the volume law; length rests that hold, `$96` / `$98`.  The rips'
+  lost frames (0.3) confirmed: V-ints the driver loses ($06F4), 78 in `rips.yaml` (1-25 a song).
+  Each set checked whole: every rip then loops its song's frames, and the lift's onsets fall
+  (3734 / 4369 / 4798 / 2877 / 5845 / 31 -> 12 / 24 / 25 / 22 / 10 / 3, with 2.1).  `vgm_analyze
+  --updates` (a frequency rewrite starts an update; an update's reach past the V-int estimated
+  from the log) finds all but those the writes cannot place: song 3's 3592 and song 4's 6688 sit
+  in idle frames (6688: "possible"), song 4's 11303 at the rip's end (the loop's jump, as at 280).
+  Later (3.1): the late key-ons left (52) were the frame log's: a long update's last tracks
+  written before the V-int but past the window's start.  `core/vgm/spans.py` groups bursts into
+  updates, `frames.py` files a write in its update's frame; 8 glitches moved a frame or more
+  earlier, 2 added (songs 2, 5 at their start).  Lift onsets 0; `vgm_frames` attack misses 0.
 
 ### Phase 2: the walk
-- [ ] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.
-- [ ] 2.2 Volume law; `$AA` masks.  `vgm_frames` levels per key-on.
-- [ ] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch (T2).
-- [ ] 2.4 Volume envelopes; `vgm_frames` levels per frame (T2, T3).
+- [x] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.  A read (note or
+  rest) loads the countdown; each later frame counts down, then `$1293` keys off: `$96 n` at n + 1
+  frames before the read's end (`Gate`), `$98 n` n - 1 after its start (`KeyOffAfter`, a gate
+  first); each set clears the other's.  A rest writes nothing ($0D18): the note sounds on to a
+  read's key-off; a legato read after one stays silent (`KeyOffRules.rest_holds`, DriverTrack).
+  `$89`: `SetTransposition`, kept as set (2.3: as a change, a replayed loop added it again).  Two notes transposed past the FM table (song 3,
+  4: FM1) play the pitch meant.  Lift: length 1076 -> 22, note 1473 -> 18 (song 0); `vgm_frames`
+  attack pitch 1470 -> 27.  Left for 2.2: levels, the modulator TLs `$AA` scales ("voice").
+- [x] 2.2 Volume law; `$AA` masks.  `vgm_frames` levels per key-on.  `$1343`: each operator's
+  output (127 - TL) x the master ($000A, $FF; the carriers) x the track's volume ($8A; the operators
+  `$AA` masks, the carriers again at each voice set, `$AB` too), by a quarter-square multiply (a
+  table of x² / 256 at Z80 $0100: a product as it rounds).  A track starts at volume 0.
+  `VolumeRules.law` (core/drivers/timetrax/volume.py): the walk plays it as a `SetVol` of the
+  loudest carrier's change and a voice copy with each TL that misses written exact.  D3's threshold:
+  `level_patch_min` (3, a song key), in core/plan/derive.py: a law's copy within it of its voice plays
+  as the voice.  `vgm_frames` level misses 2134 -> 1 (song 0), 1 / 1 / 0 (songs 2, 3, 5); left
+  (songs 1, 4, and song 2's modulators): the volume envelopes (2.4).
+- [x] 2.3 Glide and portamento in the walk (the frame-exact word); `vgm_frames` pitch (T2).  Each
+  frame of a read and after it (`$12B4`; not a rest's read, `$0D18`): the portamento (`$16C8`) steps
+  the table index s semitones every f frames toward the note + transposition, the glide (`$1739`)
+  the word s fnum units toward the portamento's (+ detune), never past it; up past fnum `$4D2` the
+  next block from `$269`, under `$245` the block below from `$48C` (+ the overshoot's high byte).
+  Set while off, a portamento starts at the last note, a glide at the last target.  `Glide` /
+  `Portamento` (played effects), `core/smps/slide.py` (`PitchSlide`), `PitchRules.slide`
+  (`core/drivers/timetrax/glide.py`); `played_song` fills every Time Trax note's `pitch_path`.
+  Found: `$89` replayed as a change doubled in `song_prep`'s loop replay (song 4's second pass);
+  now `SetTransposition` is a played effect, `TrackState` sets it (song 4's MOD: wrong notes
+  FM1 400 -> 0, FM4 138 -> 0).  `vgm_frames` attack pitch 25 / 43 / 50 / 12 / 94 / 4 -> 3 / 3 / 6 /
+  12 / 6 / 0, tied 338-989 -> 0-2, path 0-3; lift note 0.  Left: every attack miss is a lift onset
+  miss (a key-on the rip logs a frame late: to look at in 1.4's terms); the vibrato (`$9A`, song 2
+  and 3's FM3, `+30` frames: not read); a write the log shows a frame late (song 2 FM5 3220); song
+  3's FM1 note transposed below the table glides down to the pitch meant (the rip's reads stray
+  bytes and rises).
+- [x] 2.4 Volume envelopes; `vgm_frames` levels per frame (T2, T3).  `$9F a r`: envelopes on, each
+  note read loads a ($153F: its start level); `$A0` / `$A1` each note loads it again / not (a running
+  one plays out); `$8A` stops them; r is unread (its triggers refused).  Each frame but a rest's
+  read (`$1421`): a segment's first sets the volume to where the last headed, then Bresenham steps
+  of 1 toward its level, one at most a frame where it rises less than its frames ($14E2), else
+  several ($1509); `$FF` holds, `$FE` loops.  `VolumeEnvelope` (the walk's), `VolumeRules.envelopes`
+  (`core/drivers/timetrax/envelope.py`: 28 from the ROM), `core/smps/volume_envelope.py`
+  (`EnvelopeTrack`): DriverTrack steps the volume through each read's frames, writes the level a read
+  starts at (a voice copy and `SetVol`, as 2.2) and the TLs after (`LevelPath`, a played effect;
+  `played_song`: the carriers' `level_path`).  A rest's read writes nothing: a level set in it plays
+  from the next frame (`played_song`, under `rest_holds`).  `vgm_frames` levels: song 4 575 -> 3,
+  song 1 64 -> 6; voice: song 4 250 -> 2, song 2 351 -> 1; tied levels 0; level path 0 (every note,
+  every frame).  Every attack miss left is a lift onset miss (a key-on a frame late) or the rip's first
+  frame.  For Phase 3: notes whose envelope starts quiet read at `C00` (song 1: 7).
 
 ### Phase 3: convert
-- [ ] 3.1 Writer: `modulation_slides` taking any pitch curve (frame -> word), fed the walk's
-  glide / portamento word (D4); envelopes baked (D5).
-- [ ] 3.2 `vgm_pitch_audit` clean, slides too (T4); `measure_volumes --configs configs/time_trax`, one pass.
-- [ ] 3.3 Regression cases by coverage; tool cases `read_`, `frames_`, `glitches_`.
+- [x] 3.1 Writer: `modulation_slides` taking any pitch curve (frame -> word), fed the walk's
+  glide / portamento word (D4); envelopes baked (D5).  Done so far (2026-11-02):
+  - Pitch: `curve_slides` (vibrato.py; `modulation_slides` one case of it).  `core/plan/glides.py`:
+    each read's word and TLs frame by frame (`channel_reads`), whether a sample at a MOD note
+    plays them (`reaches`: B-3 .. C-1).  The writer's `PitchCurve`: a note or tie whose word moves
+    slides row by row to the word on the row's last frame; a legato read the sounding sample can
+    follow (with its held rests) glides on, no key-on, whatever `legato` says (the chip never
+    re-keys it); slides stop before the next note-on's row.
+  - Sweeps (four octaves in four frames: the drum figures, 5-13 shapes a song, hundreds of uses)
+    and volume envelopes' levels: `core/plan/baked.py` (`BakedPlan`, `ConversionPlan.baked`), a
+    shape per keyed read (pitch offsets from its table word, rendered in its notes' pitch class;
+    TL changes per frame), planned as variants (detune.py; an instrument's own sample only where
+    it plays no plain note); `render_layers(levels=)` writes the TLs each frame.  No slot: the
+    note plays its own sample (the sweep unheard) and the level moves by Cxx (`LevelCurve`, D5's
+    fallback; before a slide on the same row).  Own samples bake 1-6 instruments a song.
+  - Slot budget: a derived config fills every slot (voice copies, pitch windows); what
+    `level_patch_min` frees goes to fewer merges and folds, none to shapes.  Song keys (settings.yaml
+    once another driver needs them): `baked_slots` leaves slots free, as far as folding and merging
+    frees them; 4, songs 3 and 4 6.  Sweeps take them first (an unbaked sweep is unheard, a level
+    shape falls back to Cxx).  Sweep notes unbaked: 0, 0, 1, 4, 1 of 85, 317, 444, 405, 453; for
+    2-4 more window merges or copy folds a song.
+  - Banks (`9xx`, as the merged build's) considered, not built: only the sweeps gain (one-shots,
+    their rows free), and they now fit; the shapes left are levels on looped samples (one loop a
+    bank).  Revisit if slots run short.
+  - Derive skips a legato read the driver glides: its note is where the glide heads, not what
+    sounds (song 3's `A#-1`, under the table, broke its window names).
+  - The pitch audit models a baked sweep (`mod_pitch_timeline`).
+- [x] 3.2 `vgm_pitch_audit` clean, slides too (T4); `measure_volumes --configs configs/time_trax`, one pass.
+  Wrong notes 910 / 469 / 233 / 169 / 324 / 84 -> 0 / 0 / 1 / 0 / 6 / 4, found on the way:
+  - The audits: the rips' lost V-ints undone in the VGM's waits (`core.vgm.unshifted`, `RipFaults.unglitched`;
+    `rip_on_song_clock` takes them: the pitch audit, `vgm_compare`); the lag searched both ways (the
+    rips start 0.3-0.8 s before their song; it stopped at -0.5 s).
+  - The walk: a held rest left the note unsounding (`DriverTrack._holding`), so a legato read after it
+    read as a rest (song 0's FM4 credits bass, song 1's FM4 / FM5).
+  - Sweeps: the drum is a keyed note, then a legato read gliding to its target (E0, four octaves down);
+    the shape was keyed on the legato read, from its target's word, which broke the render (offsets
+    past block 7).  Now a legato read the sample cannot slide to is carried in the keyed read's shape
+    (`BakedPlan.carried`, `walk_channel`: no note), and once a sample sweeps it slides no further
+    (song 5's FM6 glide chain).
+  Left: grace notes the audit pairs with the note before (song 4: 6, CLAUDE.md's todo item 3), a
+  sweep's last cents (song 5: 4), song 2's one.  Slides 85-98 % within 50 cents; song 4's 78 %: its
+  semitone-a-frame portamento a frame behind (`1xx` moves from a row's second tick).  Volumes: 79
+  written, residuals on 1- and 2-note instruments or at the 64 ceiling.
+- [x] 3.3 Regression cases by coverage (`tt_mission_briefing`, `tt_title_screen`, `tt_game_over`,
+  `tt_stages_2_5_7`); tool cases `read_time_trax`, `frames_time_trax`, `glitches_time_trax`.
 - [ ] 3.4 Listen in the FT2 clone (the user).
 
 ### Phase 4: close
-- [ ] 4.1 A section in `docs/smps_variants.md` (or a new `docs/timetrax_driver.md`: it is no SMPS);
-  `docs/architecture.md`; CLAUDE.md's index; this plan to `done/`.
+- [x] 4.1 `docs/timetrax_driver.md`; `docs/architecture.md`; CLAUDE.md's index; this plan to `done/`.
+  Open beyond it: the vibrato (`$9A`, two uses).
 
 ---
 
@@ -282,7 +389,7 @@ reached.  A glide is the same with another curve: D4 uses it.
    Follin games.
 2. **Region:** `pal` in the configs: the rips are 50 Hz.  An `ntsc` variant only if wanted later.
 3. **Volume law:** hybrid.  `SetVol` from the loudest carrier's TL change; a patched voice per
-   (voice, vol, mask) only where some operator misses by ≥ a threshold (settings.yaml; 3 TL steps =
+   (voice, vol, mask) only where some operator misses by ≥ a threshold (song key `level_patch_min`; 3 TL steps =
    2.25 dB).  Measured (FM notes, one pass, envelope notes apart):
 
    | Song | Voices | Exact (voice, vol, mask) | Hybrid, ≥ 3 | Notes ≥ 3 off under `SetVol` |

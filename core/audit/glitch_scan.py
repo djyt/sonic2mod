@@ -16,6 +16,11 @@ alone is the song's doing (a note, a flag), not the rip's:
     FM2 ───●───●──●────|───○──○────○      the window: the last ● to the first ○ over the channels
     FM4 ─●───●───●─────|─○───○─○────      every channel late from there: a V-int lost (-1)
 
+Each candidate carries the driver's updates around its window that followed a frame with none
+(core.vgm.driver_updates): one after an update running past the next V-int is a V-int lost (or
+possible: one ending near it, then an idle stretch); none, the move is something else.  A lost one
+names the candidate's frame: the frame after the overrun, though the song idles on past it.
+
 The scan prints candidates (vgm_frames.py --glitches); a human confirms one into rips.yaml.  It
 reads the rip as recorded (no glitch undone), less the notes rips.yaml says are another sound's.
 """
@@ -28,7 +33,7 @@ from dataclasses import dataclass, field
 
 from ..chips import freq_word
 from ..smps import FM_CHANNEL_NAMES, PlayedNote, SmpsSong
-from ..vgm import FrameLog
+from ..vgm import DriverUpdate, FrameLog, driver_updates
 from .frame_check import NoteFrames, first_key_offset, note_frames
 from .rip_diff import ChannelChoice
 from .rips import RipFaults
@@ -40,6 +45,7 @@ _START_ATTACKS = 16     # the song's first attacks (FM, every channel) that set 
 _MOVE_NOTES = 2         # attacks running on another offset that move a channel
 _MIN_CHANNELS = 2       # channels moving together that make a glitch
 _ACROSS = 600           # frames (10 s) either side of a window a steady channel's attacks are looked for
+_UPDATE_REACH = 1       # frames either side of a window whose updates are its evidence
 
 # An FM channel's attacks: [(the song's frame, note) ...]
 Attacks = list[tuple[int, PlayedNote]]
@@ -65,6 +71,17 @@ class GlitchCandidate:
     moves: tuple[ChannelMove, ...]
     steady: tuple[str, ...] = ()        # channels playing across the window that did not move
     spanning: tuple[str, ...] = ()      # channels silent across it (and others), moved by the sum
+    updates: tuple[DriverUpdate, ...] = ()  # the driver's updates around the window after a frame with none
+
+    @property
+    def lost_vints(self) -> int:
+        """V-ints the driver's updates show lost around the window (an overrun, then a frame with none)."""
+        return sum(u.lost for u in self.updates)
+
+    @property
+    def possible_vints(self) -> int:
+        """... that may have been lost (an update ending near the V-int, then an idle stretch)."""
+        return sum(u.possible for u in self.updates)
 
     @property
     def window(self) -> tuple[int | None, int]:
@@ -73,8 +90,12 @@ class GlitchCandidate:
 
     @property
     def frame(self) -> int:
-        """The rip's first frame off (rips.yaml's `frame`): the first moved attack's."""
-        return self.window[1]
+        """The rip's first frame off (rips.yaml's `frame`): the one whose V-int an overrun lost, the
+        only one in the window; else the first moved attack's."""
+        start, end = self.window
+        lost = [u.lost_frame for u in self.updates
+                if u.lost and u.lost_frame is not None and (start is None or start < u.lost_frame) and u.lost_frame <= end]
+        return lost[0] if len(lost) == 1 else end
 
     @property
     def from_start(self) -> bool:
@@ -110,7 +131,12 @@ def scan_glitches(song: SmpsSong, frames: FrameLog, channels: ChannelChoice = _E
     TempoWait hold phase is the one that moves fewer channels (the song's first)."""
     foreign = RipFaults(foreign=faults.foreign)
     scans = [_scan_at(song, frames, channels, foreign, early) for early in (False, True)]
-    return min(scans, key=lambda s: len(s.candidates))
+    scan = min(scans, key=lambda s: len(s.candidates))
+
+    # Each candidate's evidence: the updates around it after a frame with none
+    gaps = [u for u in driver_updates(frames) if u.skipped]
+    scan.candidates = [dataclasses.replace(c, updates=_around(c, gaps)) for c in scan.candidates]
+    return scan
 
 
 def _scan_at(song: SmpsSong, frames: FrameLog, channels: ChannelChoice, foreign: RipFaults, early: bool) -> GlitchScan:
@@ -228,6 +254,14 @@ def _spanned(candidates: list[GlitchCandidate]) -> list[GlitchCandidate]:
             spans.setdefault(i, []).append(move.channel)
     return [dataclasses.replace(c, spanning=tuple(spans.get(glitches.index(c), ()))) if c.every_channel else c
             for c in kept]
+
+
+def _around(candidate: GlitchCandidate, updates: list[DriverUpdate]) -> tuple[DriverUpdate, ...]:
+    """`updates` whose gap (from the update before to its own frame) meets `candidate`'s window,
+    _UPDATE_REACH frames wider."""
+    start, end = candidate.window
+    first = (end if start is None else start) - _UPDATE_REACH
+    return tuple(u for u in updates if u.before is not None and u.before <= end + _UPDATE_REACH and u.frame >= first)
 
 
 def _window(moves: list[ChannelMove] | tuple[ChannelMove, ...]) -> tuple[int | None, int]:

@@ -1,7 +1,7 @@
 """One conversion's decisions on its config, kept off the config, which stays as read.
 
-    config ─► rendering pitches ─► detune variants ─────────► merge plan (the merged build)
-              (prepare_instruments: the song as written)       (core.merge: the ticks the MOD plays)
+    config ─► rendering pitches ─► baked ─► detune variants  ─────────► merge plan (the merged build)
+              (prepare_instruments: the song as written)                 (core.merge: the ticks the MOD plays)
 
 Each step makes a new ConversionPlan.  Every pass reads what a note plays (walk_channel) and what a
 slot holds (the catalogues, the sample table) through it, so another pass, or a tool, starts over
@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Protocol
 from ..config import ConversionConfig, SampleRow
 
 if TYPE_CHECKING:
+    from .baked import BakedPlan
     from .detune import DetunePlan
     from .instruments import FmInstrument
 
@@ -97,6 +98,7 @@ class ConversionPlan:
     pitches: dict[int, RenderPitch] = field(default_factory=dict)   # id(map entry) -> its rendering pitch
     detune: DetunePlan | None = None
     merge: MergeRouting | None = None
+    baked: BakedPlan | None = None       # sweeps and volume envelopes rendered into samples (core.plan.baked)
 
     @classmethod
     def of(cls, config: ConversionConfig) -> ConversionPlan:
@@ -109,6 +111,9 @@ class ConversionPlan:
 
     def with_pitches(self, pitches: dict[int, RenderPitch]) -> ConversionPlan:
         return dataclasses.replace(self, pitches=pitches)
+
+    def with_baked(self, baked: BakedPlan | None) -> ConversionPlan:
+        return dataclasses.replace(self, baked=baked)
 
     def with_detune(self, detune: DetunePlan | None) -> ConversionPlan:
         return dataclasses.replace(self, detune=detune)

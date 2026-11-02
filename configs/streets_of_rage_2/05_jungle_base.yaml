@@ -3,6 +3,7 @@
 name: "Jungle Base"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$05"
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [15, "fm_v1b_Fs2.raw", 64, 0]   # VGZ: -7.4 dB at 38

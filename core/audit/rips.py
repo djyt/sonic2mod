@@ -39,7 +39,18 @@ from ..config import load_yaml
 from ..rom.pcm import SIGN
 from ..smps import SmpsSong, TimerA, update_hz
 from ..source import DacSample
-from ..vgm import FrameCut, FrameLog, VgmLog, decode_vgm, frame_log, is_vgm_path, realigned, retimed, vgm_bytes
+from ..vgm import (
+    FrameCut,
+    FrameLog,
+    VgmLog,
+    decode_vgm,
+    frame_log,
+    is_vgm_path,
+    realigned,
+    retimed,
+    unshifted,
+    vgm_bytes,
+)
 
 _PROJECT = Path(__file__).resolve().parents[2]
 CONFIG_ROOT = _PROJECT / "configs"                  # the song configs, a folder per game below
@@ -105,7 +116,15 @@ class RipFaults:
 
     def realign(self, frames: FrameLog) -> FrameLog:
         """`frames` (the rip's) with every glitch undone: in step with its song throughout."""
-        return realigned(frames, {g.frame: g.frames for g in self.glitches})
+        return realigned(frames, self._shifts)
+
+    def unglitched(self, raw: bytes, frames: FrameLog) -> bytes:
+        """The rip's VGM `raw` (cut into `frames`) with every glitch undone in its waits."""
+        return unshifted(raw, frames, self._shifts)
+
+    @property
+    def _shifts(self) -> dict[int, int]:
+        return {g.frame: g.frames for g in self.glitches}
 
     def realigned_frame(self, frame: int) -> int:
         """Where the rip's `frame` sits in the realigned log."""
@@ -218,10 +237,13 @@ def rip_scale(song: SmpsSong, region: str, log: VgmLog) -> float:
     return frame_log(log, cut=FrameCut.TIMER_A).fps / update_hz(song.rules, region)
 
 
-def rip_on_song_clock(path: str | Path, song: SmpsSong, region: str) -> tuple[bytes, float]:
-    """The rip's VGM bytes put on its song's clock (retimed where its scale is not 1), and the scale:
-    what an audit aligns a MOD against."""
+def rip_on_song_clock(path: str | Path, song: SmpsSong, region: str,
+                      faults: RipFaults | None = None) -> tuple[bytes, float]:
+    """The rip's VGM bytes put on its song's clock (its `faults`' glitches undone, retimed where its
+    scale is not 1), and the scale: what an audit aligns a MOD against."""
     raw = vgm_bytes(path)
+    if faults is not None and faults.glitches:
+        raw = faults.unglitched(raw, frame_log(decode_vgm(raw), cut=frame_cut(song)))
     scale = rip_scale(song, region, decode_vgm(raw))
     return (raw if scale == 1.0 else retimed(raw, scale)), scale
 

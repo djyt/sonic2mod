@@ -9,7 +9,12 @@ handshake is folded to one `; bus` line (request, grant wait, the Z80's busy fla
 wait, nops, release): what is left are the register writes, `move.b ...,(a4)` and `$1(a4)`.
 
 A jump table of word offsets from its own address (Mucom-MD's flags: `move.w (table,pc,d2.w),d2` /
-`jsr (table,pc,d2.w)`), or of absolute longs: each entry's target and first instruction.
+`jsr (table,pc,d2.w)`), or of absolute longs; with --z80, of the Z80's little-endian addresses (Time
+Trax's track commands): each entry's target and first instruction.
+
+--find: every match of a code pattern (core/rom/pattern.py's listing; its lines split by newlines or
+`;`): its address, its captures (a word as the CPU reads it: the Z80's little-endian, the 68k's
+big-endian) and its first instructions.  No match: exit 1.
 
 Usage::
 
@@ -18,7 +23,9 @@ Usage::
     python tools/rom/disasm.py ROM --table 41B74 --entries 16 --first F0              # FM flags: F0 -> $41BF4 ...
     python tools/rom/disasm.py ROM --table 7288C --entries 17 --longs --first 81
     python tools/rom/disasm.py ROM --z80 00EE                                         # the Z80 program's loop
+    python tools/rom/disasm.py ROM --z80 --table 0DC8 --entries 44 --first 80          # Time Trax's FM commands
     python tools/rom/disasm.py ROM 40E46 --raw                                        # nothing folded
+    python tools/rom/disasm.py ROM --z80 --find "DD 7E 08 ; DD CB 42 7E"               # where code reads so
 
 Needs capstone (68k) and z80dis (Z80): pip install capstone z80dis (or pip install -e .[dev]).
 """
@@ -31,19 +38,26 @@ import sys
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 _HERE = Path(__file__).resolve().parent
 ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core.rom import RomError, RomImage
-from core.rom.z80 import z80_ram
+from core.rom.pattern import code_pattern
+from core.rom.z80 import z80_ram, z80_word
 
 _SUMMARY = "A sound driver's code, disassembled: the 68k's from the ROM, the Z80's as the 68k loads it."
 _MAX_INSTRUCTIONS = 400          # a routine with no end in sight stops here
 _WINDOW = 16                     # the most bytes one instruction (68k, Z80) takes
 _WORD, _LONG = 2, 4
 _68K_DIGITS, _Z80_DIGITS = 6, 4  # an address's hex digits
+_ByteOrder = Literal["little", "big"]
+_68K_ORDER: _ByteOrder = "big"
+_Z80_ORDER: _ByteOrder = "little"
+_FIND_COUNT = 6                  # --find: instructions shown from each match
+_LINE_BREAK = ";"                # --find: a listing's lines on one command line
 
 # The 68k's handshake with the Z80 bus and the YM2612, folded
 _BUS = re.compile(r"\$a11100|\$a01ffd")
@@ -153,6 +167,23 @@ def table(rom: RomImage, at: int, entries: int, longs: bool) -> list[int]:
     return [at + rom.signed_word(at + i * _WORD) for i in range(entries)]
 
 
+def z80_table(ram: bytes, at: int, entries: int) -> list[int]:
+    """Each entry's target: a little-endian Z80 address."""
+    return [z80_word(ram, at + i * _WORD) for i in range(entries)]
+
+
+# --- a code pattern ----------------------------------------------------------------------------
+
+def find_pattern(listing: str) -> re.Pattern[bytes]:
+    """--find's listing as code_pattern reads it, `;` a line break."""
+    return code_pattern(listing.replace(_LINE_BREAK, "\n"))
+
+
+def capture_text(match: re.Match[bytes], byteorder: _ByteOrder) -> str:
+    """A match's captures in hex: `<b>` $3F, `<w>` $8001 (in `byteorder`)."""
+    return " ".join(f"${int.from_bytes(group, byteorder):0{len(group) * 2}X}" for group in match.groups())
+
+
 def _show(items: list[Line | str], raw: bool, digits: int) -> Iterator[str]:
     for item in items:
         if isinstance(item, str):
@@ -173,14 +204,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--table", help="hex address of a jump table")
     parser.add_argument("--entries", type=int, default=16, help="the table's entries (16)")
     parser.add_argument("--first", default="0", help="hex: the byte the first entry is for (F0)")
-    parser.add_argument("--longs", action="store_true", help="absolute longs, not word offsets from the table")
+    parser.add_argument("--longs", action="store_true", help="absolute longs, not word offsets from the table "
+                                                                  "(with --z80: always the Z80's addresses)")
     parser.add_argument("--raw", action="store_true", help="every instruction and its bytes, nothing folded")
+    parser.add_argument("--find", metavar="PATTERN",
+                        help="every match of a code pattern (core/rom/pattern.py; lines split by newlines or ';'): "
+                             f"address, captures, {_FIND_COUNT} instructions (--count); no match: exit 1")
     args = parser.parse_args(argv)
 
     try:
         rom = RomImage.load(args.rom)
         data, base = (z80_ram(rom), 0) if args.z80 else (rom.data, 0)
-    except (OSError, RomError) as e:
+        pattern = find_pattern(args.find) if args.find else None
+    except (OSError, RomError, ValueError) as e:
         print(f"disasm.py: {e}", file=sys.stderr)
         return 2
     decode = _z80() if args.z80 else _m68k()
@@ -189,12 +225,23 @@ def main(argv: list[str] | None = None) -> int:
         lines = routine(decode, data, at, base, count)
         return list(lines) if args.raw or args.z80 else _folded(lines)
 
-    if args.table:
-        first = int(args.first, 16)
-        for i, target in enumerate(table(rom, int(args.table, 16), args.entries, args.longs)):
-            head = next((x for x in listing(target, 3) if not isinstance(x, str)), None)
-            print(f"  ${first + i:02X}  ${target:06X}  {head.text if head else ''}")
     digits = _Z80_DIGITS if args.z80 else _68K_DIGITS
+    if pattern is not None:
+        matches = list(pattern.finditer(data))
+        print({0: "no match", 1: "1 match"}.get(len(matches), f"{len(matches)} matches"))
+        for match in matches:
+            print(f"--- ${match.start():0{digits}X}  {capture_text(match, _Z80_ORDER if args.z80 else _68K_ORDER)}"
+                  .rstrip())
+            for text in _show(listing(match.start(), args.count or _FIND_COUNT), args.raw, digits):
+                print(f"  {text}")
+        if not matches:
+            return 1
+    if args.table:
+        first, at = int(args.first, 16), int(args.table, 16)
+        targets = z80_table(data, at, args.entries) if args.z80 else table(rom, at, args.entries, args.longs)
+        for i, target in enumerate(targets):
+            head = next((x for x in listing(target, 3) if not isinstance(x, str)), None)
+            print(f"  ${first + i:02X}  ${target:0{digits}X}  {head.text if head else ''}")
     for address in args.addresses:
         print(f"--- ${int(address, 16):0{digits}X}")
         for text in _show(listing(int(address, 16), args.count), args.raw, digits):

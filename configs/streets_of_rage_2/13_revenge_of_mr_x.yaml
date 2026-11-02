@@ -3,6 +3,7 @@
 name: "Revenge of Mr. X"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$13"
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [7, "fm_v0c_A4.raw", 50, 0]   # VGZ: -3.9 dB at 32

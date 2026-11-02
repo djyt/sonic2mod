@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import gzip
 import struct
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import IntEnum
 from pathlib import Path
@@ -173,9 +174,14 @@ def _spanned(data: bytes, pos: int, length: int) -> int:
 
 
 def retimed(raw: bytes, scale: float) -> bytes:
-    """The VGM (or VGZ) `raw` with every wait scaled by `scale`, uncompressed: each command as it
-    was, the waits re-emitted to reach the scaled time (a 0x8n's folded back into it where it
-    fits), the header's total, loop and GD3 fields moved with them."""
+    """The VGM (or VGZ) `raw` with every wait scaled by `scale` (remapped)."""
+    return remapped(raw, lambda sample: round(sample * scale))
+
+
+def remapped(raw: bytes, at: Callable[[int], int]) -> bytes:
+    """The VGM (or VGZ) `raw` with each command moved from its sample to `at`'s (never decreasing),
+    uncompressed: each command as it was, the waits re-emitted to reach the new time (a 0x8n's
+    folded back into it where it fits), the header's total, loop and GD3 fields moved with them."""
     data = _gunzipped(raw)
     if data[:4] != _MAGIC:
         raise VgmError("not a VGM file (bad magic bytes)")
@@ -198,7 +204,7 @@ def retimed(raw: bytes, scale: float) -> bytes:
         elif not wait:
             out += data[pos:pos + length]
         old += wait
-        new = _wait_to(out, new, round(old * scale), folds=cmd >> 4 == _DAC_WRITE >> 4)
+        new = _wait_to(out, new, at(old), folds=cmd >> 4 == _DAC_WRITE >> 4)
         pos += length
 
     # The end, and what follows it (the GD3 tag)

@@ -10,7 +10,7 @@ the sum >> 4 (`pitch.word_shift`).
 
 A cycle more than twice as slow as 4x1 (Streets of Rage's 251 steps: a sweep the note never
 sees turn) is played as slides instead: each row slides to where the chip's pitch is at its end
-(modulation_slides).
+(modulation_slides); any pitch curve so (curve_slides: Time Trax's glides).
 """
 
 from collections.abc import Callable
@@ -112,16 +112,26 @@ def modulation_offset(mod: ModSet, frame: int, track: TrackRules = _SONIC1_TRACK
 def modulation_slides(mod: ModSet, period: int, rows: list[tuple[float, float]], frame_of: Callable[[float], float],
                       cents_of: Callable[[int], float], row_ticks: int,
                       track: TrackRules = _SONIC1_TRACK, index: int = 0) -> list[tuple[float, int, int]]:
-    """(row tick, effect, param): each row's slide to the chip's pitch at the row's end.
+    """(row tick, effect, param): each row's slide to the chip's pitch at the row's end (curve_slides).
 
     `rows`: (start, end) ticks of the note's rows; `frame_of`: a tick's frame from the attack;
-    `cents_of`: the pitch an offset moves the note by.  A row slides with 1xx / 2xx on its
-    `row_ticks` later ticks, under one period a tick with E1x / E2x once.  What the MOD reached is
-    carried on, so rounding never accumulates."""
+    `cents_of`: the pitch an offset moves the note by."""
+    def period_at(tick: float) -> float:
+        offset = modulation_offset(mod, int(frame_of(tick)), track, index)
+        return period * 2 ** (-cents_of(offset) / _CENTS_PER_OCTAVE)
+
+    return curve_slides(period, rows, period_at, row_ticks)[0]
+
+
+def curve_slides(period: float, rows: list[tuple[float, float]], period_at: Callable[[float], float],
+                 row_ticks: int) -> tuple[list[tuple[float, int, int]], float]:
+    """(row tick, effect, param) each row sliding from `period` to `period_at` its end tick, and
+    the period reached.  A row slides with 1xx / 2xx on its `row_ticks` later ticks, under one
+    period a tick with E1x / E2x once.  What the MOD reached is carried on, so rounding never
+    accumulates."""
     reached, out = float(period), []
     for start, end in rows:
-        target = period * 2 ** (-cents_of(modulation_offset(mod, int(frame_of(end)), track, index)) / _CENTS_PER_OCTAVE)
-        move = reached - target                 # periods to slide: > 0 up (the period falls)
+        move = reached - period_at(end)         # periods to slide: > 0 up (the period falls)
         per_tick = min(round(abs(move) / row_ticks), _MAX_SLIDE)
         if per_tick:
             effect, param, moved = (_SLIDE_UP if move > 0 else _SLIDE_DOWN), per_tick, per_tick * row_ticks
@@ -132,7 +142,7 @@ def modulation_slides(mod: ModSet, period: int, rows: list[tuple[float, float]],
             effect, param, moved = _EXTENDED, (_FINE_UP if move > 0 else _FINE_DOWN) | fine, fine
         reached -= moved if move > 0 else -moved
         out.append((start, effect, param))
-    return out
+    return out, reached
 
 
 def _fnum(semitone: int, fm_frequencies: tuple[int, ...]) -> int:

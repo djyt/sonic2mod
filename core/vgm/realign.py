@@ -10,7 +10,8 @@ Given where (a frame of the log) and by how much, the log is put back in step:
                       a frame inserted before F: F-1's state, nothing written
 
 Indices and samples (frame windows, DAC starts, the loop and the end) follow the frames they
-belong to, so a lift and a frame check read the log as if it had run in step.
+belong to, so a lift and a frame check read the log as if it had run in step.  The bursts, the
+log's as recorded, are dropped.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from collections import Counter
 from collections.abc import Mapping
 
 from .frames import DacFrame, DacStart, Frame, FrameLog
+from .reader import remapped
 
 
 def realigned(log: FrameLog, shifts: Mapping[int, int]) -> FrameLog:
@@ -55,7 +57,7 @@ def realigned(log: FrameLog, shifts: Mapping[int, int]) -> FrameLog:
         return sample + (moved[old] - old) * log.frame_samples
 
     loop = None if log.loop_sample is None else follow(log.loop_sample)
-    return dataclasses.replace(log, frames=frames, loop_sample=loop, end_sample=follow(log.end_sample))
+    return dataclasses.replace(log, frames=frames, loop_sample=loop, end_sample=follow(log.end_sample), bursts=())
 
 
 def _merged(group: list[Frame], index: int, start: int, frame_samples: int) -> Frame:
@@ -83,3 +85,22 @@ def _held(before: Frame, index: int, start: int) -> Frame:
     psg = tuple(dataclasses.replace(ch, attenuations=(), period_writes=0) for ch in before.psg)
     dac = DacFrame((), 0, before.dac.since_start, ())
     return dataclasses.replace(before, index=index, sample=start, fm=fm, psg=psg, dac=dac)
+
+
+def unshifted(raw: bytes, log: FrameLog, shifts: Mapping[int, int]) -> bytes:
+    """The VGM `raw` (cut into frames as `log`) with each shift undone as realigned undoes it, in its
+    waits: what an audit of sound against time reads.  From a frame F on, every write moves by the
+    shift's frames: a lost V-int's F lands in the frame before (after what that frame wrote, the
+    update running into it), a gained one's a frame later."""
+    starts = {f.index: f.sample for f in log.frames}
+    moves = sorted((starts[frame], n * log.frame_samples) for frame, n in shifts.items() if n and frame in starts)
+    if not moves:
+        return raw
+    last = 0
+
+    def at(sample: int) -> int:
+        nonlocal last
+        last = max(last, sample + sum(added for start, added in moves if sample >= start))
+        return last
+
+    return remapped(raw, at)

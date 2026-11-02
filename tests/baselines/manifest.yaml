@@ -25,7 +25,7 @@ continue_screen_merged:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 credits:
-  commit: a750fdc
+  commit: caee39e
   config: e6a8e0769f6c
   date: '2026-11-02'
   settings: f08dfd2ff1bd
@@ -185,22 +185,22 @@ or_step_on_beat:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 robotnik:
-  commit: a750fdc
+  commit: caee39e
   config: c5ae35760344
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 robotnik_lofi:
-  commit: a750fdc
+  commit: caee39e
   config: d2440b3976b1
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 robotnik_lofi_merged:
-  commit: a750fdc
+  commit: caee39e
   config: d2440b3976b1
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 robotnik_merged:
-  commit: a750fdc
+  commit: caee39e
   config: c5ae35760344
   date: '2026-11-02'
   settings: f08dfd2ff1bd
@@ -235,33 +235,33 @@ sh2_winners_flight:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_game_over:
-  commit: caee39e
-  config: 3c0d1fc49b24
+  commit: 719ea22
+  config: d97d3304bf0a
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_go_straight:
-  commit: a750fdc
-  config: ac7664a42731
+  commit: 719ea22
+  config: 7aca40110edd
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_jungle_base:
-  commit: a750fdc
-  config: 9a7e5a54cbf1
+  commit: 719ea22
+  config: 9401eecbdfc2
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_level_complete:
-  commit: a750fdc
-  config: 313ed9b20249
+  commit: 719ea22
+  config: cd1a3d62566b
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_song_12:
-  commit: a750fdc
-  config: f9cb3005d436
+  commit: 719ea22
+  config: 51b5789bab39
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_too_deep:
-  commit: a750fdc
-  config: 88ad9adb77d9
+  commit: 719ea22
+  config: f23b86609325
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 special_stage:
@@ -308,4 +308,24 @@ title_screen_merged:
   commit: c6d0253-dirty
   config: fb4953c1ddad
   date: '2026-11-01'
+  settings: f08dfd2ff1bd
+tt_game_over:
+  commit: 719ea22
+  config: d0ed41c91833
+  date: '2026-11-02'
+  settings: f08dfd2ff1bd
+tt_mission_briefing:
+  commit: 719ea22
+  config: 5e9ddbee01ca
+  date: '2026-11-02'
+  settings: f08dfd2ff1bd
+tt_stages_2_5_7:
+  commit: 719ea22
+  config: a99d438e3469
+  date: '2026-11-02'
+  settings: f08dfd2ff1bd
+tt_title_screen:
+  commit: 719ea22
+  config: 5ad442c63e76
+  date: '2026-11-02'
   settings: f08dfd2ff1bd

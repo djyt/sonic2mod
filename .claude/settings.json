@@ -1,4 +1,7 @@
 {
+  "env": {
+    "PYTHONUTF8": "1"
+  },
   "attribution": {
     "commit": "",
     "pr": "",

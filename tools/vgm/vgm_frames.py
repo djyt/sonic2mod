@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Check a song against its rip's frame log, note by note, with no lift: the chip's pitch, level,
-voice registers and FM pan on each note's frame (core/audit/frame_check.py).  For any driver; what the
-lift (vgm_lift.py) cannot read - a detune, a voice, a slide that writes no key - this sees.
+voice registers and FM pan on each note's frame (core/audit/frame_check.py), and every later frame
+of a note whose walk models them ("pitch path", "level path": a glide, a volume envelope).  For any
+driver; what the lift (vgm_lift.py) cannot read - a detune, a voice, a slide that writes no key -
+this sees.
 
 Attacking notes are judged; tied ones are counted apart (vibrato runs on through a tie).  The
 rip may start late: the offset is found from the FM channels' first key-ons; and its TempoWait
@@ -14,7 +16,10 @@ ends inside ("log end"), and a channel's loop re-entry keyed a frame late ("re-e
 
 --glitches scans for the rip's own glitches instead (core/audit/glitch_scan.py): where every
 channel's key-ons move a frame against the song at once, with the evidence; a channel moving
-alone is the song's.  It prints candidates; confirming one into rips.yaml is a human's call.
+alone is the song's.  Under each candidate, the driver's updates around it after a frame with none
+(the frame, the gap in frames): one after an update running past the next V-int is a V-int lost
+("possible": one ending near it, then idle); none, something else (vgm_analyze.py --updates).  It prints candidates;
+confirming one into rips.yaml is a human's call.
 
 Pairs as vgm_lift.py's (core/audit/rips.py): a config and its rip by number, or by the rips.yaml
 beside the configs.
@@ -25,6 +30,7 @@ Usage::
     python tools/vgm/vgm_frames.py --all --configs configs/streets_of_rage                  # a line per pair
     python tools/vgm/vgm_frames.py --all --configs configs/golden_axe --channels FM
     python tools/vgm/vgm_frames.py configs/streets_of_rage_2/06_slow_moon.yaml --tied           # its tied notes' misses
+    python tools/vgm/vgm_frames.py --all --configs configs/time_trax --aspects pitch pitch-path   # only these judged
     python tools/vgm/vgm_frames.py --all --glitches --configs configs/space_harrier_2       # glitch candidates
 """
 
@@ -42,6 +48,7 @@ ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core.audit import (
+    FRAME_ASPECTS,
     ChannelChoice,
     FrameAspect,
     FrameCheck,
@@ -55,20 +62,22 @@ from core.audit import (
 )
 from core.config import find_settings, load_settings
 from core.ui import add_shelf_arguments, rip_shelf
-from core.vgm import FrameLog
+from core.vgm import DriverUpdate, FrameLog
 
 _DEFAULT_MISSES = 8               # misses listed per channel and aspect
+_GAPS_SHOWN = 6                   # update gaps listed under a glitch candidate
+_ASPECT_WORDS = tuple(a.value.replace(" ", "-") for a in FrameAspect)   # --aspects' words
 _KINDS = ("FM", "PSG", "NOISE")
 
 
-def _check(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
-           cache_dir: str | None) -> tuple[str, FrameCheck | None]:
+def _check(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults, cache_dir: str | None,
+           aspects: frozenset[FrameAspect] = FRAME_ASPECTS) -> tuple[str, FrameCheck | None]:
     """One pair (a worker's job): its title, and the check (None: the song is not read)."""
     try:
         source = SongSource.from_config(config, ROOT)
         title = f"{rip.stem} {source.sound}".rstrip()
         song = source.read()
-        return title, check_frames(song, source.rip_frames(rip, song, cache_dir), channels, faults)
+        return title, check_frames(song, source.rip_frames(rip, song, cache_dir), channels, faults, aspects)
     except (OSError, ValueError) as e:
         return f"{rip.stem}: not read: {e}", None
 
@@ -84,7 +93,7 @@ def _scan(config: Path, rip: Path, channels: ChannelChoice, faults: RipFaults,
     except (OSError, ValueError) as e:
         return f"{rip.stem}: not read: {e}", []
 
-    lines = [_candidate_line(c, frames, faults) for c in scan.candidates]
+    lines = [line for c in scan.candidates for line in (_candidate_line(c, frames, faults), _gaps_line(c))]
     found = {(c.frame, c.shift) for c in scan.glitches}
     lines += [f"    in rips.yaml, not found: {line}" for glitch, line in zip(faults.glitches, faults.lines(), strict=False)
               if (glitch.frame, glitch.frames) not in found]
@@ -106,6 +115,23 @@ def _candidate_line(candidate: GlitchCandidate, frames: FrameLog, faults: RipFau
     spanning = f"; {' '.join(candidate.spanning)} silent across, moved by the sum" if candidate.spanning else ""
     return (f"    glitch  {where}: every channel, attacks on time before/after {moved} ({since}{spanning})"
             + ("  [rips.yaml]" if known else ""))
+
+
+def _gaps_line(candidate: GlitchCandidate) -> str:
+    """'update gaps: 1274 1.87, 1276 1.90 after an overrun: a V-int lost' (the lost ones listed first)."""
+    if not candidate.updates:
+        return "        updates a frame apart: no V-int lost"
+    shown = sorted(candidate.updates, key=lambda u: (not u.lost, not u.possible, u.frame))[:_GAPS_SHOWN]
+    gaps = ", ".join(f"{u.frame} {u.gap_frames:.2f}" + _gap_note(u) for u in sorted(shown, key=lambda u: u.frame))
+    more = len(candidate.updates) - len(shown)
+    lost = candidate.lost_vints
+    verdict = "no V-int lost" if not lost else "a V-int lost" if lost == 1 else f"{lost} V-ints lost"
+    verdict += f", {candidate.possible_vints} possible" if candidate.possible_vints else ""
+    return f"        update gaps: {gaps}" + (f" (+{more} more)" if more else "") + f": {verdict}"
+
+
+def _gap_note(u: DriverUpdate) -> str:
+    return " after an overrun" if u.lost else " after a near overrun?" if u.possible else ""
 
 
 def _tally(check: FrameCheck, tied: bool) -> str:
@@ -155,7 +181,16 @@ def _print_misses(check: FrameCheck, faults: RipFaults, limit: int, tied: bool =
     for (channel, aspect), misses in sorted(groups.items()):
         print(f"  {channel} {aspect}: {len(misses)}")
         for miss in misses[:limit]:
-            print(f"    tick {miss.tick:>6}  {miss.want} -> {miss.got}")
+            into = f" +{miss.after} frames" if miss.after else ""          # a path's miss: where in the note
+            print(f"    tick {miss.tick:>6}{into}  {miss.want} -> {miss.got}")
+
+
+def _aspect(name: str) -> FrameAspect:
+    """An --aspects word as its aspect: 'pitch-path' (or 'pitch path') -> FrameAspect.PITCH_PATH."""
+    try:
+        return FrameAspect(name.replace("-", " "))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{name}: not one of {', '.join(_ASPECT_WORDS)}") from None
 
 
 def main() -> None:
@@ -166,6 +201,9 @@ def main() -> None:
     ap.add_argument("--only", nargs="+", metavar="NAME", help="with --all: rips or configs whose name holds one")
     ap.add_argument("--channels", nargs="+", default=(), metavar="NAME", help="only these channels, or a prefix (FM, PSG)")
     ap.add_argument("--skip", nargs="+", default=(), metavar="NAME", help="leave these channels out (a prefix too)")
+    ap.add_argument("--aspects", nargs="+", type=_aspect, metavar="ASPECT",
+                    help=f"judge only these ({' '.join(_ASPECT_WORDS)}; default: all of them): the others are "
+                         "neither counted nor listed")
     ap.add_argument("--misses", type=int, default=_DEFAULT_MISSES, help=f"misses listed each (default {_DEFAULT_MISSES})")
     ap.add_argument("--tied", action="store_true",
                     help="list the tied notes' misses instead of the attacking ones (a vibrato runs on through a tie)")
@@ -179,6 +217,7 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
 
     channels = ChannelChoice(tuple(args.channels), tuple(args.skip))
+    aspects = frozenset(args.aspects) if args.aspects else FRAME_ASPECTS
     cache_dir = load_settings(args.settings or find_settings())[0].render_cache
     shelf = rip_shelf(args, configs=Path(args.config).parent if args.config else None)
 
@@ -209,7 +248,7 @@ def main() -> None:
 
     # One pair: its misses
     if args.config:
-        title, check = _check(configs[0], rips[0], channels, faults[0], cache_dir)
+        title, check = _check(configs[0], rips[0], channels, faults[0], cache_dir, aspects)
         _print_line(title, check, faults[0])
         if check is not None:
             _print_misses(check, faults[0], args.misses, args.tied)
@@ -217,7 +256,7 @@ def main() -> None:
 
     # Every pair: a line each
     with ProcessPoolExecutor(workers(n)) as pool:
-        results = list(pool.map(_check, configs, rips, [channels] * n, faults, [cache_dir] * n))
+        results = list(pool.map(_check, configs, rips, [channels] * n, faults, [cache_dir] * n, [aspects] * n))
     for (title, check), known in zip(results, faults, strict=True):
         _print_line(title, check, known)
     ok = Counter(check is not None and check.ok for _, check in results)

@@ -1,5 +1,6 @@
 """A track's driver state (core/smps/driver_track.py): durations as the track counts them, held carrier
-writes, the volume a step keeps, the gate's floor, a soft release, a late tie.
+writes, the volume a step keeps, the gate's floor, a soft release, a late tie, rests that hold, a
+transposition set.
 
     python -m pytest tests/core/smps/test_driver_track.py -q
 """
@@ -16,12 +17,16 @@ from core.smps import (
     Detune,
     EnvelopePreset,
     Gate,
+    KeyOffAfter,
     KeyOffRules,
+    LevelPath,
     NoiseRate,
     PitchRules,
     PlaybackRules,
     PsgForm,
     PsgVoice,
+    ScaledVolume,
+    SetTransposition,
     SetVoice,
     SetVol,
     SmpsNote,
@@ -29,7 +34,10 @@ from core.smps import (
     SoftReleaseLaw,
     TieRules,
     TrackRules,
+    VoiceField,
     VoiceRegister,
+    VolumeEnvelope,
+    VolumeMask,
     VolumeRules,
     VolumeStep,
 )
@@ -156,6 +164,168 @@ class GateFloor(unittest.TestCase):
         track = _track()
         track.effect(Gate(6))
         self.assertEqual(track.cut(_note(4), tied_next=False), [_note(4)])
+
+
+class RestsHold(unittest.TestCase):
+    """Time Trax's: a rest writes nothing; each read keyed off at its gate or KeyOffAfter ($1293)."""
+
+    def _track(self) -> DriverTrack:
+        return _track(TrackRules(key_off=KeyOffRules(rest_holds=True)))
+
+    def test_a_rest_ties_the_note_sounding(self):
+        track = self._track()
+        track.cut(_note(4), tied_next=False)
+        (held,) = track.cut(_note(6, rest=True), tied_next=False)
+        self.assertEqual((held.is_rest, held.is_no_attack, held.duration), (True, True, 6))
+
+    def test_a_rest_first_rests(self):
+        (rest,) = self._track().cut(_note(6, rest=True), tied_next=False)
+        self.assertEqual((rest.is_rest, rest.is_no_attack), (True, False))
+
+    def test_key_off_after_cuts_each_read_and_the_rest_after_stays_silent(self):
+        track = self._track()
+        track.effect(KeyOffAfter(2))
+        head, rest = track.cut(_note(6), tied_next=False)
+        self.assertEqual((head.duration, rest.duration, rest.is_rest), (2, 4, True))
+        (after,) = track.cut(_note(6, rest=True), tied_next=False)
+        self.assertEqual((after.is_rest, after.is_no_attack), (True, False))
+
+    def test_the_gate_keys_the_held_note_off_inside_the_rest(self):
+        track = self._track()
+        track.effect(Gate(3))
+        self.assertEqual(track.cut(_note(2), tied_next=False), [_note(2)])
+        held, rest = track.cut(_note(6, rest=True), tied_next=False)
+        self.assertEqual((held.is_no_attack, held.duration, rest.duration), (True, 3, 3))
+
+    def test_a_legato_read_after_a_held_rest_ties_the_note(self):
+        """Song 0's FM4: a note, a rest it rings through, then legato reads re-pitch it unkeyed."""
+        track = self._track()
+        track.cut(_note(4), tied_next=False)
+        track.cut(_note(6, rest=True), tied_next=False)
+        (tie,) = track.cut(SmpsNote(note_value=_NOTE, duration=4, is_no_attack=True), tied_next=False)
+        self.assertEqual((tie.is_rest, tie.is_no_attack), (False, True))
+
+    def test_a_legato_read_after_a_key_off_stays_silent(self):
+        track = self._track()
+        track.effect(KeyOffAfter(1))
+        track.cut(_note(4), tied_next=False)
+        tie = SmpsNote(note_value=_NOTE, duration=4, is_no_attack=True)
+        (rest,) = track.cut(tie, tied_next=False)
+        self.assertTrue(rest.is_rest)
+
+
+_TLS = (0x40, 0x44, 0x48, 0x4C)
+
+
+class _Halving:
+    """A volume law: each scaled operator's TL halfway to silence at volume 128 (the test's)."""
+
+    def levels(self, tls, carriers, volume, mask):
+        bits = mask if mask is not None else sum(1 << (3 - (r - 0x40) // 4) for r in carriers)
+        return {r: (tl + 127) // 2 if bits & 1 << (3 - (r - 0x40) // 4) and volume == 128 else tl
+                for r, tl in tls.items()}
+
+
+class ScaledVolumes(unittest.TestCase):
+    """A law that scales operators (Time Trax's): a SetVol of the loudest carrier's change, the voice
+    copied with each TL that misses."""
+
+    def _track(self) -> tuple[DriverTrack, VoicePatcher]:
+        rules = TrackRules(volume=VolumeRules(law=_Halving()))
+        playback = PlaybackRules(driver="test", fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
+                                 dac_names={}, tracks={ChannelType.FM: rules})
+        voice = SmpsVoice(0, algorithm=4, operators={VoiceField.TOTAL_LEVEL: (0x20, 0x20, 0x01, 0x07)})
+        patcher = VoicePatcher([voice])
+        return DriverTrack(SmpsChannelHeader(ChannelType.FM, "t"), "FM1", playback, patcher), patcher
+
+    def test_the_loudest_carrier_sets_the_level_and_the_other_is_fixed(self):
+        track, patcher = self._track()
+        track.effect(SetVoice(0))
+        played = track.effect(ScaledVolume(128))
+        voice, level = played
+        assert isinstance(voice, SetVoice) and isinstance(level, SetVol)
+        copy = patcher.voice(voice.index)
+        self.assertEqual(copy.unpatched, 0)
+        base = patcher.voice(0)
+        tls = {r: v for r, v in copy.chip_registers(level.level).items() if r in _TLS}
+        wanted = _Halving().levels({r: base.chip_registers()[r] for r in _TLS}, base.carrier_registers, 128, None)
+        self.assertEqual(tls, wanted)
+
+    def test_a_voice_set_masks_its_carriers_again(self):
+        track, _ = self._track()
+        track.effect(SetVoice(0))
+        track.effect(VolumeMask(0b1111))
+        track.effect(ScaledVolume(128))
+        self.assertEqual(track.effect(SetVoice(0)), track.effect(ScaledVolume(128)))
+
+
+class _Quieter:
+    """A volume law: each carrier's TL up a step per 16 under full volume (the test's)."""
+
+    def levels(self, tls, carriers, volume, _mask):
+        return {r: min(127, tl + (255 - volume) // 16) if r in carriers else tl for r, tl in tls.items()}
+
+
+class _Run:
+    def __init__(self, volumes):
+        self._volumes = list(volumes)
+        self.done = False
+
+    def frame(self, volume):
+        volume = self._volumes.pop(0)
+        self.done = not self._volumes
+        return volume
+
+
+class _Envelopes:
+    def start(self, _index):
+        return _Run((255, 239, 223))
+
+
+class Envelopes(unittest.TestCase):
+    """The volume an envelope moves, frame by frame: a note's read starts it, the TLs after (LevelPath)."""
+
+    _VOICE = SmpsVoice(0, algorithm=4, operators={VoiceField.TOTAL_LEVEL: (0x20, 0x20, 0x01, 0x07)})
+
+    def _track(self) -> DriverTrack:
+        rules = TrackRules(volume=VolumeRules(law=_Quieter(), envelopes=_Envelopes()))
+        playback = PlaybackRules(driver="test", fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
+                                 dac_names={}, tracks={ChannelType.FM: rules})
+        track = DriverTrack(SmpsChannelHeader(ChannelType.FM, "t"), "FM1", playback, VoicePatcher([self._VOICE]))
+        track.effect(SetVoice(0))
+        track.effect(ScaledVolume(255))
+        return track
+
+    def _tls(self, volume: int) -> tuple[tuple[int, int], ...]:
+        base = {r: v for r, v in self._VOICE.chip_registers().items() if r in _TLS}
+        return tuple(sorted(_Quieter().levels(base, self._VOICE.carrier_registers, volume, None).items()))
+
+    def test_each_frame_after_the_read_its_tls(self):
+        track = self._track()
+        track.effect(VolumeEnvelope(0))
+        note = SmpsNote(0x81, 3)
+        self.assertEqual(track.cut(note, False), [LevelPath(((1, self._tls(239)), (2, self._tls(223)))), note])
+
+    def test_the_next_read_at_the_level_it_reached(self):
+        track = self._track()
+        track.effect(VolumeEnvelope(0))
+        track.cut(SmpsNote(0x81, 3), False)
+        track.effect(VolumeEnvelope(None, each_note=False))
+        played = track.cut(SmpsNote(0x81, 2), False)
+        self.assertIsInstance(played[1], SetVol)
+
+    def test_a_scaled_volume_stops_it(self):
+        track = self._track()
+        track.effect(VolumeEnvelope(0))
+        track.effect(ScaledVolume(255))
+        note = SmpsNote(0x81, 3)
+        self.assertEqual(track.cut(note, False), [note])
+
+
+class Transpositions(unittest.TestCase):
+    def test_a_set_is_kept_as_set(self):
+        """Not a change: a loop replayed from the song's start would add it again."""
+        self.assertEqual(_track().effect(SetTransposition(5)), (SetTransposition(5),))
 
 
 class SoftReleases(unittest.TestCase):

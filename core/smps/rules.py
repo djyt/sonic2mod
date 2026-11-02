@@ -16,11 +16,14 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
                key_run_out      frames a note keys without an attacking read (core/smps/run_out.py)
     tracks     each kind of track's TrackRules: how the walk reads it where the driver differs
                from Sonic 1's (track(kind); a kind left out reads as Sonic 1's), by concern:
-                   volume      the step a volume flag keeps, the level it sets, a register write over it
+                   volume      the step a volume flag keeps, the level it sets, a register write over it,
+                               a law that scales operators instead (VolumeLaw), its envelopes
+                               (VolumeEnvelopes)
                    key_off     the gate and the rest: what they key off, a soft release instead
                    ties        what a jump and a tied read do to a tie
                    modulation  the vibrato's turns
-                   pitch       the detune word's scale, the octave it is kept in, noise on tone 3
+                   pitch       the detune word's scale, the octave it is kept in, noise on tone 3, a
+                               glide's step (SlideLaw)
 """
 
 from __future__ import annotations
@@ -28,7 +31,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from ..chips import PSG_DIVIDER_MASK, split_freq_word
 from .adsr import Adsr
@@ -68,6 +71,46 @@ class OctaveWrap:
         return word
 
 
+class VolumeLaw(Protocol):
+    """A driver whose volume scales each operator's output, not adds to the carriers' TL (Time Trax's:
+    core/drivers/timetrax/volume.py).  The walk plays it as a SetVol and a voice with the TLs it misses."""
+
+    def levels(self, tls: Mapping[int, int], carriers: tuple[int, ...], volume: int, mask: int | None) -> dict[int, int]:
+        """Each TL register's TL as the driver writes it: `tls` the voice's (channel 0's TL registers),
+        `volume` 0-255, `mask` the operators it scales (bit 3: $40 ... bit 0: $4C; None: `carriers`)."""
+        ...
+
+
+class SlideLaw(Protocol):
+    """A driver that slides the word it writes frame by frame (Glide, Portamento: core/smps/slide.py):
+    how a glide's step crosses a block (Time Trax's: core/drivers/timetrax/glide.py)."""
+
+    def toward(self, word: int, target: int, step: int) -> int:
+        """`word` (block << 11 | fnum) moved `step` fnum units toward `target`, never past it."""
+        ...
+
+
+class EnvelopeRun(Protocol):
+    """One volume envelope as it plays, a frame at a time (VolumeEnvelopes.start)."""
+
+    @property
+    def done(self) -> bool:
+        """It holds: no frame moves the volume any more."""
+        ...
+
+    def frame(self, volume: int) -> int:
+        """The track's volume (0-255) after one more frame."""
+        ...
+
+
+class VolumeEnvelopes(Protocol):
+    """A driver's volume envelopes, by index (Time Trax's: core/drivers/timetrax/envelope.py); the
+    walk steps one through a track's frames (core/smps/volume_envelope.py)."""
+
+    def start(self, index: int) -> EnvelopeRun:
+        ...
+
+
 @dataclass(frozen=True)
 class VolumeRules:
     """The step a track's volume keeps and the level it sets."""
@@ -82,6 +125,10 @@ class VolumeRules:
     tl_writes_hold: bool = False            # a register write to any TL holds until the next volume change or
                                             # voice: the volume write rewrites all four, a modulator's from the
                                             # voice (Streets of Rage 2's, $41A9A); False: a carrier's refused
+    law: VolumeLaw | None = None            # the volume scales operators (ScaledVolume, VolumeMask); None: it is
+                                            # a TL added to the carriers'
+    envelopes: VolumeEnvelopes | None = None   # the volume moves frame by frame under an envelope (VolumeEnvelope:
+                                            # a law's), every note's level modelled per frame; None: none (refused)
 
 
 @dataclass(frozen=True)
@@ -111,6 +158,8 @@ class KeyOffRules:
     gate_floor: int | None = None           # frames a note no longer than the gate keys (Streets of Rage 2's
                                             # FM: 1, $40F72); None: it plays whole
     soft_release: SoftReleaseLaw | None = None   # the driver's soft release; None: it has none (refused)
+    rest_holds: bool = False                # a rest writes nothing: the note sounds on through it to a
+                                            # read's key-off, and a tie after one stays silent (Time Trax's)
 
 
 @dataclass(frozen=True)
@@ -153,6 +202,8 @@ class PitchRules:
     octave_wrap: OctaveWrap | None = None   # the word and its detune kept within an octave; None: added as is
     noise_writes_tone3: bool = True         # a noise note writes its pitch to tone 3; False: tone 3
                                             # keeps the last tone note's (none: divider 0, nMaxPSG)
+    slide: SlideLaw | None = None           # the word slides frame by frame (Glide, Portamento), every
+                                            # note's pitch modelled per frame; None: no slides (refused)
 
 
     def divider(self, word: int) -> int:

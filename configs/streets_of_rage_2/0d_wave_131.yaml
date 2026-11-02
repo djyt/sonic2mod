@@ -3,6 +3,7 @@
 name: "Wave 131"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$0D"
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [15, "fm_v06_Ab3.raw", 14, 0]   # VGZ: +0.9 dB at 16

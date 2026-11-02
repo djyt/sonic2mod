@@ -5,7 +5,8 @@ load several programs at one address (Space Harrier II: its driver, then a PCM v
 place): z80_loads keeps each apart.
 
     copied      lea (z80_ram+n).l,ad / lea (src).l,as (either first) /           Moonwalker, Golden Axe (a6, a5),
-                move.w #len-1,dn / move.b (as)+,(ad)+ / dbra dn                  Streets of Rage 2 (a2, a1)
+                [the bus requested and granted] /                                Streets of Rage 2 (a2, a1),
+                move.w #len-1,dn / move.b (as)+,(ad)+ / dbra dn                  Time Trax (a3, a0; the bus)
     Kosinski    lea (src).l,a0 / lea (z80_ram).l,a1 / (KosDec)                   Sonic 1
     buffered    lea (src).l,a0 / lea (buf).l,a1 / jsr (KosDec) /                  Streets of Rage
                 lea (z80_ram+n).l,a1 / lea (buf).l,a2 / move.w #len-1,d2 / move.b (a2)+,(a1)+ / dbra d2
@@ -14,10 +15,14 @@ place): z80_loads keeps each apart.
                 bne *-2 / addq.w #1,a1 / dbra d0,loop       (each byte written until it reads back)
     pointed     movea.l (p).l,a0 / move.l (q).l,d0 / subq.l #1,d0 /              OutRun
                 lea (z80_ram+n).l,a1 / move.b (a0)+,(a1)+ / dbra d0     (the source and length: longs at p, q)
+
+A Z80 driver's tables are found by the one place its code reads each (core.rom.pattern's listings):
+one_match, one_operand (a little-endian operand).
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import lru_cache
@@ -40,6 +45,9 @@ _DBRA = 0x51C8                                   # dbra dn,*-2: n in bits 0-2, t
 _DBRA_BACK = 0xFFFC
 _MOVE_W_IMM = 0x303C                             # move.w #n,dn: n in bits 9-11
 _LEA_ABS = 0x41F9                                # lea (xxx).l,an: n in bits 9-11
+# move.w #$100,(a1) / move.w #$100,(a2) / btst #0,(a1) / bne *-4: the Z80's bus requested, its reset
+# released, the grant awaited, between the leas and the count (Time Trax's, a1 / a2 loaded by leas too)
+_BUS_GRANT_WAIT = bytes.fromhex("32BC0100 34BC0100 08110000 66FA")
 _REGISTER_MASK = 0xF1FF                          # an opcode with its bits 9-11 register cleared
 
 # Kosinski, and buffered
@@ -125,16 +133,32 @@ def _copied(rom: RomImage) -> Iterator[tuple[int, int, bytes]]:
         if move & _MOVE_POSTINC_MASK != _MOVE_POSTINC or dbra & ~_REGISTER != _DBRA:
             continue
         count_at = copy_at - _OPCODE - _WORD
-        if count_at < 2 * _LEA or rom.word(count_at) != _MOVE_W_IMM | (dbra & _REGISTER) << _AN_IN_LEA:
+        if count_at < 0 or rom.word(count_at) != _MOVE_W_IMM | (dbra & _REGISTER) << _AN_IN_LEA:
             continue
-        leas = {_lea_register(rom, at): rom.long(at + _OPCODE) for at in (count_at - 2 * _LEA, count_at - _LEA)}
+        leas = _leas_before(rom, _past_bus_wait(rom, count_at))
         source, dest = leas.get(move & _REGISTER), leas.get(move >> _AN_IN_LEA & _REGISTER)
-        if source is None or dest is None or not Z80_RAM_BASE <= dest < Z80_RAM_BASE + Z80_RAM_SIZE:
+        if source is None or dest is None or not Z80_RAM_BASE <= dest[1] < Z80_RAM_BASE + Z80_RAM_SIZE:
             continue
         count = rom.word(count_at + _OPCODE) + 1
-        if not rom.contains(source, count):
+        if not rom.contains(source[1], count):
             continue                                       # from 68k RAM: a buffered load's copy
-        yield count_at - 2 * _LEA, dest - Z80_RAM_BASE, rom.bytes_at(source, count)
+        yield min(source[0], dest[0]), dest[1] - Z80_RAM_BASE, rom.bytes_at(source[1], count)
+
+
+def _past_bus_wait(rom: RomImage, at: int) -> int:
+    """Where the code before `at` starts once a bus grant wait right before it is skipped."""
+    start = at - len(_BUS_GRANT_WAIT)
+    return start if start >= 0 and rom.bytes_at(start, len(_BUS_GRANT_WAIT)) == _BUS_GRANT_WAIT else at
+
+
+def _leas_before(rom: RomImage, at: int) -> dict[int, tuple[int, int]]:
+    """{address register: (where, the address it loads)} of the run of `lea (xxx).l,an` ending
+    at `at`: what each register holds as the code reaches `at` (a register loaded twice: the later)."""
+    leas: dict[int, tuple[int, int]] = {}
+    while at >= _LEA and (register := _lea_register(rom, at - _LEA)) is not None:
+        at -= _LEA
+        leas.setdefault(register, (at, rom.long(at + _OPCODE)))
+    return leas
 
 
 def _lea_register(rom: RomImage, at: int) -> int | None:
@@ -239,3 +263,20 @@ def _branch_target(rom: RomImage, at: int) -> int:
     if rom.byte(at) == _BRA_B and rom.byte(at + 1):
         return at + _OPCODE + rom.signed_byte(at + 1)
     return at
+
+
+def one_match(pattern: re.Pattern[bytes], z80: bytes, what: str, driver: str) -> re.Match[bytes]:
+    """The one place the driver's code reads as `pattern`; RomError (not `driver`'s) for none or several."""
+    found = list(pattern.finditer(z80))
+    if len(found) != 1:
+        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not {driver}'s driver")
+    return found[0]
+
+
+def one_operand(pattern: re.Pattern[bytes], z80: bytes, what: str, driver: str) -> int:
+    """The one value (group 1: a little-endian word, or a byte) every match of `pattern` names: a
+    table, or a header word, the driver may read in several places."""
+    found = {int.from_bytes(match.group(1), "little") for match in pattern.finditer(z80)}
+    if len(found) != 1:
+        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not {driver}'s driver")
+    return found.pop()

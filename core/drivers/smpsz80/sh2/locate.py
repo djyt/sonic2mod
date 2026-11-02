@@ -27,10 +27,10 @@ from core.rom.header import read_index
 from core.rom.image import RomError, RomImage
 from core.rom.pattern import code_pattern
 from core.rom.variant import SoundIndex
-from core.rom.z80 import z80_word
+from core.rom.z80 import one_match, one_operand, z80_word
 
 from ..memory import BankedZ80Memory
-from ..program import driver_ram, one_match, one_operand
+from ..program import driver_ram
 from .header import is_track_list
 from .memory import DriverTables, Sh2Memory
 

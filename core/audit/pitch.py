@@ -18,6 +18,15 @@ The authority on "is every note right": an audio window's pitch is unreliable on
     note_start_offset   how far the MOD lags the recording, from note starts
     audit_pitches       per channel ok / wrong / missing, and per instrument the verdict; with
                         `trace`, each chip segment as it was judged (PairStep: vgm_pitch_audit --trace)
+
+A slide (Time Trax's glides) moves the chip's pitch every frame, each segment shorter than min_ms:
+none would be judged.  With `slide_tolerance`, a run of two or more short segments is a slide, each
+segment judged against the MOD's pitch at its midpoint (its 1xx / 2xx steps: mod_pitch_timeline)
+within that tolerance, counted apart (slide_ok, slide_off).  A lone short segment (a grace note)
+stays unjudged; a vibrato's steps run as a slide too, against the note's centre (4xy is not followed).
+
+    chip   C ------- C# D D# E ---------         segments: C (held), C# D D# (short: the slide), E
+    MOD    C ------- 1xx steps ... E -----       C# D D# each against the MOD's pitch at its midpoint
 """
 
 from __future__ import annotations
@@ -31,8 +40,10 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..audio import pitch_name, semitone_to_hz
+from ..chips import freq_word_hz
 from ..mod import FINETUNE_STEPS, PERIOD_TABLE, TICK_SECS_AT_1_BPM, ModImage, edx_delay, timed_pass
 from ..plan import ConversionPlan, sounding_pitches
+from ..smps import fm_render_word, update_hz
 from ..vgm import Segment
 
 _SLIDE_UP, _SLIDE_DOWN = 0x1, 0x2          # 1xx / 2xx
@@ -55,18 +66,21 @@ class PairStep:
     deviation: float            # s, MOD minus chip, as the segment was judged
     paired: float | None        # the MOD note start it paired with; None: looked up at its midpoint
     mod: tuple | None           # (s, Hz, instrument, attack) of the MOD note judged against
-    verdict: str                # ok, wrong, short, missing
+    verdict: str                # ok, wrong, short, missing; with slides judged: slide ok, slide off
 
 
 def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[int, list[tuple]], float]:
     """Per MOD channel list of (time, Hz, instrument, attack), as `conv` (the conversion's rendering
-    pitches and detune variants) made the samples; follows Bxx/Dxx and stops at the loop."""
+    pitches and detune variants) made the samples; follows Bxx/Dxx and stops at the loop.  A sample
+    that carries a sweep (core.plan.baked) moves by its envelope each frame, to the next note-on."""
     cfg = conv.config
     inst = sounding_pitches(song, conv)
+    swept = _swept(song, conv, inst)
     finetune = {slot: row.finetune for slot, row in conv.samples.rows().items()}
     known = set(PERIOD_TABLE)
     out: dict[int, list[tuple]] = defaultdict(list)
     sounding: dict[int, tuple[int, int]] = {}         # channel -> (period, instrument) of its note
+    sweeps: dict[int, list[tuple[float, list[tuple]]]] = defaultdict(list)    # channel -> (note-on, its sweep)
 
     def pitch(period: int, ins: int) -> float:
         root, synth, cents = inst[ins]
@@ -82,7 +96,10 @@ def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[
                 # E1x / E2x beside the note moves it on its first tick: the note sounds there
                 p = _fine_slid(period, par) if fine else period
                 sounding[c] = (p, ins)
-                out[c].append((r.start + edx_delay(eff, par, r.bpm), pitch(p, ins), ins, True))
+                start = r.start + edx_delay(eff, par, r.bpm)
+                out[c].append((start, pitch(p, ins), ins, True))
+                if ins in swept:
+                    sweeps[c].append((start, [(start + t, pitch(p, ins) * ratio, ins, False) for t, ratio in swept[ins]]))
             if eff in (_SLIDE_UP, _SLIDE_DOWN) and par and c in sounding:
                 # 1xx / 2xx: the period moves by xx on each tick after the row's first (a sweep)
                 p, ins_s = sounding[c]
@@ -96,7 +113,35 @@ def mod_pitch_timeline(mod: ModImage, conv: ConversionPlan, song) -> tuple[dict[
                 p = _fine_slid(p, par)
                 sounding[c] = (p, ins_s)
                 out[c].append((r.start, pitch(p, ins_s), ins_s, False))
-    return out, end
+    return _with_sweeps(out, sweeps), end
+
+
+def _swept(song, conv: ConversionPlan, inst: dict) -> dict[int, list[tuple[float, float]]]:
+    """{instrument: [(seconds after its note-on, its pitch ratio)]} of each sample rendered with a
+    sweep's envelope: a word offset each frame from the word its notes' pitch class plays."""
+    if conv.baked is None or conv.detune is None:
+        return {}
+    frame = 1 / update_hz(song.rules, conv.config.region)
+    out = {}
+    for ins, (_root, semitone, _cents) in inst.items():
+        envelope = conv.baked.pitch_envelopes().get(conv.detune.envelope_of(ins))
+        if envelope is None:
+            continue
+        word = fm_render_word(semitone, song.rules.fm_frequencies)
+        offsets = envelope.offsets(len(envelope.steps))
+        out[ins] = [(f * frame, freq_word_hz(word + o) / freq_word_hz(word)) for f, o in enumerate(offsets) if f]
+    return out
+
+
+def _with_sweeps(out: dict[int, list[tuple]], sweeps: dict[int, list[tuple[float, list[tuple]]]]) -> dict[int, list[tuple]]:
+    """Each channel's pitches with its sweeps' in, each cut at the channel's next note-on."""
+    for c, swept in sweeps.items():
+        attacks = sorted(p[0] for p in out[c] if p[3])
+        for start, points in swept:
+            later = [t for t in attacks if t > start]
+            out[c] += [p for p in points if not later or p[0] < later[0]]
+        out[c].sort(key=lambda p: p[0])
+    return dict(out)
 
 
 def _fine_slid(period: int, par: int) -> int:
@@ -135,7 +180,7 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
     if starts:
         opening = min(t for _, t, _ in starts) + _OPENING_SECS
         starts = [s for s in starts if s[1] < opening]
-    ks = range(int(-0.5 / step), int(max_lag / step) + 1)
+    ks = range(int(-max_lag / step), int(max_lag / step) + 1)       # either way: a rip may start before its song (Time Trax's: 0.8 s)
     lags = [k * step for k in ks]
     scorer = _StartScorer(starts, {c: sorted(n for n in notes if n[_ATTACK]) for c, notes in mod.items()},
                           lags, step, drift)
@@ -173,6 +218,25 @@ def _judge(st: dict, by_inst: dict[int, Counter], t0: float, t1: float, f: float
     st["wrong_notes"].append({"t_s": t0, "chip": pitch_name(f), "mod": pitch_name(hit[1]), "cents": cents,
                               "instrument": hit[2], "placed_s": hit[0]})
     return "wrong"
+
+
+def _judge_slide(st: dict, t0: float, f: float, hit: tuple | None, tolerance: float) -> str:
+    """A slide's chip segment against the MOD's pitch at its midpoint (`hit`), counted in `st`."""
+    cents = 1200 * math.log2(hit[1] / f) if hit is not None else math.inf
+    if abs(cents) <= tolerance:
+        st["slide_ok"] += 1
+        return "slide ok"
+    st["slide_off"] += 1
+    st["slide_notes"].append({"t_s": t0, "chip": pitch_name(f), "mod": pitch_name(hit[1]) if hit else "-",
+                              "cents": cents})
+    return "slide off"
+
+
+def _slide_segments(evs: list[Segment], min_ms: float) -> list[bool]:
+    """Which of `evs`' segments (each to the next's start) are a slide's: sounding and shorter than
+    `min_ms`, beside another such."""
+    short = [f is not None and (t1 - t0) * 1000 < min_ms for (t0, f), (t1, _) in itertools.pairwise(evs)]
+    return [s and ((i > 0 and short[i - 1]) or (i + 1 < len(short) and short[i + 1])) for i, s in enumerate(short)]
 
 
 def _settled(segments: list[Segment]) -> list[Segment]:
@@ -265,11 +329,13 @@ def instrument_verdicts(by_inst: dict[int, Counter]) -> list[dict]:
 
 def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int, list[tuple]], mod_end: float,
           chan_map: dict[str, int], offset: float, min_ms: float = 60.0, tolerance: float = 35.0,
-          trace: Callable[[PairStep], None] | None = None) -> dict:
+          trace: Callable[[PairStep], None] | None = None, slide_tolerance: float | None = None) -> dict:
     """Compare every chip segment of at least `min_ms` with the MOD note sounding at its midpoint.
 
     Returns {"channels": {source: {ok, wrong, missing, short, wrong_notes, missing_notes}},
              "instruments": instrument_verdicts(...), "bad": wrong + missing over all channels}.
+    With `slide_tolerance` (cents), slides are judged too: each channel's slide_ok, slide_off and
+    slide_notes, and slide_off counted in "bad".
 
     `offset` is where the song starts; from there each channel follows its own drift: every chip
     segment start that has a MOD note within 40 ms of the running deviation is paired with it
@@ -287,6 +353,9 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
         segments = _settled(chip[src])
         evs = [*segments, (vgm_end, None)]
         st: dict = {"ok": 0, "wrong": 0, "missing": 0, "short": 0, "wrong_notes": [], "missing_notes": []}
+        if slide_tolerance is not None:
+            st |= {"slide_ok": 0, "slide_off": 0, "slide_notes": []}
+        slides = _slide_segments(evs, min_ms) if slide_tolerance is not None else [False] * len(segments)
         run, j = offset, 0          # running MOD-minus-chip deviation (s); next unpaired MOD note
         starts = _chip_starts(segments)
         starts_t = [t for (t, _), s in zip(segments, starts, strict=True) if s]   # for looking past a tempo step
@@ -327,9 +396,13 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
                     if n[0] > mid + 1e-6:
                         break
                     hit = n
-            verdict = _judge(st, by_inst, t0, t1, f, hit, min_ms, tolerance)
+            if slides[i]:
+                assert slide_tolerance is not None
+                verdict = _judge_slide(st, t0, f, hit, slide_tolerance)
+            else:
+                verdict = _judge(st, by_inst, t0, t1, f, hit, min_ms, tolerance)
             if trace is not None:
                 trace(PairStep(src, t0, t1, f, is_start, run, paired[0] if paired else None, hit, verdict))
         channels[src] = st
     return {"channels": channels, "instruments": instrument_verdicts(by_inst),
-            "bad": sum(c["wrong"] + c["missing"] for c in channels.values())}
+            "bad": sum(c["wrong"] + c["missing"] + c.get("slide_off", 0) for c in channels.values())}

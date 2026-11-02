@@ -11781,7 +11781,7 @@ frames_golden_axe:
   - --all
   - --configs
   - configs/golden_axe
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -11821,10 +11821,12 @@ frames_golden_axe:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -11874,10 +11876,12 @@ frames_golden_axe:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -11918,11 +11922,13 @@ frames_golden_axe:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -11937,8 +11943,10 @@ frames_golden_axe:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -11947,6 +11955,8 @@ frames_golden_axe:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
@@ -12173,7 +12183,7 @@ frames_space_harrier_2:
   - --all
   - --configs
   - configs/space_harrier_2
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -12213,10 +12223,12 @@ frames_space_harrier_2:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -12270,10 +12282,12 @@ frames_space_harrier_2:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -12314,11 +12328,13 @@ frames_space_harrier_2:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -12333,8 +12349,10 @@ frames_space_harrier_2:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -12343,6 +12361,8 @@ frames_space_harrier_2:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
@@ -12824,14 +12844,13 @@ frames_streets_of_rage_2:
     reference/vgz/streets_of_rage_2/22 - Go Straight (Beatmix).vgz: fe6212d3074a
     reference/vgz/streets_of_rage_2/23 - Beta - Walking Bottom.vgz: ca38175a16a4
     reference/vgz/streets_of_rage_2/24 - Little Money Avenue.vgz: 2a53e8aca5fa
-glitches_golden_axe:
+frames_time_trax:
   argv:
   - tools/vgm/vgm_frames.py
   - --all
-  - --glitches
   - --configs
-  - configs/golden_axe
-  commit: c6d0253-dirty
+  - configs/time_trax
+  commit: 40c7228-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -12871,10 +12890,216 @@ glitches_golden_axe:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
+  - core/convert/fm_drums.py
+  - core/convert/layout.py
+  - core/convert/level_plan.py
+  - core/convert/prepare.py
+  - core/convert/sample_names.py
+  - core/convert/samples.py
+  - core/convert/smps2mod.py
+  - core/convert/survey.py
+  - core/convert/sustain_plan.py
+  - core/convert/vibrato.py
+  - core/diagnostics.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/registry.py
+  - core/drivers/timetrax/__init__.py
+  - core/drivers/timetrax/commands.py
+  - core/drivers/timetrax/envelope.py
+  - core/drivers/timetrax/glide.py
+  - core/drivers/timetrax/grammar.py
+  - core/drivers/timetrax/header.py
+  - core/drivers/timetrax/locate.py
+  - core/drivers/timetrax/memory.py
+  - core/drivers/timetrax/variant.py
+  - core/drivers/timetrax/voices.py
+  - core/drivers/timetrax/volume.py
+  - core/drivers/timetrax/walk.py
+  - core/files.py
+  - core/merge/__init__.py
+  - core/merge/banks.py
+  - core/merge/build.py
+  - core/merge/mix.py
+  - core/merge/model.py
+  - core/merge/notes.py
+  - core/merge/plan.py
+  - core/merge/pool.py
+  - core/merge/slots.py
+  - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
+  - core/mod/file.py
+  - core/mod/limits.py
+  - core/mod/notes.py
+  - core/mod/reach.py
+  - core/mod/reader.py
+  - core/mod/sample_audit.py
+  - core/mod/timing.py
+  - core/mod/volume.py
+  - core/plan/__init__.py
+  - core/plan/baked.py
+  - core/plan/conversion.py
+  - core/plan/derive.py
+  - core/plan/detune.py
+  - core/plan/driver_state.py
+  - core/plan/glides.py
+  - core/plan/instrument_plan.py
+  - core/plan/instruments.py
+  - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
+  - core/plan/synth_roots.py
+  - core/plan/timeline.py
+  - core/render_cache.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/slide.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
+  - core/source/__init__.py
+  - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
+  - core/ui/__init__.py
+  - core/ui/cli.py
+  - core/ui/pitch_audit.py
+  - core/ui/report.py
+  - core/ui/song_diff.py
+  - core/vgm/__init__.py
+  - core/vgm/bursts.py
+  - core/vgm/cache.py
+  - core/vgm/chipstate.py
+  - core/vgm/clock.py
+  - core/vgm/frames.py
+  - core/vgm/lift/__init__.py
+  - core/vgm/lift/song.py
+  - core/vgm/lift/tempo.py
+  - core/vgm/lift/tracks.py
+  - core/vgm/notes.py
+  - core/vgm/reader.py
+  - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
+  - core/vgm/writes.py
+  - tools/vgm/vgm_frames.py
+  inputs:
+    configs/time_trax/00_title_screen.yaml: ff2d216fc70c
+    configs/time_trax/01_stages_2_5_7.yaml: fe0e13595303
+    configs/time_trax/02_stages_4_6.yaml: 58ec6696676e
+    configs/time_trax/03_stages_1_3_8.yaml: 97a2aa7d6cef
+    configs/time_trax/04_mission_briefing.yaml: c3430c119404
+    configs/time_trax/05_game_over.yaml: bea18d219259
+    configs/time_trax/rips.yaml: bc861f78e14f
+    input/roms/Time Trax (USA) (Proto).md: 830410ab309d
+    reference/vgz/time_trax/01 - Title Screen, Credits.vgz: 67a68ab4c6ca
+    reference/vgz/time_trax/02 - Mission Briefing.vgz: d5bf3b290fa7
+    reference/vgz/time_trax/03 - Stages 1, 3, 8.vgz: 87b8b4032ea4
+    reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
+    reference/vgz/time_trax/05 - Stages 4, 6.vgz: d53c8a99d546
+    reference/vgz/time_trax/06 - Game Over.vgz: d048ec8120e5
+glitches_golden_axe:
+  argv:
+  - tools/vgm/vgm_frames.py
+  - --all
+  - --glitches
+  - --configs
+  - configs/golden_axe
+  commit: b959be9-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/audit/__init__.py
+  - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
+  - core/audit/levels.py
+  - core/audit/onsets.py
+  - core/audit/pitch.py
+  - core/audit/render.py
+  - core/audit/rip_diff.py
+  - core/audit/rips.py
+  - core/audit/signal.py
+  - core/chips/__init__.py
+  - core/chips/cbuild.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
+  - core/config/__init__.py
+  - core/config/bpm.py
+  - core/config/entries.py
+  - core/config/loader.py
+  - core/config/settings.py
+  - core/config/song.py
+  - core/convert/__init__.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -12924,10 +13149,12 @@ glitches_golden_axe:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -12968,11 +13195,13 @@ glitches_golden_axe:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -12987,8 +13216,10 @@ glitches_golden_axe:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -12997,6 +13228,8 @@ glitches_golden_axe:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
@@ -13225,7 +13458,7 @@ glitches_space_harrier_2:
   - --glitches
   - --configs
   - configs/space_harrier_2
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -13265,10 +13498,12 @@ glitches_space_harrier_2:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -13322,10 +13557,12 @@ glitches_space_harrier_2:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -13366,11 +13603,13 @@ glitches_space_harrier_2:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -13385,8 +13624,10 @@ glitches_space_harrier_2:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -13395,6 +13636,8 @@ glitches_space_harrier_2:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
@@ -13878,6 +14121,210 @@ glitches_streets_of_rage_2:
     reference/vgz/streets_of_rage_2/22 - Go Straight (Beatmix).vgz: fe6212d3074a
     reference/vgz/streets_of_rage_2/23 - Beta - Walking Bottom.vgz: ca38175a16a4
     reference/vgz/streets_of_rage_2/24 - Little Money Avenue.vgz: 2a53e8aca5fa
+glitches_time_trax:
+  argv:
+  - tools/vgm/vgm_frames.py
+  - --all
+  - --glitches
+  - --configs
+  - configs/time_trax
+  commit: 40c7228-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/audit/__init__.py
+  - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
+  - core/audit/levels.py
+  - core/audit/onsets.py
+  - core/audit/pitch.py
+  - core/audit/render.py
+  - core/audit/rip_diff.py
+  - core/audit/rips.py
+  - core/audit/signal.py
+  - core/chips/__init__.py
+  - core/chips/cbuild.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
+  - core/config/__init__.py
+  - core/config/bpm.py
+  - core/config/entries.py
+  - core/config/loader.py
+  - core/config/settings.py
+  - core/config/song.py
+  - core/convert/__init__.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
+  - core/convert/fm_drums.py
+  - core/convert/layout.py
+  - core/convert/level_plan.py
+  - core/convert/prepare.py
+  - core/convert/sample_names.py
+  - core/convert/samples.py
+  - core/convert/smps2mod.py
+  - core/convert/survey.py
+  - core/convert/sustain_plan.py
+  - core/convert/vibrato.py
+  - core/diagnostics.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/registry.py
+  - core/drivers/timetrax/__init__.py
+  - core/drivers/timetrax/commands.py
+  - core/drivers/timetrax/envelope.py
+  - core/drivers/timetrax/glide.py
+  - core/drivers/timetrax/grammar.py
+  - core/drivers/timetrax/header.py
+  - core/drivers/timetrax/locate.py
+  - core/drivers/timetrax/memory.py
+  - core/drivers/timetrax/variant.py
+  - core/drivers/timetrax/voices.py
+  - core/drivers/timetrax/volume.py
+  - core/drivers/timetrax/walk.py
+  - core/files.py
+  - core/merge/__init__.py
+  - core/merge/banks.py
+  - core/merge/build.py
+  - core/merge/mix.py
+  - core/merge/model.py
+  - core/merge/notes.py
+  - core/merge/plan.py
+  - core/merge/pool.py
+  - core/merge/slots.py
+  - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
+  - core/mod/file.py
+  - core/mod/limits.py
+  - core/mod/notes.py
+  - core/mod/reach.py
+  - core/mod/reader.py
+  - core/mod/sample_audit.py
+  - core/mod/timing.py
+  - core/mod/volume.py
+  - core/plan/__init__.py
+  - core/plan/baked.py
+  - core/plan/conversion.py
+  - core/plan/derive.py
+  - core/plan/detune.py
+  - core/plan/driver_state.py
+  - core/plan/glides.py
+  - core/plan/instrument_plan.py
+  - core/plan/instruments.py
+  - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
+  - core/plan/synth_roots.py
+  - core/plan/timeline.py
+  - core/render_cache.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/slide.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
+  - core/source/__init__.py
+  - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
+  - core/ui/__init__.py
+  - core/ui/cli.py
+  - core/ui/pitch_audit.py
+  - core/ui/report.py
+  - core/ui/song_diff.py
+  - core/vgm/__init__.py
+  - core/vgm/bursts.py
+  - core/vgm/cache.py
+  - core/vgm/chipstate.py
+  - core/vgm/clock.py
+  - core/vgm/frames.py
+  - core/vgm/lift/__init__.py
+  - core/vgm/lift/song.py
+  - core/vgm/lift/tempo.py
+  - core/vgm/lift/tracks.py
+  - core/vgm/notes.py
+  - core/vgm/reader.py
+  - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
+  - core/vgm/writes.py
+  - tools/vgm/vgm_frames.py
+  inputs:
+    configs/time_trax/00_title_screen.yaml: ff2d216fc70c
+    configs/time_trax/01_stages_2_5_7.yaml: fe0e13595303
+    configs/time_trax/02_stages_4_6.yaml: 58ec6696676e
+    configs/time_trax/03_stages_1_3_8.yaml: 97a2aa7d6cef
+    configs/time_trax/04_mission_briefing.yaml: c3430c119404
+    configs/time_trax/05_game_over.yaml: bea18d219259
+    configs/time_trax/rips.yaml: bc861f78e14f
+    input/roms/Time Trax (USA) (Proto).md: 830410ab309d
+    reference/vgz/time_trax/01 - Title Screen, Credits.vgz: 67a68ab4c6ca
+    reference/vgz/time_trax/02 - Mission Briefing.vgz: d5bf3b290fa7
+    reference/vgz/time_trax/03 - Stages 1, 3, 8.vgz: 87b8b4032ea4
+    reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
+    reference/vgz/time_trax/05 - Stages 4, 6.vgz: d53c8a99d546
+    reference/vgz/time_trax/06 - Game Over.vgz: d048ec8120e5
 lift_02:
   argv:
   - tools/vgm/vgm_lift.py
@@ -14271,7 +14718,7 @@ lift_moonwalker_88_round_clear:
   argv:
   - tools/vgm/vgm_lift.py
   - configs\moonwalker\88_round_clear.yaml
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -14311,10 +14758,12 @@ lift_moonwalker_88_round_clear:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -14365,10 +14814,12 @@ lift_moonwalker_88_round_clear:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -14409,11 +14860,13 @@ lift_moonwalker_88_round_clear:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -14428,8 +14881,10 @@ lift_moonwalker_88_round_clear:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -14438,6 +14893,8 @@ lift_moonwalker_88_round_clear:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_lift.py
   inputs:
@@ -14502,7 +14959,7 @@ lift_moonwalker_all:
   - --all
   - --configs
   - configs\moonwalker
-  commit: c6d0253-dirty
+  commit: b959be9-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -14542,10 +14999,12 @@ lift_moonwalker_all:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -14596,10 +15055,12 @@ lift_moonwalker_all:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -14640,11 +15101,13 @@ lift_moonwalker_all:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -14659,8 +15122,10 @@ lift_moonwalker_all:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -14669,6 +15134,8 @@ lift_moonwalker_all:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_lift.py
   inputs:
@@ -16752,6 +17219,201 @@ pitch_ga_the_battle:
     configs/golden_axe/89_the_battle.yaml: 36312da9eb3d
     reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
     tests/baselines/ga_the_battle_baseline.mod: 2cef3822df6d
+    tests/settings.yaml: 1be2c231bd5e
+pitch_ga_the_battle_hq:
+  argv:
+  - tools/vgm/vgm_pitch_audit.py
+  - configs/golden_axe/89_the_battle.yaml
+  - reference\vgz\golden_axe\01 - The Battle.vgz
+  - --mod
+  - tests/baselines/ga_the_battle_hq_baseline.mod
+  - --settings
+  - tests\settings.yaml
+  - --variant
+  - hq
+  - --list
+  commit: 719ea22-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/audit/__init__.py
+  - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
+  - core/audit/levels.py
+  - core/audit/onsets.py
+  - core/audit/pitch.py
+  - core/audit/render.py
+  - core/audit/rip_diff.py
+  - core/audit/rips.py
+  - core/audit/signal.py
+  - core/chips/__init__.py
+  - core/chips/cbuild.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
+  - core/config/__init__.py
+  - core/config/bpm.py
+  - core/config/entries.py
+  - core/config/loader.py
+  - core/config/settings.py
+  - core/config/song.py
+  - core/convert/__init__.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
+  - core/convert/fm_drums.py
+  - core/convert/layout.py
+  - core/convert/level_plan.py
+  - core/convert/prepare.py
+  - core/convert/sample_names.py
+  - core/convert/samples.py
+  - core/convert/smps2mod.py
+  - core/convert/survey.py
+  - core/convert/sustain_plan.py
+  - core/convert/vibrato.py
+  - core/diagnostics.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/registry.py
+  - core/drivers/smpsz80/__init__.py
+  - core/drivers/smpsz80/memory.py
+  - core/drivers/smpsz80/program.py
+  - core/drivers/smpsz80/type0fm/__init__.py
+  - core/drivers/smpsz80/type0fm/drums.py
+  - core/drivers/smpsz80/type0fm/layout.py
+  - core/drivers/smpsz80/type0fm/locate.py
+  - core/drivers/smpsz80/type0fm/variant.py
+  - core/files.py
+  - core/merge/__init__.py
+  - core/merge/banks.py
+  - core/merge/build.py
+  - core/merge/mix.py
+  - core/merge/model.py
+  - core/merge/notes.py
+  - core/merge/plan.py
+  - core/merge/pool.py
+  - core/merge/slots.py
+  - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
+  - core/mod/file.py
+  - core/mod/limits.py
+  - core/mod/notes.py
+  - core/mod/reach.py
+  - core/mod/reader.py
+  - core/mod/sample_audit.py
+  - core/mod/timing.py
+  - core/mod/volume.py
+  - core/plan/__init__.py
+  - core/plan/baked.py
+  - core/plan/conversion.py
+  - core/plan/derive.py
+  - core/plan/detune.py
+  - core/plan/driver_state.py
+  - core/plan/glides.py
+  - core/plan/instrument_plan.py
+  - core/plan/instruments.py
+  - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
+  - core/plan/synth_roots.py
+  - core/plan/timeline.py
+  - core/render_cache.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/slide.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
+  - core/source/__init__.py
+  - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
+  - core/ui/__init__.py
+  - core/ui/cli.py
+  - core/ui/pitch_audit.py
+  - core/ui/report.py
+  - core/ui/song_diff.py
+  - core/vgm/__init__.py
+  - core/vgm/bursts.py
+  - core/vgm/cache.py
+  - core/vgm/chipstate.py
+  - core/vgm/clock.py
+  - core/vgm/frames.py
+  - core/vgm/lift/__init__.py
+  - core/vgm/lift/song.py
+  - core/vgm/lift/tempo.py
+  - core/vgm/lift/tracks.py
+  - core/vgm/notes.py
+  - core/vgm/reader.py
+  - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
+  - core/vgm/writes.py
+  - tools/vgm/vgm_pitch_audit.py
+  inputs:
+    configs/golden_axe/89_the_battle.yaml: 7fc4665f41a6
+    reference/vgz/golden_axe/01 - The Battle.vgz: 5a66c43d6018
+    tests/baselines/ga_the_battle_hq_baseline.mod: 19f728a04cef
     tests/settings.yaml: 1be2c231bd5e
 pitch_ga_theme_of_thief:
   argv:
@@ -21336,7 +21998,7 @@ pitch_sor2_go_straight:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: a750fdc-dirty
+  commit: 719ea22-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -21376,10 +22038,12 @@ pitch_sor2_go_straight:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -21429,10 +22093,12 @@ pitch_sor2_go_straight:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -21475,11 +22141,13 @@ pitch_sor2_go_straight:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -21494,8 +22162,10 @@ pitch_sor2_go_straight:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -21504,12 +22174,14 @@ pitch_sor2_go_straight:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_pitch_audit.py
   inputs:
-    configs/streets_of_rage_2/00_go_straight.yaml: 9f1189d1ab9f
+    configs/streets_of_rage_2/00_go_straight.yaml: 87420c3d5c0e
     reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
-    tests/baselines/sor2_go_straight_baseline.mod: 8f263482fb8a
+    tests/baselines/sor2_go_straight_baseline.mod: 7a87b465468c
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_jungle_base:
   argv:
@@ -23172,6 +23844,794 @@ pitch_title_screen:
     reference/vgz/sonic_1/01 - Title Theme.vgz: fafa5cc83333
     tests/baselines/title_screen_baseline.mod: 25257e55e372
     tests/settings.yaml: 1be2c231bd5e
+pitch_tt_game_over:
+  argv:
+  - tools/vgm/vgm_pitch_audit.py
+  - configs/time_trax/05_game_over.yaml
+  - reference\vgz\time_trax\06 - Game Over.vgz
+  - --mod
+  - tests/baselines/tt_game_over_baseline.mod
+  - --settings
+  - tests\settings.yaml
+  - --list
+  commit: 40c7228-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/audit/__init__.py
+  - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
+  - core/audit/levels.py
+  - core/audit/onsets.py
+  - core/audit/pitch.py
+  - core/audit/render.py
+  - core/audit/rip_diff.py
+  - core/audit/rips.py
+  - core/audit/signal.py
+  - core/chips/__init__.py
+  - core/chips/cbuild.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
+  - core/config/__init__.py
+  - core/config/bpm.py
+  - core/config/entries.py
+  - core/config/loader.py
+  - core/config/settings.py
+  - core/config/song.py
+  - core/convert/__init__.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
+  - core/convert/fm_drums.py
+  - core/convert/layout.py
+  - core/convert/level_plan.py
+  - core/convert/prepare.py
+  - core/convert/sample_names.py
+  - core/convert/samples.py
+  - core/convert/smps2mod.py
+  - core/convert/survey.py
+  - core/convert/sustain_plan.py
+  - core/convert/vibrato.py
+  - core/diagnostics.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/registry.py
+  - core/drivers/timetrax/__init__.py
+  - core/drivers/timetrax/commands.py
+  - core/drivers/timetrax/envelope.py
+  - core/drivers/timetrax/glide.py
+  - core/drivers/timetrax/grammar.py
+  - core/drivers/timetrax/header.py
+  - core/drivers/timetrax/locate.py
+  - core/drivers/timetrax/memory.py
+  - core/drivers/timetrax/variant.py
+  - core/drivers/timetrax/voices.py
+  - core/drivers/timetrax/volume.py
+  - core/drivers/timetrax/walk.py
+  - core/files.py
+  - core/merge/__init__.py
+  - core/merge/banks.py
+  - core/merge/build.py
+  - core/merge/mix.py
+  - core/merge/model.py
+  - core/merge/notes.py
+  - core/merge/plan.py
+  - core/merge/pool.py
+  - core/merge/slots.py
+  - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
+  - core/mod/file.py
+  - core/mod/limits.py
+  - core/mod/notes.py
+  - core/mod/reach.py
+  - core/mod/reader.py
+  - core/mod/sample_audit.py
+  - core/mod/timing.py
+  - core/mod/volume.py
+  - core/plan/__init__.py
+  - core/plan/baked.py
+  - core/plan/conversion.py
+  - core/plan/derive.py
+  - core/plan/detune.py
+  - core/plan/driver_state.py
+  - core/plan/glides.py
+  - core/plan/instrument_plan.py
+  - core/plan/instruments.py
+  - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
+  - core/plan/synth_roots.py
+  - core/plan/timeline.py
+  - core/render_cache.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/slide.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
+  - core/source/__init__.py
+  - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
+  - core/ui/__init__.py
+  - core/ui/cli.py
+  - core/ui/pitch_audit.py
+  - core/ui/report.py
+  - core/ui/song_diff.py
+  - core/vgm/__init__.py
+  - core/vgm/bursts.py
+  - core/vgm/cache.py
+  - core/vgm/chipstate.py
+  - core/vgm/clock.py
+  - core/vgm/frames.py
+  - core/vgm/lift/__init__.py
+  - core/vgm/lift/song.py
+  - core/vgm/lift/tempo.py
+  - core/vgm/lift/tracks.py
+  - core/vgm/notes.py
+  - core/vgm/reader.py
+  - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
+  - core/vgm/writes.py
+  - tools/vgm/vgm_pitch_audit.py
+  inputs:
+    configs/time_trax/05_game_over.yaml: bea18d219259
+    reference/vgz/time_trax/06 - Game Over.vgz: d048ec8120e5
+    tests/baselines/tt_game_over_baseline.mod: b3573f71f4de
+    tests/settings.yaml: 1be2c231bd5e
+pitch_tt_mission_briefing:
+  argv:
+  - tools/vgm/vgm_pitch_audit.py
+  - configs/time_trax/04_mission_briefing.yaml
+  - reference\vgz\time_trax\02 - Mission Briefing.vgz
+  - --mod
+  - tests/baselines/tt_mission_briefing_baseline.mod
+  - --settings
+  - tests\settings.yaml
+  - --list
+  commit: 719ea22-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/audit/__init__.py
+  - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
+  - core/audit/levels.py
+  - core/audit/onsets.py
+  - core/audit/pitch.py
+  - core/audit/render.py
+  - core/audit/rip_diff.py
+  - core/audit/rips.py
+  - core/audit/signal.py
+  - core/chips/__init__.py
+  - core/chips/cbuild.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
+  - core/config/__init__.py
+  - core/config/bpm.py
+  - core/config/entries.py
+  - core/config/loader.py
+  - core/config/settings.py
+  - core/config/song.py
+  - core/convert/__init__.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
+  - core/convert/fm_drums.py
+  - core/convert/layout.py
+  - core/convert/level_plan.py
+  - core/convert/prepare.py
+  - core/convert/sample_names.py
+  - core/convert/samples.py
+  - core/convert/smps2mod.py
+  - core/convert/survey.py
+  - core/convert/sustain_plan.py
+  - core/convert/vibrato.py
+  - core/diagnostics.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/registry.py
+  - core/drivers/timetrax/__init__.py
+  - core/drivers/timetrax/commands.py
+  - core/drivers/timetrax/envelope.py
+  - core/drivers/timetrax/glide.py
+  - core/drivers/timetrax/grammar.py
+  - core/drivers/timetrax/header.py
+  - core/drivers/timetrax/locate.py
+  - core/drivers/timetrax/memory.py
+  - core/drivers/timetrax/variant.py
+  - core/drivers/timetrax/voices.py
+  - core/drivers/timetrax/volume.py
+  - core/drivers/timetrax/walk.py
+  - core/files.py
+  - core/merge/__init__.py
+  - core/merge/banks.py
+  - core/merge/build.py
+  - core/merge/mix.py
+  - core/merge/model.py
+  - core/merge/notes.py
+  - core/merge/plan.py
+  - core/merge/pool.py
+  - core/merge/slots.py
+  - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
+  - core/mod/file.py
+  - core/mod/limits.py
+  - core/mod/notes.py
+  - core/mod/reach.py
+  - core/mod/reader.py
+  - core/mod/sample_audit.py
+  - core/mod/timing.py
+  - core/mod/volume.py
+  - core/plan/__init__.py
+  - core/plan/baked.py
+  - core/plan/conversion.py
+  - core/plan/derive.py
+  - core/plan/detune.py
+  - core/plan/driver_state.py
+  - core/plan/glides.py
+  - core/plan/instrument_plan.py
+  - core/plan/instruments.py
+  - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
+  - core/plan/synth_roots.py
+  - core/plan/timeline.py
+  - core/render_cache.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/slide.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
+  - core/source/__init__.py
+  - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
+  - core/ui/__init__.py
+  - core/ui/cli.py
+  - core/ui/pitch_audit.py
+  - core/ui/report.py
+  - core/ui/song_diff.py
+  - core/vgm/__init__.py
+  - core/vgm/bursts.py
+  - core/vgm/cache.py
+  - core/vgm/chipstate.py
+  - core/vgm/clock.py
+  - core/vgm/frames.py
+  - core/vgm/lift/__init__.py
+  - core/vgm/lift/song.py
+  - core/vgm/lift/tempo.py
+  - core/vgm/lift/tracks.py
+  - core/vgm/notes.py
+  - core/vgm/reader.py
+  - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
+  - core/vgm/writes.py
+  - tools/vgm/vgm_pitch_audit.py
+  inputs:
+    configs/time_trax/04_mission_briefing.yaml: 79d1c4d13d14
+    reference/vgz/time_trax/02 - Mission Briefing.vgz: d5bf3b290fa7
+    tests/baselines/tt_mission_briefing_baseline.mod: cde265570dae
+    tests/settings.yaml: 1be2c231bd5e
+pitch_tt_stages_2_5_7:
+  argv:
+  - tools/vgm/vgm_pitch_audit.py
+  - configs/time_trax/01_stages_2_5_7.yaml
+  - reference\vgz\time_trax\04 - Stages 2, 5, 7.vgz
+  - --mod
+  - tests/baselines/tt_stages_2_5_7_baseline.mod
+  - --settings
+  - tests\settings.yaml
+  - --list
+  commit: 719ea22-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/audit/__init__.py
+  - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
+  - core/audit/levels.py
+  - core/audit/onsets.py
+  - core/audit/pitch.py
+  - core/audit/render.py
+  - core/audit/rip_diff.py
+  - core/audit/rips.py
+  - core/audit/signal.py
+  - core/chips/__init__.py
+  - core/chips/cbuild.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
+  - core/config/__init__.py
+  - core/config/bpm.py
+  - core/config/entries.py
+  - core/config/loader.py
+  - core/config/settings.py
+  - core/config/song.py
+  - core/convert/__init__.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
+  - core/convert/fm_drums.py
+  - core/convert/layout.py
+  - core/convert/level_plan.py
+  - core/convert/prepare.py
+  - core/convert/sample_names.py
+  - core/convert/samples.py
+  - core/convert/smps2mod.py
+  - core/convert/survey.py
+  - core/convert/sustain_plan.py
+  - core/convert/vibrato.py
+  - core/diagnostics.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/registry.py
+  - core/drivers/timetrax/__init__.py
+  - core/drivers/timetrax/commands.py
+  - core/drivers/timetrax/envelope.py
+  - core/drivers/timetrax/glide.py
+  - core/drivers/timetrax/grammar.py
+  - core/drivers/timetrax/header.py
+  - core/drivers/timetrax/locate.py
+  - core/drivers/timetrax/memory.py
+  - core/drivers/timetrax/variant.py
+  - core/drivers/timetrax/voices.py
+  - core/drivers/timetrax/volume.py
+  - core/drivers/timetrax/walk.py
+  - core/files.py
+  - core/merge/__init__.py
+  - core/merge/banks.py
+  - core/merge/build.py
+  - core/merge/mix.py
+  - core/merge/model.py
+  - core/merge/notes.py
+  - core/merge/plan.py
+  - core/merge/pool.py
+  - core/merge/slots.py
+  - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
+  - core/mod/file.py
+  - core/mod/limits.py
+  - core/mod/notes.py
+  - core/mod/reach.py
+  - core/mod/reader.py
+  - core/mod/sample_audit.py
+  - core/mod/timing.py
+  - core/mod/volume.py
+  - core/plan/__init__.py
+  - core/plan/baked.py
+  - core/plan/conversion.py
+  - core/plan/derive.py
+  - core/plan/detune.py
+  - core/plan/driver_state.py
+  - core/plan/glides.py
+  - core/plan/instrument_plan.py
+  - core/plan/instruments.py
+  - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
+  - core/plan/synth_roots.py
+  - core/plan/timeline.py
+  - core/render_cache.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/slide.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
+  - core/source/__init__.py
+  - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
+  - core/ui/__init__.py
+  - core/ui/cli.py
+  - core/ui/pitch_audit.py
+  - core/ui/report.py
+  - core/ui/song_diff.py
+  - core/vgm/__init__.py
+  - core/vgm/bursts.py
+  - core/vgm/cache.py
+  - core/vgm/chipstate.py
+  - core/vgm/clock.py
+  - core/vgm/frames.py
+  - core/vgm/lift/__init__.py
+  - core/vgm/lift/song.py
+  - core/vgm/lift/tempo.py
+  - core/vgm/lift/tracks.py
+  - core/vgm/notes.py
+  - core/vgm/reader.py
+  - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
+  - core/vgm/writes.py
+  - tools/vgm/vgm_pitch_audit.py
+  inputs:
+    configs/time_trax/01_stages_2_5_7.yaml: 4b8951400073
+    reference/vgz/time_trax/04 - Stages 2, 5, 7.vgz: 9659a7f8bb0b
+    tests/baselines/tt_stages_2_5_7_baseline.mod: b73fa350f3c9
+    tests/settings.yaml: 1be2c231bd5e
+pitch_tt_title_screen:
+  argv:
+  - tools/vgm/vgm_pitch_audit.py
+  - configs/time_trax/00_title_screen.yaml
+  - reference\vgz\time_trax\01 - Title Screen, Credits.vgz
+  - --mod
+  - tests/baselines/tt_title_screen_baseline.mod
+  - --settings
+  - tests\settings.yaml
+  - --list
+  commit: 719ea22-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/audit/__init__.py
+  - core/audit/frame_check.py
+  - core/audit/glitch_scan.py
+  - core/audit/levels.py
+  - core/audit/onsets.py
+  - core/audit/pitch.py
+  - core/audit/render.py
+  - core/audit/rip_diff.py
+  - core/audit/rips.py
+  - core/audit/signal.py
+  - core/chips/__init__.py
+  - core/chips/cbuild.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/chips/sn76489/__init__.py
+  - core/chips/sn76489/build.py
+  - core/chips/sn76489/wrapper.py
+  - core/chips/ym2612/__init__.py
+  - core/chips/ym2612/build.py
+  - core/chips/ym2612/wrapper.py
+  - core/config/__init__.py
+  - core/config/bpm.py
+  - core/config/entries.py
+  - core/config/loader.py
+  - core/config/settings.py
+  - core/config/song.py
+  - core/convert/__init__.py
+  - core/convert/channel_writer/__init__.py
+  - core/convert/channel_writer/cells.py
+  - core/convert/channel_writer/context.py
+  - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
+  - core/convert/channel_writer/levels.py
+  - core/convert/channel_writer/modulation.py
+  - core/convert/channel_writer/note.py
+  - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
+  - core/convert/channel_writer/router.py
+  - core/convert/channel_writer/writer.py
+  - core/convert/fm_drums.py
+  - core/convert/layout.py
+  - core/convert/level_plan.py
+  - core/convert/prepare.py
+  - core/convert/sample_names.py
+  - core/convert/samples.py
+  - core/convert/smps2mod.py
+  - core/convert/survey.py
+  - core/convert/sustain_plan.py
+  - core/convert/vibrato.py
+  - core/diagnostics.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/registry.py
+  - core/drivers/timetrax/__init__.py
+  - core/drivers/timetrax/commands.py
+  - core/drivers/timetrax/envelope.py
+  - core/drivers/timetrax/glide.py
+  - core/drivers/timetrax/grammar.py
+  - core/drivers/timetrax/header.py
+  - core/drivers/timetrax/locate.py
+  - core/drivers/timetrax/memory.py
+  - core/drivers/timetrax/variant.py
+  - core/drivers/timetrax/voices.py
+  - core/drivers/timetrax/volume.py
+  - core/drivers/timetrax/walk.py
+  - core/files.py
+  - core/merge/__init__.py
+  - core/merge/banks.py
+  - core/merge/build.py
+  - core/merge/mix.py
+  - core/merge/model.py
+  - core/merge/notes.py
+  - core/merge/plan.py
+  - core/merge/pool.py
+  - core/merge/slots.py
+  - core/mod/__init__.py
+  - core/mod/breaks.py
+  - core/mod/cell.py
+  - core/mod/file.py
+  - core/mod/limits.py
+  - core/mod/notes.py
+  - core/mod/reach.py
+  - core/mod/reader.py
+  - core/mod/sample_audit.py
+  - core/mod/timing.py
+  - core/mod/volume.py
+  - core/plan/__init__.py
+  - core/plan/baked.py
+  - core/plan/conversion.py
+  - core/plan/derive.py
+  - core/plan/detune.py
+  - core/plan/driver_state.py
+  - core/plan/glides.py
+  - core/plan/instrument_plan.py
+  - core/plan/instruments.py
+  - core/plan/noise_derive.py
+  - core/plan/slot_fit.py
+  - core/plan/synth_roots.py
+  - core/plan/timeline.py
+  - core/render_cache.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/pcm/__init__.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/slide.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
+  - core/source/__init__.py
+  - core/source/load.py
+  - core/synth/__init__.py
+  - core/synth/fm_render.py
+  - core/synth/fm_samples.py
+  - core/synth/fm_voice.py
+  - core/synth/psg_render.py
+  - core/synth/psg_samples.py
+  - core/ui/__init__.py
+  - core/ui/cli.py
+  - core/ui/pitch_audit.py
+  - core/ui/report.py
+  - core/ui/song_diff.py
+  - core/vgm/__init__.py
+  - core/vgm/bursts.py
+  - core/vgm/cache.py
+  - core/vgm/chipstate.py
+  - core/vgm/clock.py
+  - core/vgm/frames.py
+  - core/vgm/lift/__init__.py
+  - core/vgm/lift/song.py
+  - core/vgm/lift/tempo.py
+  - core/vgm/lift/tracks.py
+  - core/vgm/notes.py
+  - core/vgm/reader.py
+  - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
+  - core/vgm/writes.py
+  - tools/vgm/vgm_pitch_audit.py
+  inputs:
+    configs/time_trax/00_title_screen.yaml: a335a2b90db5
+    reference/vgz/time_trax/01 - Title Screen, Credits.vgz: 67a68ab4c6ca
+    tests/baselines/tt_title_screen_baseline.mod: b84ed85d43ff
+    tests/settings.yaml: 1be2c231bd5e
 read_golden_axe:
   argv:
   - tools/rom/song_dump.py
@@ -23319,7 +24779,7 @@ read_outrun:
   argv:
   - tools/rom/song_dump.py
   - input/roms/OutRun (USA, Europe).md
-  commit: c6d0253-dirty
+  commit: 54302c1-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -23381,11 +24841,13 @@ read_outrun:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - tools/rom/song_dump.py
   inputs:
     input/roms/OutRun (USA, Europe).md: 231f52844398
@@ -23803,7 +25265,7 @@ read_space_harrier_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Space Harrier II (World).md
-  commit: c6d0253-dirty
+  commit: 54302c1-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -23866,11 +25328,13 @@ read_space_harrier_2:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - tools/rom/song_dump.py
   inputs:
     input/roms/Space Harrier II (World).md: 356beab7e21e
@@ -23878,7 +25342,7 @@ read_streets_of_rage:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md
-  commit: c6d0253-dirty
+  commit: 54302c1-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -23939,11 +25403,13 @@ read_streets_of_rage:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - tools/rom/song_dump.py
   inputs:
     input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World) (Rev A).md: 95d7efb98e97
@@ -23951,7 +25417,7 @@ read_streets_of_rage_2:
   argv:
   - tools/rom/song_dump.py
   - input/roms/Streets of Rage 2 (USA).md
-  commit: c6d0253-dirty
+  commit: 54302c1-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -24013,11 +25479,90 @@ read_streets_of_rage_2:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - tools/rom/song_dump.py
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
+read_time_trax:
+  argv:
+  - tools/rom/song_dump.py
+  - input/roms/Time Trax (USA) (Proto).md
+  commit: 40c7228-dirty
+  files:
+  - core/__init__.py
+  - core/audio/__init__.py
+  - core/audio/gain.py
+  - core/audio/loops.py
+  - core/audio/pcm.py
+  - core/audio/pitch.py
+  - core/audio/resample.py
+  - core/chips/__init__.py
+  - core/chips/fm.py
+  - core/chips/psg.py
+  - core/drivers/__init__.py
+  - core/drivers/detect.py
+  - core/drivers/games.py
+  - core/drivers/names.py
+  - core/drivers/read.py
+  - core/drivers/reference.py
+  - core/drivers/registry.py
+  - core/drivers/timetrax/__init__.py
+  - core/drivers/timetrax/commands.py
+  - core/drivers/timetrax/envelope.py
+  - core/drivers/timetrax/glide.py
+  - core/drivers/timetrax/grammar.py
+  - core/drivers/timetrax/header.py
+  - core/drivers/timetrax/locate.py
+  - core/drivers/timetrax/memory.py
+  - core/drivers/timetrax/variant.py
+  - core/drivers/timetrax/voices.py
+  - core/drivers/timetrax/volume.py
+  - core/drivers/timetrax/walk.py
+  - core/rom/__init__.py
+  - core/rom/envelopes.py
+  - core/rom/fixes.py
+  - core/rom/flags.py
+  - core/rom/grammar/__init__.py
+  - core/rom/grammar/smps.py
+  - core/rom/header.py
+  - core/rom/image.py
+  - core/rom/kosinski.py
+  - core/rom/memory.py
+  - core/rom/pattern.py
+  - core/rom/tracks.py
+  - core/rom/variant.py
+  - core/rom/voices.py
+  - core/rom/z80.py
+  - core/smps/__init__.py
+  - core/smps/adsr.py
+  - core/smps/asm_writer.py
+  - core/smps/clock.py
+  - core/smps/code.py
+  - core/smps/compare.py
+  - core/smps/driver_tables.py
+  - core/smps/driver_track.py
+  - core/smps/effects.py
+  - core/smps/lfo.py
+  - core/smps/names.py
+  - core/smps/parser.py
+  - core/smps/percussion.py
+  - core/smps/pitch_envelope.py
+  - core/smps/playback.py
+  - core/smps/rules.py
+  - core/smps/run_out.py
+  - core/smps/slide.py
+  - core/smps/song.py
+  - core/smps/song_prep.py
+  - core/smps/tempo.py
+  - core/smps/track.py
+  - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
+  - tools/rom/song_dump.py
+  inputs:
+    input/roms/Time Trax (USA) (Proto).md: 830410ab309d

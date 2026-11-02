@@ -67,6 +67,14 @@ class CoordFlag(StrEnum):
     ENVELOPE_PRESET = auto()      # its $F0 on the PSG
     ADSR_ENVELOPE = auto()        # its $FA on the PSG
     NOISE_RATE = auto()           # its $F8 on the PSG
+    KEY_OFF_AFTER = auto()        # Time Trax's $98
+    SET_TRANSPOSITION = auto()    # its $89
+    SCALED_VOLUME = auto()        # its $8A
+    VOLUME_MASK = auto()          # its $AA / $AB
+    GLIDE = auto()                # its $92 / $93
+    PORTAMENTO = auto()           # its $94 / $95
+    VOLUME_ENVELOPE = auto()      # its $9F / $A0 / $A1
+    LEVEL_PATH = auto()           # its volume envelopes, as the walk plays them
 
 
 @dataclass(frozen=True)
@@ -220,6 +228,32 @@ class SetPitchEnvelope(PlayedEffect):
 
 
 @dataclass(frozen=True)
+class Glide(PlayedEffect):
+    """The word written moves `step` fnum units every `every` frames toward the note's
+    (core/smps/slide.py); step 0: off."""
+    flag = CoordFlag.GLIDE
+    step: int
+    every: int = 0
+
+
+@dataclass(frozen=True)
+class Portamento(PlayedEffect):
+    """The note's table index moves `step` semitones every `every` frames toward the note read
+    (core/smps/slide.py); step 0: off."""
+    flag = CoordFlag.PORTAMENTO
+    step: int
+    every: int = 0
+
+
+@dataclass(frozen=True)
+class LevelPath(PlayedEffect):
+    """The TLs the driver writes on the next note's frames after its read (a volume envelope):
+    (frame, ((register, TL) ...)) at each change, channel 0's TL registers."""
+    flag = CoordFlag.LEVEL_PATH
+    steps: tuple[tuple[int, tuple[tuple[int, int], ...]], ...]
+
+
+@dataclass(frozen=True)
 class SelectSample(PlayedEffect):
     flag = CoordFlag.DAC_SAMPLE
     sound: int                    # the DAC byte the drum track's notes play
@@ -252,6 +286,43 @@ class Gate(DriverEffect):
     """Each note keyed off this many frames (track updates) before its end; 0: none."""
     flag = CoordFlag.GATE
     frames: int
+
+
+@dataclass(frozen=True)
+class KeyOffAfter(DriverEffect):
+    """Each read keyed off this many frames after it starts, a gate first; 0: none."""
+    flag = CoordFlag.KEY_OFF_AFTER
+    frames: int
+
+
+@dataclass(frozen=True)
+class SetTransposition(PlayedEffect):
+    """The track's transposition set, not added to (Time Trax's $89): a replayed loop sets it again."""
+    flag = CoordFlag.SET_TRANSPOSITION
+    semitones: int                # signed
+
+
+@dataclass(frozen=True)
+class ScaledVolume(DriverEffect):
+    """The track's volume as its driver's law scales the operators by it (TrackRules.volume.law)."""
+    flag = CoordFlag.SCALED_VOLUME
+    level: int                    # 0-255
+
+
+@dataclass(frozen=True)
+class VolumeMask(DriverEffect):
+    """The operators the track's volume scales, until the next voice set."""
+    flag = CoordFlag.VOLUME_MASK
+    operators: int | None         # bit 3: TL $40 ... bit 0: $4C; None: the algorithm's carriers
+
+
+@dataclass(frozen=True)
+class VolumeEnvelope(DriverEffect):
+    """Each note read from here starts envelope `attack` (TrackRules.volume.envelopes), while
+    `each_note`; else none starts and a running one plays out.  A ScaledVolume stops it."""
+    flag = CoordFlag.VOLUME_ENVELOPE
+    attack: int | None            # None: the one set last (none yet: off)
+    each_note: bool = True
 
 
 @dataclass(frozen=True)

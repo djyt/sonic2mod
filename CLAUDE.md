@@ -19,13 +19,14 @@ Each topic has one home; the others link to it.
 | `docs/smps_driver.md` | **Sonic 1 driver and hardware** — coord flags, detune vs transposition, TempoWait, modulation / note fill in frames, voice layout and operator order, DAC sample rates, PSG |
 | `docs/smps_format.md` | Assembly syntax and how the parser reads it |
 | `docs/mucom_drivers.md` | **MUCOM drivers** — Mucom-MD 0.85 (Streets of Rage 2): MUCOM88's song images on the 68k, its track code, how it plays (soft release, ADSR envelopes, noise on any track), DAC, against the rips |
+| `docs/timetrax_driver.md` | **Time Trax** — Tim Follin's Z80 driver (not SMPS): where its tables are, its track code, rests that hold, glides and portamento as row slides, sweeps and volume envelopes baked (`baked_slots`), against the rips |
 | `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM), Streets of Rage (68k, MUCOM-style track code), Space Harrier II (early Z80), OutRun (Z80 on Timer A): what each differs from Sonic 1 by, how it was found, how to add a variant |
 | `docs/fm_synthesis.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, `sustain_duration: auto`, render level and clipping, quantisation, OPN2, the device and core/synth API |
 | `docs/psg_synthesis.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, the device and core/synth API |
 | `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), `configs/sfx.yaml`'s keys, 8-bit Amiga export |
 | `docs/mod_effects.txt` | ProTracker MOD effect reference |
 | `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
-| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80), `revenge_of_shinobi.md` (Streets of Rage's driver, an earlier version: probe and plan, not started); closed, in `done/`: `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `streets_of_rage_2.md` (Mucom-MD; listening open), `outrun.md` (SMPS Z80 on Timer A), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
+| `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80), `revenge_of_shinobi.md` (Streets of Rage's driver, an earlier version: probe and plan, not started); closed, in `done/`: `time_trax.md` (Tim Follin's driver; listening open), `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `streets_of_rage_2.md` (Mucom-MD; listening open), `outrun.md` (SMPS Z80 on Timer A), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
 | `docs/audits/` | Per-song accuracy audits vs VGZ (2026-09): `00_soundtrack_survey.md` overview, `01`–`09` per song |
 | `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
 | `3rdparty/` | Vendored C emulators the chip devices compile (in git): `nuked-opn2/` (cycle-accurate YM2612/YM3438), `sn76489/` (VGMPlay's PSG) |
@@ -93,10 +94,12 @@ rebuilt `build/*.dll` into `prebuilt/` and commit them with it.
 ## Linting
 
 Enforced: the git pre-commit hook (`tools/dev/hooks/pre-commit`) runs `tools/dev/check.py --fast` when a
-`.py` / `.toml` file is staged; `tools/dev/hooks/commit-msg` refuses a `Co-Authored-By` trailer (Claude
-Code adds none: `attribution` in `.claude/settings.json`); a Claude Code hook there runs ruff on each
-Python file Claude edits and hands the findings back.  Every rule in `pyproject.toml` carries a
-plain-English line saying what it flags (an ignored one: and why it is off).
+`.py` / `.toml` file is staged, and `tools/dev/text_encoding.py` on every commit;
+`tools/dev/hooks/commit-msg` refuses a `Co-Authored-By` trailer (Claude Code adds none: `attribution`
+in `.claude/settings.json`); a Claude Code hook there runs ruff on each Python file Claude edits and
+hands the findings back, and `env` sets `PYTHONUTF8=1` (a script's `open()` reads UTF-8, not cp1252).
+Every rule in `pyproject.toml` carries a plain-English line saying what it flags (an ignored one: and
+why it is off).
 
 ```bash
 python tools/dev/check.py          # all of the below + unit tests, side by side; --fast: without the unit tests
@@ -105,6 +108,7 @@ ruff check .   # style + lint
 pyright        # type checking
 python -m vulture   # code nothing uses (settings in pyproject.toml; false positives go in vulture_whitelist.py)
 python -m pytest tests/test_layers.py -q   # import layers (pyproject.toml [tool.importlinter]; or lint-imports)
+python tools/dev/text_encoding.py   # every text file UTF-8, none garbled (UTF-8 read as cp1252 and written back)
 ```
 
 ## Quick Usage
@@ -159,6 +163,9 @@ python tools/rom/song_dump.py "input/roms/Golden Axe (World) (Rev A).md" --only 
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" 40E46
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --table 41B74 --entries 16 --first F0
 python tools/rom/disasm.py "input/roms/Streets of Rage 2 (USA).md" --z80 00EE
+python tools/rom/disasm.py "input/roms/Time Trax (USA) (Proto).md" --z80 --table 0DC8 --entries 44 --first 80   # a Z80 table
+# Every match of a code_pattern listing (core/rom/pattern.py; lines split by `;`): address, captures, first instructions
+python tools/rom/disasm.py "input/roms/Time Trax (USA) (Proto).md" --z80 --find "3A <w> ld a,(table hi); 47; 3A ? ?; 4F"
 # Every flag a ROM's songs hold, counted by its bytes and what it reads as, with the songs and first address
 python tools/rom/flag_census.py "input/roms/Streets of Rage 2 (USA).md" --flag FF FA --kind PSG
 
@@ -199,12 +206,18 @@ python tools/vgm/vgm_analyze.py "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
 # Every register write in order, decoded (TL op1, key on, pan, PSG tone / att), a run of one field a row:
 # what --frames folds away (a volume write rewriting every TL, a key-off before a key-on)
 python tools/vgm/vgm_analyze.py "reference/vgz/streets_of_rage_2/15 - Expander.vgz" --writes --channel FM3 --from 0 --to 3
+# Each driver update (its bursts of writes, core.vgm.driver_updates): first write's sample, how late, its reach past
+# the next V-int, the gap to the one before; a V-int lost flagged (an update running past the next V-int, then a
+# frame with none; "possible": one ending just short of it, then idle - the writes cannot tell)
+python tools/vgm/vgm_analyze.py "reference/vgz/time_trax/03 - Stages 1, 3, 8.vgz" --updates --from 1270 --to 1280
 
 # Is every note right?  Symbolic, no rendering, self-aligning, exit 1 on a wrong/missing note.  Run this FIRST.
 # "inst 8: synth_root is 1 octave too high (243 of 243 notes)" = fix that synth_root; "mixed" = a note problem.
 # vgm_compare.py prints the same verdict ("Pitch verdict"); its per-note vgm_c / mod_c columns are audio
 # cross-checks that still disagree on grace notes (todo item 3).
 python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz" --list
+# --slides: glides too (a pitch a frame, each shorter than --min-ms), each step against the MOD's 1xx / 2xx
+python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml --slides --list
 # Every pair of a game, a line each, in parallel; --convert writes each MOD first (the audit reads the one on
 # disk: a stale MOD is the commonest false result).  A config alone finds its rip (rips.yaml)
 python tools/vgm/vgm_pitch_audit.py --all --configs configs/streets_of_rage_2 --convert
@@ -225,7 +238,9 @@ python tools/vgm/vgm_lift.py --all --configs configs/streets_of_rage   # its rip
 # its frame - what the lift cannot read.  Any driver; tied notes counted apart (vibrato runs on)
 python tools/vgm/vgm_frames.py --all --configs configs/streets_of_rage
 python tools/vgm/vgm_frames.py configs/golden_axe/89_the_battle.yaml           # one song: its misses
-# A rip's own glitches (a V-int lost: every channel a frame late from there on): candidates, with evidence.
+python tools/vgm/vgm_frames.py --all --configs configs/time_trax --aspects pitch pitch-path   # only these judged
+# A rip's own glitches (a V-int lost: every channel a frame late from there on): candidates, with evidence
+# (each moved channel's attacks; the updates after a frame with none: after an overrun = a V-int lost).
 # Confirmed ones go in rips.yaml by hand ({rip:, glitches:, foreign:}); every rip tool then undoes them
 python tools/vgm/vgm_frames.py --all --glitches --configs configs/space_harrier_2
 
@@ -301,8 +316,8 @@ python -m pytest tests/core/merge -q                   # one package's unit test
 
 **The tools and readers have their own suite, `tests/tool_regression.py`**, selected the same way:
 `vgm_analyze` on all 19 VGZs, `vgm_pitch_audit` on every baseline MOD (against its own game's rips), `vgm_lift` (the Moonwalker
-pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's and its sequel's, Space Harrier II's and OutRun's pairs) and `read_<game>` — `tools/rom/song_dump.py`: every song of each game (Sonic's asm and ROM,
-Moonwalker, Golden Axe, Streets of Rage and its sequel, Space Harrier II, OutRun) as read, walked and played, no rendering — byte for byte;
+pairs too), `frames_<game>` / `glitches_<game>` (`vgm_frames`, and its `--glitches` scan, on Golden Axe's, Streets of Rage's and its sequel's, Space Harrier II's, OutRun's and Time Trax's pairs) and `read_<game>` — `tools/rom/song_dump.py`: every song of each game (Sonic's asm and ROM,
+Moonwalker, Golden Axe, Streets of Rage and its sequel, Space Harrier II, OutRun, Time Trax) as read, walked and played, no rendering — byte for byte;
 `--with-renders` adds `vgm_compare`.
 
 ```bash

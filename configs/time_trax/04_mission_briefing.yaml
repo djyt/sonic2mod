@@ -1,0 +1,31 @@
+# Time Trax (prototype) - Mission Briefing.  A minimal config: everything else is derived from the ROM
+# (docs/todo/done/time_trax.md); python convert.py <this> --show-config prints it.
+name: "Mission Briefing"
+input_file: "input/roms/Time Trax (USA) (Proto).md"
+rom_song: "$04"
+region: pal               # the rips run at 50 Hz (docs/todo/done/time_trax.md D2)
+level_patch_min: 3        # a voice copy within 3 TL steps (2.25 dB) of its voice plays as it
+baked_slots: 6            # slots kept for baked drum sweeps and envelopes (core/plan/baked.py): 4 left sweeps unbaked
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "fm_v01_D4.raw", 41, 0]   # VGZ: +1.2 dB at 64
+  - [3, "fm_v65_B4.raw", 24, 0]   # VGZ: +5.0 dB at 59
+  - [4, "fm_v66_B4.raw", 26, 0]   # VGZ: +4.2 dB at 59
+  - [5, "fm_v0b_A3.raw", 12, 0]   # VGZ: +1.3 dB at 19
+  - [9, "fm_v0f_G3.raw", 13, 0]   # VGZ: +10.8 dB at 64
+  - [10, "fm_v10_G1.raw", 42, 0]   # VGZ: -7.2 dB at 25
+  - [11, "fm_v02_Bb4.raw", 48, 0]   # VGZ: -0.2 dB at 64
+  - [12, "fm_v17_D2.raw", 44, 0]   # VGZ: +0.4 dB at 64
+  - [13, "fm_v18_E2.raw", 32, 0]   # VGZ: -1.2 dB at 38
+  - [14, "fm_v03_Fs4.raw", 57, 0]   # VGZ: -1.7 dB at 64
+  - [15, "fm_v45_F4.raw", 49, 0]   # VGZ: -16.5 dB at 10
+  - [17, "fm_v4b_D2.raw", 13, 0]   # VGZ: -0.7 dB at 16
+  - [18, "fm_v4d_Cs2.raw", 44, 0]   # VGZ: -5.6 dB at 32
+  - [19, "fm_v4d_C3.raw", 46, 0]   # VGZ: -5.9 dB at 32
+  - [20, "fm_v4f_B1.raw", 46, 0]   # VGZ: -12.5 dB at 15
+  - [21, "fm_v4f_A2.raw", 46, 0]   # VGZ: -12.4 dB at 15
+  - [22, "fm_v53_Fs2.raw", 21, 0]   # VGZ: +6.8 dB at 64
+  - [23, "fm_v54_Fs2.raw", 21, 0]   # VGZ: +7.1 dB at 64
+  - [24, "fm_v55_Fs2.raw", 23, 0]   # VGZ: +6.0 dB at 64
+  - [25, "fm_v09_Fs2.raw", 27, 0]   # VGZ: +4.6 dB at 64

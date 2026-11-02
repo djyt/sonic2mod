@@ -97,7 +97,8 @@ def _copy(source: int, dest: int, count: int, source_reg: int, dest_reg: int, da
 
 
 class Copied(unittest.TestCase):
-    """A plain byte copy: Moonwalker's and Golden Axe's on a6 / a5, Streets of Rage 2's on a2 / a1."""
+    """A plain byte copy: Moonwalker's and Golden Axe's on a6 / a5, Streets of Rage 2's on a2 / a1,
+    Time Trax's on a3 / a0 with the bus granted after its leas."""
 
     def test_any_registers_either_lea_first(self):
         for regs, dest_first in (((5, 6, 0), True), ((1, 2, 0), False), ((3, 4, 2), False)):
@@ -105,6 +106,16 @@ class Copied(unittest.TestCase):
                 rom = _rom(_copy(_DATA, 0x10, 3, *regs, dest_first=dest_first), bytes([7, 8, 9]))
                 (load,) = z80_loads(rom)
                 self.assertEqual((load.at, load.dest, load.data), (_CODE, 0x10, bytes([7, 8, 9])))
+
+    def test_the_bus_granted_between_the_leas_and_the_count(self):
+        # Time Trax's: lea z80_ram,a0 / lea bus,a1 / lea reset,a2 / lea src,a3 / the grant wait / count
+        copy = _copy(_DATA, 0, 3, 3, 0, 0, dest_first=True)
+        lea = (0x41F9 | 1 << 9).to_bytes(2, "big") + (0xA11100).to_bytes(4, "big")
+        lea += (0x41F9 | 2 << 9).to_bytes(2, "big") + (0xA11200).to_bytes(4, "big")
+        wait = bytes.fromhex("32BC0100 34BC0100 08110000 66FA")
+        code = copy[:6] + lea + copy[6:12] + wait + copy[12:]
+        (load,) = z80_loads(_rom(code, bytes([7, 8, 9])))
+        self.assertEqual((load.at, load.dest, load.data), (_CODE, 0, bytes([7, 8, 9])))
 
     def test_a_copy_from_68k_ram_is_no_load(self):
         with self.assertRaisesRegex(RomError, "no load"):

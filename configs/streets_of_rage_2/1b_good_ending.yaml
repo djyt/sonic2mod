@@ -3,6 +3,7 @@
 name: "Good Ending"
 input_file: "input/roms/Streets of Rage 2 (USA).md"
 rom_song: "$1B"
+window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [12, "fm_v04_G5.raw", 18, 0]   # VGZ: -0.9 dB at 16

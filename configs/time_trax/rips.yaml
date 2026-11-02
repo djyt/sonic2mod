@@ -1,0 +1,103 @@
+# Which rip in reference/vgz/time_trax/ each config converts (VGMRips 1.02, recorded at 50 Hz:
+# docs/todo/done/time_trax.md § 1).  Song 0 plays the title and the credits.
+# Glitches: V-ints the driver loses (Z80 $06F4 takes its count after an update: one falling in a
+# long update is missed).  Found by vgm_analyze.py --updates and vgm_frames.py --glitches; each set
+# checked whole: the rip then loops its song's frames, and the lift's onsets fall (song 3: 2877 -> 282).
+00_title_screen:
+  rip: "01 - Title Screen, Credits.vgz"
+  glitches:
+    - {frame: 233, frames: -1, why: "update at 232 (93 writes) runs into 233, none in it: its V-int lost"}
+    - {frame: 618, frames: -1, why: "update at 617 (44 writes) runs into 618, none in it: its V-int lost"}
+    - {frame: 1003, frames: -1, why: "update at 1002 (71 writes) runs into 1003, none in it: its V-int lost"}
+    - {frame: 1772, frames: -1, why: "update at 1771 (59 writes) runs into 1772, none in it: its V-int lost"}
+    - {frame: 2157, frames: -1, why: "update at 2156 (37 writes) runs into 2157, none in it: its V-int lost"}
+    - {frame: 2542, frames: -1, why: "update at 2541 (111 writes) runs into 2542, none in it: its V-int lost"}
+    - {frame: 3311, frames: -1, why: "update at 3310 (38 writes) runs into 3311, none in it: its V-int lost"}
+    - {frame: 4080, frames: -1, why: "update at 4079 (79 writes) runs into 4080, none in it: its V-int lost"}
+    - {frame: 4849, frames: -1, why: "update at 4848 (93 writes) runs into 4849, none in it: its V-int lost"}
+    - {frame: 5618, frames: -1, why: "update at 5617 (32 writes) ends just short of 5618, none in it (every frame round it writes): its V-int lost"}
+    - {frame: 6387, frames: -1, why: "update at 6386 (80 writes) runs into 6387, none in it: its V-int lost"}
+01_stages_2_5_7:
+  rip: "04 - Stages 2, 5, 7.vgz"
+  glitches:
+    - {frame: 22, frames: -1, why: "update at 21 (94 writes) runs into 22, none in it: its V-int lost"}
+    - {frame: 623, frames: -1, why: "update at 622 (49 writes) runs into 623, none in it: its V-int lost"}
+    - {frame: 744, frames: -1, why: "update at 743 (67 writes) runs into 744, none in it: its V-int lost"}
+    - {frame: 985, frames: -1, why: "update at 984 (61 writes) runs into 985, none in it: its V-int lost"}
+    - {frame: 1106, frames: -1, why: "update at 1105 (44 writes) runs into 1106, none in it: its V-int lost"}
+    - {frame: 1227, frames: -1, why: "update at 1226 (57 writes) runs into 1227, none in it: its V-int lost"}
+    - {frame: 1468, frames: -1, why: "update at 1467 (61 writes) runs into 1468, none in it: its V-int lost"}
+    - {frame: 1589, frames: -1, why: "update at 1588 (48 writes) runs into 1589, none in it: its V-int lost"}
+    - {frame: 1710, frames: -1, why: "update at 1709 (51 writes) runs into 1710, none in it: its V-int lost"}
+    - {frame: 1951, frames: -1, why: "update at 1950 (63 writes) runs into 1951, none in it: its V-int lost"}
+    - {frame: 2192, frames: -1, why: "update at 2191 (59 writes) runs into 2192, none in it: its V-int lost"}
+    - {frame: 2433, frames: -1, why: "update at 2432 (63 writes) runs into 2433, none in it: its V-int lost"}
+    - {frame: 2674, frames: -1, why: "update at 2673 (76 writes) runs into 2674, none in it: its V-int lost"}
+    - {frame: 2915, frames: -1, why: "update at 2914 (53 writes) runs into 2915, none in it: its V-int lost"}
+    - {frame: 3636, frames: -1, why: "update at 3635 (91 writes) runs into 3636, none in it: its V-int lost"}
+    - {frame: 3877, frames: -1, why: "update at 3876 (44 writes) runs into 3877, none in it: its V-int lost"}
+    - {frame: 4118, frames: -1, why: "update at 4117 (44 writes) runs into 4118, none in it: its V-int lost"}
+    - {frame: 4359, frames: -1, why: "update at 4358 (44 writes) runs into 4359, none in it: its V-int lost"}
+    - {frame: 4600, frames: -1, why: "update at 4599 (90 writes) runs into 4600, none in it: its V-int lost"}
+    - {frame: 5081, frames: -1, why: "update at 5080 (87 writes) runs into 5081, none in it: its V-int lost"}
+    - {frame: 5562, frames: -1, why: "update at 5561 (65 writes) runs into 5562, none in it: its V-int lost"}
+    - {frame: 6043, frames: -1, why: "update at 6042 (57 writes) runs into 6043, none in it: its V-int lost"}
+    - {frame: 6524, frames: -1, why: "update at 6523 (39 writes) runs into 6524, none in it: its V-int lost"}
+    - {frame: 7005, frames: -1, why: "update at 7004 (111 writes) runs into 7005, none in it: its V-int lost"}
+    - {frame: 7486, frames: -1, why: "update at 7485 (90 writes) runs into 7486, none in it: its V-int lost"}
+02_stages_4_6:
+  rip: "05 - Stages 4, 6.vgz"
+  glitches:
+    - {frame: 18, frames: -1, why: "update at 17 (136 writes: the song's first, every track keyed) runs into 18, none in it: its V-int lost"}
+    - {frame: 979, frames: -1, why: "update at 978 (53 writes) runs into 979, none in it: its V-int lost"}
+    - {frame: 2260, frames: -1, why: "update at 2259 (51 writes) runs into 2260, none in it: its V-int lost"}
+    - {frame: 3541, frames: -1, why: "update at 3540 (61 writes) runs into 3541, none in it: its V-int lost"}
+    - {frame: 5462, frames: -1, why: "update at 5461 (90 writes) runs into 5462, none in it: its V-int lost"}
+    - {frame: 5623, frames: -1, why: "update at 5622 (38 writes) runs into 5623, none in it: its V-int lost"}
+    - {frame: 5784, frames: -1, why: "update at 5783 (40 writes) runs into 5784, none in it: its V-int lost"}
+    - {frame: 5945, frames: -1, why: "update at 5944 (44 writes) runs into 5945, none in it: its V-int lost"}
+    - {frame: 6106, frames: -1, why: "update at 6105 (45 writes) runs into 6106, none in it: its V-int lost"}
+    - {frame: 6267, frames: -1, why: "update at 6266 (38 writes) runs into 6267, none in it: its V-int lost"}
+    - {frame: 6428, frames: -1, why: "update at 6427 (40 writes) runs into 6428, none in it: its V-int lost"}
+    - {frame: 6589, frames: -1, why: "update at 6588 (44 writes) runs into 6589, none in it: its V-int lost"}
+    - {frame: 6750, frames: -1, why: "update at 6749 (40 writes) runs into 6750, none in it: its V-int lost"}
+03_stages_1_3_8:
+  rip: "03 - Stages 1, 3, 8.vgz"
+  glitches:
+    - {frame: 1275, frames: -1, why: "update at 1274 (59 writes) runs into 1275, none in it: its V-int lost"}
+    - {frame: 1660, frames: -1, why: "update at 1659 (67 writes) runs into 1660, none in it: its V-int lost"}
+    - {frame: 2045, frames: -1, why: "update at 2044 (44 writes) runs into 2045, none in it: its V-int lost"}
+    - {frame: 2814, frames: -1, why: "update at 2813 (56 writes) runs into 2814, none in it: its V-int lost"}
+    - {frame: 3583, frames: -1, why: "update at 3582 (61 writes) runs into 3583, FM5 last: its V-int lost"}
+    - {frame: 3776, frames: -1, why: "update at 3775 (27 writes) runs into 3776, none in it: its V-int lost"}
+    - {frame: 3969, frames: -1, why: "update at 3968 (27 writes) runs into 3969, none in it: its V-int lost"}
+    - {frame: 4354, frames: -1, why: "update at 4353 (48 writes) runs into 4354, none in it: its V-int lost"}
+    - {frame: 4739, frames: -1, why: "update at 4738 (29 writes) runs into 4739, none in it: its V-int lost"}
+    - {frame: 5508, frames: -1, why: "update at 5507 (89 writes) runs into 5508, none in it: its V-int lost"}
+04_mission_briefing:
+  rip: "02 - Mission Briefing.vgz"
+  glitches:
+    - {frame: 21, frames: -1, why: "update at 20 (114 writes) runs into 21, none in it: its V-int lost"}
+    - {frame: 150, frames: -1, why: "update at 149 (27 writes) runs into 150, none in it: its V-int lost"}
+    - {frame: 215, frames: -1, why: "update at 214 (39 writes) runs into 215, none in it: its V-int lost"}
+    - {frame: 280, frames: -1, why: "update at 279 (98 writes) runs into 280, none in it: its V-int lost"}
+    - {frame: 1305, frames: -1, why: "update at 1304 (73 writes) runs into 1305, none in it: its V-int lost"}
+    - {frame: 2330, frames: -1, why: "update at 2329 (48 writes) runs into 2330, none in it: its V-int lost"}
+    - {frame: 3355, frames: -1, why: "update at 3354 (94 writes) runs into 3355, none in it: its V-int lost"}
+    - {frame: 5404, frames: -1, why: "update at 5403 (46 writes) runs into 5404, none in it: its V-int lost"}
+    - {frame: 5917, frames: -1, why: "update at 5916 (60 writes) runs into 5917, none in it: its V-int lost"}
+    - {frame: 6174, frames: -1, why: "update at 6173 (41 writes) runs into 6174, none in it: its V-int lost"}
+    - {frame: 6431, frames: -1, why: "update at 6430 (39 writes) runs into 6431, none in it: its V-int lost"}
+    - {frame: 6688, frames: -1, why: "an idle stretch (6688-6692) after the update at 6687 (39 writes): where in it, the notes cannot tell"}
+    - {frame: 6945, frames: -1, why: "update at 6944 (41 writes) runs into 6945, none in it: its V-int lost"}
+    - {frame: 7970, frames: -1, why: "update at 7969 (30 writes) runs into 7970, none in it: its V-int lost"}
+    - {frame: 8995, frames: -1, why: "update at 8994 (29 writes) runs into 8995, none in it: its V-int lost"}
+    - {frame: 10020, frames: -1, why: "update at 10019 (46 writes) runs into 10020, none in it: its V-int lost"}
+    - {frame: 11045, frames: -1, why: "update at 11044 (70 writes) runs into 11045, none in it: its V-int lost"}
+    - {frame: 11174, frames: -1, why: "update at 11173 (21 writes) runs into 11174, none in it: its V-int lost"}
+    - {frame: 11303, frames: -1, why: "update at 11302 (69 writes: the loop's jump, every track read) runs into 11303, where the rip loops: its V-int lost, as at 280"}
+05_game_over:
+  rip: "06 - Game Over.vgz"
+  glitches:
+    - {frame: 35, frames: -1, why: "update at 34 (141 writes: the song's first, every track keyed) runs into 35, none in it: its V-int lost"}
+    - {frame: 516, frames: -1, why: "update at 515 (74 writes) runs into 516, none in it: its V-int lost"}

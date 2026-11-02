@@ -42,12 +42,11 @@ from ...smps import (
     OpKind,
     Pan,
     SelectSample,
-    SmpsEffect,
     VoiceRegister,
 )
 from ..image import RomError
 from ..memory import SoundMemory
-from . import Instruction, flag_instruction, track_label
+from . import Instruction, as_instruction, flag_instruction, track_label
 
 if TYPE_CHECKING:
     from ..variant import SmpsVariant
@@ -143,11 +142,6 @@ def le_word(memory: SoundMemory, at: int) -> int:
 def signed_le_word(memory: SoundMemory, at: int) -> int:
     word = le_word(memory, at)
     return word - 0x10000 if word & 0x8000 else word
-
-
-def as_instruction(e: SmpsEffect, length: int) -> Instruction:
-    """An instruction of `length` bytes that is the effect `e`."""
-    return Instruction((Op(OpKind.EFFECT, effect=e),), length, True)
 
 
 # --- loops ---------------------------------------------------------------------------------

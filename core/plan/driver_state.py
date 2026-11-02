@@ -220,7 +220,7 @@ class ResolvedNote:
         return self.index != self.raw_index
 
 def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, source: str,
-                 detune: DetunePlan | None = None) -> ResolvedNote:
+                 detune: DetunePlan | None = None, sweep: int = 0) -> ResolvedNote:
     """Which MOD instrument and MOD note a pitched note plays, given the track state.
 
     FM: the current voice's range entry covering the note (channel_instrument_map first,
@@ -230,8 +230,10 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     `low` places a tone, `root` alone places noise, and a rooted tone without `low` falls
     to the transpose path.  Noise mode's instrument is the state's own (the envelope
     variant smpsPSGform / smpsPSGvoice chose).  An FM note at a detune its instrument's sample
-    is not rendered at plays that detune's variant (`detune`, core.plan.detune).
+    is not rendered at plays that detune's variant (`detune`, core.plan.detune); a note with a baked
+    shape (`sweep`: its id, core.plan.baked) plays as under that envelope.
     """
+    envelope = sweep or st.pitch_envelope
     key = st.range_key(source_semitone)
     total = st.transpose + chan_transpose
     chip = chip_pitch(source_semitone, st.transpose, st.is_psg, st.psg)
@@ -253,7 +255,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
             if entry.root is not None:
                 raw, path = entry.root.value + (key - entry.low), "fm_root"
         if detune is not None:
-            inst = detune.instrument_for(inst, st.detune, chip, st.pitch_envelope)
+            inst = detune.instrument_for(inst, st.detune, chip, envelope)
     else:
         ranged = psg_range_entry(st.psg_entries, key)
         if ranged is not None:
@@ -270,7 +272,7 @@ def resolve_note(st: DriverState, source_semitone: int, chan_transpose: int, sou
     if raw is None:
         raw = source_semitone + total + moved
     return ResolvedNote(inst, clamp_note(raw), raw, path, entry,
-                        source_semitone, key, chip, total, note_detune, st.pitch_envelope)
+                        source_semitone, key, chip, total, note_detune, envelope)
 
 
 def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None = None):
@@ -301,13 +303,17 @@ def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None
         if event.is_effect:
             st.apply(event.effect)
         elif event.is_note and not event.note.is_rest and not event.note.is_dac:
-            res = resolve_note(st, event.note.note_value - 0x81, chan_cfg.transpose, chan_cfg.source, conv.detune)
+            sweep = conv.baked.at(chan_cfg.source, event.tick_position) if conv.baked is not None else 0
+            res = resolve_note(st, event.note.note_value - 0x81, chan_cfg.transpose, chan_cfg.source, conv.detune,
+                               sweep)
             if plan is not None:
                 if (chan_cfg.source, event.tick_position) in plan.spliced:
                     res = None          # this note now plays on its primary's channel (a solo note)
                 else:
                     res.instrument = plan.instrument_at(chan_cfg.source, event.tick_position, res.instrument)
                     res.gain_db = plan.gain_at(chan_cfg.source, event.tick_position)
+            if conv.baked is not None and conv.baked.carries(chan_cfg.source, event.tick_position):
+                res = None              # baked into the sounding sample (core.plan.baked): keys nothing
         yield event, st, res
 
 

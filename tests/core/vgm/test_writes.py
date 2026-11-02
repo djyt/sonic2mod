@@ -9,6 +9,7 @@ import unittest
 
 from core.vgm import VgmLog, VgmOp, VgmWrite, decoded_writes
 from core.vgm.reader import VgmHeader
+from core.vgm.writes import tone_register, track_of
 
 _HEADER = VgmHeader(version=0x150, fm_clock=7670453, psg_clock=3579545, rate=60, total_samples=0, loop_samples=0)
 
@@ -50,5 +51,37 @@ class Psg(unittest.TestCase):
                          [("PSG2", "att F"), ("NOISE", "form E4"), ("PSG1", "tone lo 0"), ("PSG3", "att 5")])
 
 
+
+class ToneRegister(unittest.TestCase):
+    def _register(self, op: VgmOp, port: int, reg: int, value: int) -> int | None:
+        return tone_register(VgmWrite(0, op, port, reg, value))
+
+    def test_each_parts_frequency_registers_apart(self):
+        registers = {self._register(*_fm(port, reg, 0)) for port in (0, 1) for reg in (0xA0, 0xA4, 0xAC)}
+        self.assertEqual(len(registers - {None}), 6)
+
+    def test_none_for_any_other_fm_register(self):
+        self.assertEqual({self._register(*_fm(0, reg, 0)) for reg in (0x28, 0xB0, 0x40)}, {None})
+
+    def test_a_psg_tone_latch_only(self):
+        tones = [self._register(*_psg(b)) for b in (0x86, 0xA6, 0xC6)]
+        self.assertEqual(len(set(tones) - {None}), 3)
+        self.assertEqual({self._register(*_psg(b)) for b in (0x34, 0xBF, 0xE4)}, {None})   # data, att, noise
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
+class Tracks(unittest.TestCase):
+    def test_each_write_by_its_channel_in_track_order(self):
+        writes = {(VgmOp.FM, 0, 0xA1, 0): 1,          # FM2's frequency
+                  (VgmOp.FM, 1, 0x46, 0): 5,          # TL op3 on part II's third channel: FM6
+                  (VgmOp.FM, 0, 0x28, 0xF5): 4,       # FM5 keyed on
+                  (VgmOp.FM, 0, 0xAC, 0): 2,          # FM3's special-mode frequency
+                  (VgmOp.PSG, 0, 0, 0xC0): 8,         # PSG3's tone latch
+                  (VgmOp.PSG, 0, 0, 0x3F): None,      # a data byte: its latch's
+                  (VgmOp.FM, 0, 0x22, 0): None,       # the LFO: the chip's own
+                  (VgmOp.FM, 0, 0x2A, 0x80): None,    # a DAC byte
+                  (VgmOp.FM, 0, 0x33, 0): None}       # no channel 4 in a part
+        self.assertEqual({k: track_of(VgmWrite(0, *k)) for k in writes}, writes)

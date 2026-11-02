@@ -70,9 +70,14 @@ ga_conclusion:
   date: '2026-11-01'
   settings: f08dfd2ff1bd
 ga_the_battle:
-  commit: c6d0253-dirty
-  config: 2df83b05093e
-  date: '2026-11-01'
+  commit: 56511c6
+  config: 1678ee3de076
+  date: '2026-11-02'
+  settings: f08dfd2ff1bd
+ga_the_battle_hq:
+  commit: 56511c6
+  config: ba2ae7326242
+  date: '2026-11-02'
   settings: f08dfd2ff1bd
 ga_theme_of_thief:
   commit: c6d0253-dirty

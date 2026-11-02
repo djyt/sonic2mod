@@ -7,9 +7,9 @@ rom_song: "$81"
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [1, "drum81.raw", 13, 0]   # VGZ: -1.2 dB at 11
   - [2, "drum85.raw", 35, 0]   # VGZ: +5.1 dB at 64
-  - [3, "drum89.raw", 45, 0]   # VGZ: +3.0 dB at 64
-  - [4, "drum8D.raw", 47, 0]   # VGZ: +2.7 dB at 64
-  - [5, "drum9D.raw", 47, 0]   # VGZ: +2.7 dB at 64
+  - [3, "drum89.raw", 61, 0] # VGZ: -2.6 dB at 45
+  - [4, "drum8D.raw", 62, 0] # VGZ: -2.4 dB at 47
+  - [5, "drum9D.raw", 60, 0] # VGZ: -2.2 dB at 47
   - [8, "fm_v0c_Eb2.raw", 18, 0]   # VGZ: -5.1 dB at 10
   - [9, "fm_v0c_Cs3.raw", 19, 0]   # VGZ: -5.5 dB at 10
   - [14, "fm_v32_Fs3.raw", 29, 0]   # VGZ: -8.6 dB at 11

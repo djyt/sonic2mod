@@ -6,6 +6,7 @@ rom_song: "$85"
 dac_stall: 0.4       # the update's share of the DAC's time, from the rip (vgm_analyze.py --dac-stall)
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [18, "fm_v08_Eb4.raw", 8, 0]   # VGZ: +0.6 dB at 9
   - [1, "dac81.raw", 37, -2]   # VGZ: +4.7 dB at 64
   - [2, "dac82.raw", 49, 0]   # VGZ: +2.4 dB at 64
   - [3, "fm_v00_A0.raw", 23, 0]   # VGZ: -1.7 dB at 19
@@ -17,7 +18,7 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [9, "fm_v03_A4.raw", 21, 0]   # VGZ: +2.4 dB at 27
   - [10, "fm_v03_G5.raw", 21, 0]   # VGZ: +2.2 dB at 27
   - [13, "fm_v05_G3.raw", 10, 0]   # VGZ: +1.7 dB at 12
-  - [14, "fm_v05_F4.raw", 10, 0]   # VGZ: +1.6 dB at 12
+  - [14, "fm_v05_F4.raw",  8, 0] # VGZ: +2.5 dB at 10
   - [15, "fm_v07_A3.raw", 9, 0]   # VGZ: -2.4 dB at 7
   - [16, "fm_v07_G4.raw", 10, 0]   # VGZ: -2.9 dB at 7
   - [19, "fm_v09_Ab4.raw", 33, 0]   # VGZ: -1.7 dB at 27

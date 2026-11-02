@@ -33,7 +33,7 @@ channels:
 
 sample_list:
   # --- percussion ---
-  - [1, "snare.raw", 51, 1] # VGZ: +2.0 dB at 64
+  - [1, "snare.raw", 45, 1] # VGZ: +1.1 dB at 51
   - [2, "kick.raw", 53, -2] # VGZ: +1.7 dB at 64
   - [3, "timpani.raw", 47, -2] # VGZ: +2.7 dB at 64
   # --- voice $00: Alg 0, FB 1 — FM2, FM3 ---
@@ -52,7 +52,7 @@ sample_list:
   # --- voice $06: Alg 5, FB 7 — FM5 ---
   - [12, "fm_v06.raw", 10, 0] # VGZ: +3.2 dB at 14
   # --- PSG noise (form $E7, envelope fTone_04 from the song) ---
-  - [17, "psg_noise.raw",  3, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: -2.0 dB at 2
+  - [17, "psg_noise.raw",  2, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: +1.9 dB at 3
   # --- PSG tone $00 ---
   - [13, "psg_$00.raw",  8, 0] # baked: 32 at PSG attenuation 2 (−4 dB); VGZ: -0.7 dB at 7
   # --- PSG tone fTone_06 ---
@@ -60,7 +60,7 @@ sample_list:
   # --- PSG tone fTone_05 ---
   - [15, "psg_fTone_05.raw",  6, 0] # baked: 32 at PSG attenuation 3 (−6 dB); VGZ: -1.4 dB at 5
   # --- PSG noise, fTone_08 envelope variant (psg_map 0xE7 envelopes) ---
-  - [18, "psg_noise.raw",  1, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: +3.5 dB at 2
+  - [18, "psg_noise.raw",  2, 0] # baked: 32 at PSG attenuation 5 (−10 dB); VGZ: -3.8 dB at 1
   
   # Voice 2 on FM5 (no smpsAlterNote there)
   - [19, "fm_v02.raw",  4, 0] # VGZ: +3.3 dB at 6

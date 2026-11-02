@@ -1181,6 +1181,11 @@ inst sample            vol notes    err spread suggest   per channel (Cxx: err x
   disagreement; above 3 dB nothing is suggested — look at pan, fills, a wrong instrument, alignment.
 - Errors are relative to the song's median note.  The DAC (fixed samples at 64) becomes the anchor only
   when it sits 2 dB or more below that median.
+- A note's window ends 20 ms before the next key-on: the MOD's rows are even, the chip's ticks not, and
+  a few ms of a loud hit read into a quiet one before it (Golden Axe's Battle Field drum86: +10 dB).
+- The MOD renders are moved onto the rows' clock (`core.audit.ModRenderClock`): libopenmpt plays a tick
+  as a whole number of samples, truncated (816 for 816.67 at 135 BPM), so a render runs up to 0.1 %
+  fast - 81 ms by 99 s, past a short drum hit.
 
 `--write-volumes` writes the suggestions of 1 dB or more into the config, with `# VGZ: +4.6 dB at 16`
 on the line; re-convert and re-run to verify.  `tools/vgm/measure_volumes.py` does it for every song

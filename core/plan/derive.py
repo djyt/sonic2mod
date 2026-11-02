@@ -56,6 +56,7 @@ from ..config import (
     find_settings,
     load_settings,
     variant_output_file,
+    with_song_overrides,
 )
 from ..files import write_shared
 from ..mod import FINETUNE_STEPS, LOW_RATE_HZ, PERIOD_TABLE, ROWS_PER_PATTERN, ModNote, note_rate, period_rate
@@ -186,6 +187,7 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
     if not config.is_minimal:
         return config, None
     song = song or config.read_song()
+    settings = with_song_overrides(settings, config)       # the song's max_window
     derivation = derive_config(config.stated(), song, config_path, settings, config.read_dac())
     if config.variant is not None and "output_file" in derivation.derived:
         derivation.data["output_file"] = variant_output_file(derivation.data["output_file"], config.variant)

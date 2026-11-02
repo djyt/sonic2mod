@@ -456,12 +456,14 @@ class SynthesisSettings(SampleSettings):
 
 def with_song_overrides(settings, config: "ConversionConfig"):
     """`settings` (Synthesis- or PsgSynthesisSettings) with the song's own overrides applied:
-    loop_drift_db, treble_shelf_db."""
+    loop_drift_db, treble_shelf_db, max_window."""
     import dataclasses
     if config.loop_drift_db is not None:
         settings = dataclasses.replace(settings, loop_drift_db=config.loop_drift_db)
     if config.treble_shelf_db is not None:
         settings = dataclasses.replace(settings, treble_shelf_db=config.treble_shelf_db)
+    if config.max_window is not None:
+        settings = dataclasses.replace(settings, max_window=config.max_window)
     return settings
 
 

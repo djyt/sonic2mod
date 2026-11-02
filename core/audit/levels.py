@@ -26,6 +26,9 @@ def mod_note_events(mod: ModImage, speed: int) -> tuple[dict[int, list[tuple]], 
 
 
 _LEVEL_SPAN = 0.6            # seconds of a note that count towards its level
+_LEVEL_GUARD = 0.02          # seconds a note's window stops short of the next key-on: the MOD's rows are
+                             # even, the chip's ticks not, so the next hit lands a few ms either side (a
+                             # quiet drum read 10 dB loud from 5 ms of the loud one after it)
 _LEVEL_MIN_NOTES = 4         # fewer plain notes than this and no volume is suggested
 _LEVEL_SCALE_MIN_NOTES = 12  # fewer notes than this and the instrument cannot drive the common scale-down
 LEVEL_MAX_SPREAD = 3.0      # dB between channels sharing an instrument before it is "not a volume problem"
@@ -55,9 +58,10 @@ def instrument_levels(note_times: dict[str, list[float]], mod_chan: dict[str, in
         for i, t in enumerate(times):
             if t > mod_end - 0.3:
                 break
-            dur = min((times[i + 1] - t) if i + 1 < len(times) else _LEVEL_SPAN, 0.15 if ch == "DAC" else _LEVEL_SPAN)
-            if dur < (0.04 if short else 0.09):
+            gap = (times[i + 1] - t) if i + 1 < len(times) else _LEVEL_SPAN
+            if gap < (0.04 if short else 0.09):
                 continue
+            dur = min(gap - _LEVEL_GUARD if i + 1 < len(times) else gap, 0.15 if ch == "DAC" else _LEVEL_SPAN)
             lv = db(rms(seg_at(vgm_st[ch], t, dur)))
             lm = db(rms(seg_at(mod_st[ch], t + offset, dur)))
             if lv < -55 or lm < -75:

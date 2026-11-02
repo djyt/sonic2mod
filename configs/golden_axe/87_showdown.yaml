@@ -21,3 +21,38 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [16, "fm_v03_A1.raw", 34, 0]   # VGZ: -4.3 dB at 64
   - [17, "fm_v03_G2.raw", 34, 0]   # VGZ: -4.4 dB at 64
   - [18, "fm_v03_F3.raw", 33, 0]   # VGZ: -4.1 dB at 64
+
+variants:
+  hq:                    # no window wider than 3 semitones: the narrowest that fits 31 slots unmerged
+    name: "Showdown HQ"
+    max_window: 3
+    sample_list:              # the hq windows' own, measured on the hq build
+      - [1, "drum81.raw", 64, 0]   # VGZ: +4.0 dB at 64
+      - [2, "drum82.raw", 22, 0]   # VGZ: -0.1 dB at 22
+      - [3, "drum84.raw", 21, 0]   # VGZ: -0.0 dB at 21
+      - [4, "drum86.raw", 18, 0]   # VGZ: -0.7 dB at 18
+      - [5, "drum8C.raw", 15, 0]   # VGZ: +0.2 dB at 15
+      - [6, "drum8D.raw", 64, 0]   # VGZ: -2.2 dB at 64
+      - [7, "drum8E.raw", 46, 0]   # VGZ: -0.2 dB at 46
+      - [8, "fm_v00_E3.raw", 21, 0]   # VGZ: +0.2 dB at 21
+      - [9, "fm_v00_Ab3.raw", 21, 0]   # VGZ: +0.2 dB at 21
+      - [10, "fm_v00_C4.raw", 21, 0]   # VGZ: +0.1 dB at 21
+      - [11, "fm_v00_E4.raw", 21, 0]   # VGZ: +0.0 dB at 21
+      - [12, "fm_v00_Ab4.raw", 21, 0]   # VGZ: +0.1 dB at 21
+      - [13, "fm_v00_C5.raw", 21, 0]   # VGZ: -0.1 dB at 21
+      - [14, "fm_v00_E5.raw", 21, 0]   # VGZ: -0.2 dB at 21
+      - [15, "fm_v00_A5.raw", 21, 0]   # VGZ: -0.2 dB at 21
+      - [16, "fm_v00_D6.raw", 21, 0]   # VGZ: -0.2 dB at 21
+      - [17, "fm_v01_E3.raw", 22, 0]   # VGZ: +0.4 dB at 22
+      - [18, "fm_v01_A3.raw", 22, 0]   # VGZ: -0.3 dB at 22
+      - [19, "fm_v01_D4.raw", 23, 0]   # VGZ: -0.1 dB at 23
+      - [20, "fm_v01_G4.raw", 23, 0]   # VGZ: -0.1 dB at 23
+      - [21, "fm_v01_B4.raw", 23, 0]   # VGZ: -0.5 dB at 23
+      - [22, "fm_v01_E5.raw", 23, 0]   # VGZ: -0.4 dB at 23
+      - [23, "fm_v02_Ab4.raw", 17, 0]   # VGZ: -0.4 dB at 17
+      - [24, "fm_v02_C5.raw", 17, 0]   # VGZ: -0.2 dB at 17
+      - [25, "fm_v03_A1.raw", 34, 0]   # VGZ: +0.1 dB at 34
+      - [26, "fm_v03_F2.raw", 34, 0]   # VGZ: -0.1 dB at 34
+      - [27, "fm_v03_A2.raw", 33, 0]   # VGZ: -0.3 dB at 33
+      - [28, "fm_v03_F3.raw", 33, 0]   # VGZ: -0.0 dB at 33
+      - [29, "fm_v03_A3.raw", 33, 0]   # VGZ: +0.0 dB at 33

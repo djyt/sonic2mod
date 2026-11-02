@@ -206,6 +206,17 @@ class Moonwalker(unittest.TestCase):
             self.assertEqual((Path(tmp) / "samples" / "dac81.raw").read_bytes(),
                              next(s.pcm for s in self.dac if s.name == "dac81"))
 
+    def test_the_songs_max_window_replaces_the_settings(self):
+        def voice_map(stated: dict, max_window: int):
+            with tempfile.TemporaryDirectory() as tmp:
+                config = ConversionConfig.from_data({**stated, "output_file": f"{tmp}/sc.mod"}, str(_CONFIG))
+                complete, _ = complete_config(config, _CONFIG, replace(_SETTINGS, max_window=max_window), self.song)
+            return complete.voice_map
+
+        narrow = voice_map(_STATED, 4)
+        self.assertEqual(voice_map({**_STATED, "max_window": 4}, 9), narrow)
+        self.assertNotEqual(voice_map(_STATED, 9), narrow)
+
     def test_a_variant_writes_beside_the_derived_output(self):
         # configs/<sub>/<stem>.yaml read as `lofi` -> output/<sub>/<stem>_lofi.mod, not output_lofi.mod
         with tempfile.TemporaryDirectory() as tmp:

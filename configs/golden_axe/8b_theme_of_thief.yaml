@@ -10,3 +10,34 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [8, "fm_v00_G5.raw", 38, 0]   # VGZ: +0.6 dB at 64
   - [10, "fm_v01_G3.raw", 42, 0]   # VGZ: -0.2 dB at 64
   - [11, "fm_v01_G4.raw", 45, 0]   # VGZ: -0.7 dB at 64
+
+variants:
+  hq:                    # no window wider than 2 semitones: the narrowest that fits 31 slots unmerged
+    name: "Theme of Thief HQ"
+    max_window: 2
+    sample_list:              # the hq windows' own, measured on the hq build
+      - [1, "drum81.raw", 64, 0]   # VGZ: -4.6 dB at 64
+      - [2, "drum82.raw", 64, 0]   # VGZ: +0.4 dB at 64
+      - [3, "drum83.raw", 64, 0]   # VGZ: +0.4 dB at 64
+      - [4, "drum87.raw", 64, 0]   # VGZ: +0.5 dB at 64
+      - [5, "drum8C.raw", 41, 0]   # VGZ: +0.0 dB at 41
+      - [6, "fm_v00_Ab3.raw", 39, 0]   # VGZ: -0.1 dB at 39
+      - [7, "fm_v00_C4.raw", 39, 0]
+      - [8, "fm_v00_Eb4.raw", 39, 0]
+      - [9, "fm_v00_G4.raw", 39, 0]   # VGZ: +0.0 dB at 39
+      - [10, "fm_v00_Bb4.raw", 39, 0]   # VGZ: +0.1 dB at 39
+      - [11, "fm_v00_Cs5.raw", 39, 0]   # VGZ: -0.1 dB at 39
+      - [12, "fm_v00_G5.raw", 38, 0]   # VGZ: -0.0 dB at 38
+      - [13, "fm_v00_Bb5.raw", 38, 0]   # VGZ: +0.0 dB at 38
+      - [14, "fm_v00_Cs6.raw", 38, 0]   # VGZ: +0.1 dB at 38
+      - [15, "fm_v00_Ab6.raw", 38, 0]   # VGZ: -0.5 dB at 38
+      - [16, "fm_v00_C7.raw", 38, 0]
+      - [17, "fm_v00_Eb7.raw", 38, 0]
+      - [18, "fm_v01_G3.raw", 42, 0]   # VGZ: +0.1 dB at 42
+      - [19, "fm_v01_B3.raw", 51, 0]   # VGZ: -1.7 dB at 42
+      - [20, "fm_v01_D4.raw", 45, 0]   # VGZ: +0.0 dB at 45
+      - [21, "fm_v01_G4.raw", 45, 0]   # VGZ: -0.2 dB at 45
+      - [22, "fm_v01_B4.raw", 45, 0]   # VGZ: +0.3 dB at 45
+      - [23, "fm_v01_D5.raw", 45, 0]   # VGZ: -0.4 dB at 45
+      - [24, "fm_v02_A2.raw", 64, 0]   # VGZ: -1.6 dB at 64
+      - [25, "fm_v02_F3.raw", 64, 0]   # VGZ: -1.6 dB at 64

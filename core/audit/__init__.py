@@ -49,6 +49,7 @@ from .rips import (
 )
 from .signal import (
     VIB_MIN_NOTE,
+    ModRenderClock,
     band_profile,
     db,
     envelope_offset,
@@ -84,6 +85,7 @@ __all__ = [
     "GlitchCandidate",
     "GlitchScan",
     "LiftTempo",
+    "ModRenderClock",
     "OnsetMatch",
     "PairStep",
     "RipDiff",

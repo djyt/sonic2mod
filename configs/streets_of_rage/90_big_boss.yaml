@@ -5,6 +5,9 @@ input_file: "input/roms/Bare Knuckle - Ikari no Tekken ~ Streets of Rage (World)
 rom_song: "$90"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [17, "fm_v11_C3.raw", 11, 0]   # VGZ: -2.4 dB at 8
+  - [20, "fm_v03_C3.raw", 13, 0]   # VGZ: +3.8 dB at 20
+  - [29, "psg_$00_D5.raw", 3, 0]   # VGZ: +3.5 dB at 4
   - [4, "fm_v01_D2.raw", 43, 0]   # VGZ: -5.4 dB at 23
   - [5, "fm_v01_C3.raw", 44, 0]   # VGZ: -5.7 dB at 23
   - [13, "fm_v0d_G4.raw", 16, 0]   # VGZ: +0.9 dB at 18
@@ -14,7 +17,7 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [22, "fm_v03_C5.raw", 14, 0]   # VGZ: -2.1 dB at 11
   - [25, "fm_v09_C6.raw", 8, 0]   # VGZ: -0.8 dB at 7
   - [26, "fm_v09_Bb6.raw", 4, 0]   # VGZ: -3.0 dB at 3
-  - [27, "psg_$00_D3.raw", 6, 0]   # VGZ: -0.9 dB at 5
-  - [28, "psg_$00_E4.raw", 6, 0]   # VGZ: -0.9 dB at 5
+  - [27, "psg_$00_D3.raw", 5, 0] # VGZ: +0.9 dB at 6
+  - [28, "psg_$00_E4.raw", 5, 0] # VGZ: +0.8 dB at 6
   - [30, "psg_noise_e7.raw", 2, 0]   # VGZ: +7.6 dB at 5
   - [31, "psg_noise_e7_$00.raw", 2, 0]   # VGZ: +9.0 dB at 5

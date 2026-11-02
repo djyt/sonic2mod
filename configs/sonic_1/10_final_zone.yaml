@@ -27,8 +27,8 @@ channels:
 
 sample_list:
   # --- percussion ---
-  - [1, "snare.raw", 64, 4]
-  - [2, "timpani.raw", 64, -2]
+  - [1, "snare.raw", 56, 4] # VGZ: +1.1 dB at 64
+  - [2, "timpani.raw", 57, -2] # VGZ: +1.0 dB at 64
   # --- voice $00: alg 5: 1→(2+3+4), fb 7 — FM1, FM5 ---
   - [3, "fm_v00.raw", 20, 0] # VGZ: -2.1 dB at 16
   # --- voice $01: alg 0: 1→2→3→4, fb 4 — FM2 ---

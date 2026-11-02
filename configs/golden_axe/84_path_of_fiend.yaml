@@ -5,8 +5,8 @@ input_file: "input/roms/Golden Axe (World) (Rev A).md"
 rom_song: "$84"
 
 sample_list:   # volumes set from the VGZ; the rest is derived
-  - [1, "drum82.raw", 51, 0]   # VGZ: +0.1 dB at 64
-  - [2, "drum87.raw", 55, 0]   # VGZ: -0.5 dB at 64
+  - [1, "drum82.raw", 63, 0] # VGZ: -1.8 dB at 51
+  - [2, "drum87.raw", 64, 0] # VGZ: -1.7 dB at 55
   - [4, "drum8C.raw", 34, 0]   # VGZ: +3.5 dB at 64
   - [5, "fm_v00_D3.raw", 36, 0]   # VGZ: +3.2 dB at 64
   - [6, "fm_v00_C4.raw", 37, 0]   # VGZ: +2.8 dB at 64
@@ -15,3 +15,37 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [13, "fm_v02_D4.raw", 51, 0]   # VGZ: +0.1 dB at 64
   - [14, "fm_v02_C5.raw", 52, 0]   # VGZ: -0.1 dB at 64
   - [15, "fm_v02_Bb5.raw", 53, 0]   # VGZ: -0.2 dB at 64
+
+variants:
+  hq:                    # no window wider than 3 semitones: the narrowest that fits 31 slots unmerged
+    name: "Path of Fiend HQ"
+    max_window: 3
+    sample_list:              # the hq windows' own, measured on the hq build
+      - [1, "drum82.raw", 63, 0]   # VGZ: +0.9 dB at 63
+      - [2, "drum87.raw", 64, 0]   # VGZ: +0.4 dB at 64
+      - [3, "drum88.raw", 64, 0]   # VGZ: -0.0 dB at 64
+      - [4, "drum8C.raw", 34, 0]   # VGZ: +0.2 dB at 34
+      - [5, "fm_v00_D3.raw", 32, 0]   # VGZ: +1.1 dB at 36
+      - [6, "fm_v00_G3.raw", 32, 0]   # VGZ: +0.9 dB at 36
+      - [7, "fm_v00_B3.raw", 36, 0]   # VGZ: +0.6 dB at 36
+      - [8, "fm_v00_Eb4.raw", 36, 0]   # VGZ: +0.4 dB at 36
+      - [9, "fm_v00_G4.raw", 36, 0]   # VGZ: +0.4 dB at 36
+      - [10, "fm_v00_B4.raw", 36, 0]   # VGZ: +0.4 dB at 36
+      - [11, "fm_v00_Eb5.raw", 36, 0]   # VGZ: +0.5 dB at 36
+      - [12, "fm_v00_G5.raw", 36, 0]   # VGZ: +0.5 dB at 36
+      - [13, "fm_v00_B5.raw", 36, 0]   # VGZ: +0.8 dB at 36
+      - [14, "fm_v01_Ab1.raw", 64, 0]   # VGZ: -1.1 dB at 64
+      - [15, "fm_v01_C2.raw", 64, 0]   # VGZ: -1.2 dB at 64
+      - [16, "fm_v01_E2.raw", 64, 0]   # VGZ: -0.9 dB at 64
+      - [17, "fm_v01_Ab2.raw", 64, 0]   # VGZ: -1.1 dB at 64
+      - [18, "fm_v01_C3.raw", 64, 0]   # VGZ: -0.6 dB at 64
+      - [19, "fm_v01_F3.raw", 64, 0]   # VGZ: -0.8 dB at 64
+      - [20, "fm_v02_Eb3.raw", 38, 0]   # VGZ: +1.3 dB at 44
+      - [21, "fm_v02_G3.raw", 38, 0]   # VGZ: +1.2 dB at 44
+      - [22, "fm_v02_B3.raw", 44, 0]   # VGZ: +0.6 dB at 44
+      - [23, "fm_v02_Eb4.raw", 44, 0]   # VGZ: +0.5 dB at 44
+      - [24, "fm_v02_G4.raw", 44, 0]   # VGZ: +0.1 dB at 44
+      - [25, "fm_v02_B4.raw", 44, 0]   # VGZ: -0.2 dB at 44
+      - [26, "fm_v02_Eb5.raw", 44, 0]   # VGZ: -0.4 dB at 44
+      - [27, "fm_v02_G5.raw", 44, 0]   # VGZ: -0.7 dB at 44
+      - [28, "fm_v02_B5.raw", 44, 0]   # VGZ: -1.0 dB at 44

@@ -27,10 +27,10 @@ from core.rom.header import is_music_header, read_index
 from core.rom.image import RomError, RomImage
 from core.rom.pattern import code_pattern
 from core.rom.variant import SoundIndex
-from core.rom.z80 import Z80_RAM_BASE, Z80_RAM_SIZE, z80_word
+from core.rom.z80 import Z80_RAM_BASE, Z80_RAM_SIZE, one_match, one_operand, z80_word
 
 from ..memory import BankedZ80Memory
-from ..program import driver_ram, one_match, one_operand
+from ..program import driver_ram
 from .layout import HEADER_OUTRUN
 
 _DRIVER = "OutRun"

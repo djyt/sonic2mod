@@ -1,7 +1,8 @@
 """Track grammars: the bytes at one address -> one instruction.  tracks.py follows the code with
 any of them; a grammar (SmpsVariant.grammar) says what each instruction is.
 
-    __init__.py   what every grammar yields: Instruction, track_label; flag_instruction, a flag
+    __init__.py   what every grammar yields: Instruction (as_instruction: an effect's), track_label;
+                  flag_instruction, a flag
                   read by its kind of track's flag table (flags.py)
     smps.py       SMPS's: $00-$7F durations, $80 rest, $81-$DF notes, $E0-$FF flags
     mucom.py      MUCOM's: `d n` notes, $80|d rests, $00 the end, $F0-$FF flags, a dialect per driver
@@ -12,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ...smps import ChannelType, Op, OpKind, effect_from_bytes
+from ...smps import ChannelType, Op, OpKind, SmpsEffect, effect_from_bytes
 from ..flags import FlagKind, FlagSpec
 from ..image import RomError
 from ..memory import SoundMemory
@@ -40,6 +41,11 @@ class Instruction:
     falls_through: bool
     target: int | None = None       # a jump / loop / call's
     dropped: str = ""               # a DROP flag's name
+
+
+def as_instruction(e: SmpsEffect, length: int) -> Instruction:
+    """An instruction of `length` bytes that is the effect `e`."""
+    return Instruction((Op(OpKind.EFFECT, effect=e),), length, True)
 
 
 def flag_instruction(memory: SoundMemory, address: int, variant: SmpsVariant, kind: ChannelType) -> Instruction:

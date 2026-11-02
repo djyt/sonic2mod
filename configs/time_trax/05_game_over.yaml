@@ -1,0 +1,6 @@
+# Time Trax (prototype) - Game Over.  A minimal config: everything else is derived from the ROM
+# (docs/todo/time_trax.md); python convert.py <this> --show-config prints it.
+name: "Game Over"
+input_file: "input/roms/Time Trax (USA) (Proto).md"
+rom_song: "$05"
+region: pal               # the rips run at 50 Hz (docs/todo/time_trax.md D2)

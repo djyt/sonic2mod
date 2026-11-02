@@ -1,7 +1,7 @@
 # Time Trax (prototype): Tim Follin's Z80 driver
 
-Probed 2026-11-01.  Goal: `convert.py` reads Time Trax's six songs from the ROM.  Nothing implemented;
-this is the probe and the plan.
+Probed 2026-11-01.  Goal: `convert.py` reads Time Trax's six songs from the ROM.  Read since
+2026-11-02 (Phase 1; 1.4's rip glitches open); this is the probe and the plan.
 
 **Verdict.**  Not SMPS: Tim Follin's own Z80 driver, a new family.  *Reading* it is small: a 100-line
 scratch walker decodes all six songs, and their key-ons land on the rips' frames with the rips'
@@ -231,9 +231,13 @@ reached.  A glide is the same with another curve: D4 uses it.
 
 ### Phase 0
 - [x] 0.1 Decisions § 7 (2026-11-01).
-- [ ] 0.2 Unzip the rips; branch `time_trax` in a worktree (other sessions share this
-  checkout).
-- [ ] 0.3 Check the rip tools on 50 Hz rips (`vgm_frames` / `vgm_lift` frame detection; `region: pal`).
+- [x] 0.2 Rips unzipped; branch `time_trax` (checked out in the main checkout, no other session).
+- [x] 0.3 The rip tools on 50 Hz rips: 882-sample frames, the bursts' phase jitter (-26 to +150
+  samples) inside the cut's window.  Each rip loops 9-24 frames longer than its song (6144 -> 6153,
+  7440 -> 7464, 7040 -> 7052, 5376 -> 5386, 11008 -> 11023); `vgm_frames --glitches` finds a
+  frame lost on every channel at once, in song 3 every ~240 frames.  Likely V-ints the driver
+  drops: its main loop takes the V-int count after each update ($06F4: `ld a,(hl)` / `cp (hl)`),
+  so one during a long update is never seen.  To confirm and record in `rips.yaml` (1.4).
 - [x] 0.4 Tools (branch `time_trax`):
   - T1 `core/rom/z80.py`: the copied load with a bus grant wait between its leas and the count
     (`disasm.py --z80` reads it).
@@ -245,16 +249,27 @@ reached.  A glide is the same with another curve: D4 uses it.
   - T4 `vgm_pitch_audit --slides [CENTS]`: a run of chip segments shorter than `--min-ms`, each
     against the MOD's `1xx` / `2xx` at its midpoint (default 50 cents).
   - T5 `disasm.py --z80 --table`: little-endian Z80 addresses.
-  - Check, likely fine: `vgm_lift` on a song with no tempo holds (durations are frames);
-    `flag_census` on flags `$80`-`$AB`.
+  - Checked: `vgm_lift` on a song with no tempo holds (durations are frames); `flag_census` on
+    `$80`-`$AB`.
 
 ### Phase 1: read
-- [ ] 1.1 5.1 items 1-4; `rom_import.py` lists six songs; `song_dump.py` reads, walks and plays each;
+- [x] 1.1 `core/drivers/timetrax/` (a family of one): locate (bank, tables by code), memory
+  (big-endian; `core.rom.memory.BankedMemory`, shared with SMPS Z80), header, commands, walk,
+  grammar, voices.  Framework: `SmpsVariant.song_memory` (a song's tracks read through its walk),
+  `core.rom.tracks.song_tracks`.  Sounds from 0; the table ends at the first header; a sound of one
+  track is an SFX (not read).  `rom_import.py` lists six songs, `song_dump.py` reads each;
   `read_time_trax` snapshot.
-- [ ] 1.2 Unknown-effect policy: the grammar maps every § 2.3 byte; unused ones (`$91`, `$A6`, `$A7`,
-  PSG) refused with a message.
-- [ ] 1.3 The sync (5.1.5).  `configs/time_trax/rips.yaml`, minimal configs, `region` (D2).
-- [ ] 1.4 `vgm_lift --aspects onset length note`; `vgm_frames` on all six.
+- [x] 1.2 Every § 2.3 byte read: Pan, SetVoice, Legato, Detune as the IR has them; Phase 2's
+  (transposition, volume, mask, glide, portamento, key-off timing, vibrato, envelopes) dropped by
+  name ("... (not converted yet)"); the unused refused ($8F $90 $91 $9D $9E $A2-$A7); a PSG track
+  refused.
+- [x] 1.3 The sync: song 0's FM5 waits 636 frames each pass, read as a rest (walk.py: FM3's
+  signal, FM5 reading `$8E` every other frame).  Every channel of every song loops its song's pass.
+  `configs/time_trax/` (minimal, `region: pal`) and `rips.yaml`.
+- [ ] 1.4 Run: `vgm_lift --all --configs configs/time_trax --aspects onset length note` and
+  `vgm_frames --all`: 0 of 6 clean, as expected before Phase 2.  Pitch misses a semitone (the
+  transposition dropped); level the volume law; length rests that hold, `$96` / `$98`.  Open: the
+  rips' lost frames (0.3): confirm in the writes, then `glitches:` in `rips.yaml`.
 
 ### Phase 2: the walk
 - [ ] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.

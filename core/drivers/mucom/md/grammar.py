@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import dataclasses
 
-from core.rom.grammar import Instruction
-from core.rom.grammar.mucom import SEMITONES, MucomDialect, as_instruction, octave_and_semitone
+from core.rom.grammar import Instruction, as_instruction
+from core.rom.grammar.mucom import SEMITONES, MucomDialect, octave_and_semitone
 from core.rom.image import RomError
 from core.rom.memory import SoundMemory
 from core.smps import FIRST_NOTE, AdsrEnvelope, ModSet, NoiseRate, PsgForm, SoftRelease

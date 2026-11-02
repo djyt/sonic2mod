@@ -44,7 +44,12 @@ def bank_voices(memory: SoundMemory, address: int, count: int, variant: SmpsVari
 
 
 def read_voices(memory: SoundMemory, address: int, count: int, layout: VoiceLayout) -> list[SmpsVoice]:
-    return [_voice(memory.bytes_at(address + i * layout.size, layout.size), i, layout) for i in range(count)]
+    return [read_voice(memory, address + i * layout.size, i, layout) for i in range(count)]
+
+
+def read_voice(memory: SoundMemory, address: int, index: int, layout: VoiceLayout) -> SmpsVoice:
+    """Voice `index`, the record at `address` (a bank of records, or a table of their addresses)."""
+    return _voice(memory.bytes_at(address, layout.size), index, layout)
 
 
 def voice_from_registers(index: int, registers: Mapping[int, int],

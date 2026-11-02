@@ -1,56 +1,22 @@
-"""How an SMPS Z80 driver reads its sound data: through the Z80's 32 KB bank window.
-
-    Z80 $8000-$FFFF  ->  ROM bank + (address - $8000)       bank: a multiple of $8000
-
-Pointers are absolute Z80 addresses, little-endian.  A pointer outside the window, or any
+"""How an SMPS Z80 driver reads its sound data: through the Z80's 32 KB bank window
+(core.rom.memory.BankedMemory), its pointers little-endian.  A pointer outside the window, or any
 read past the bank, is not the driver's data.
 """
 
 from __future__ import annotations
 
 from core.rom.image import RomError, RomImage
-from core.rom.memory import SoundMemory
-
-BANK_SIZE = 0x8000
-_WINDOW = 0x8000           # the Z80 address the bank appears at
+from core.rom.memory import BANK_SIZE, BANK_WINDOW, BankedMemory, SoundMemory
 
 
 def window_view(image: RomImage, bank: int) -> bytes:
     """Z80 addresses $0000-$FFFF as a driver mapping `bank` reads them: the bank in the window, zeros
     below it (a table that names its bytes by Z80 address: OutRun's DAC samples)."""
-    return bytes(_WINDOW) + image.bytes_at(bank, BANK_SIZE)
+    return bytes(BANK_WINDOW) + image.bytes_at(bank, BANK_SIZE)
 
 
-class BankedZ80Memory(SoundMemory):
+class BankedZ80Memory(BankedMemory):
     _BYTE_ORDER = "little"
-
-    def __init__(self, image: RomImage, bank: int):
-        super().__init__(image)
-        self._bank = bank
-
-    def contains(self, address: int, length: int = 1) -> bool:
-        return self._bank <= address and address + length <= self._bank + BANK_SIZE and super().contains(address, length)
-
-    def header_pointer(self, _header: int, at: int) -> int:
-        return self.rom_address(self.word(at))
-
-    def code_pointer(self, operand: int) -> int:
-        target = self.rom_address(self.word(operand))
-        if not self.contains(target):
-            raise RomError(f"${operand - 1:X}: pointer to Z80 ${self.word(operand):04X}, outside the bank")
-        return target
-
-    def rom_address(self, z80_address: int) -> int:
-        """Where a Z80 window address reads from.  Outside the window: an address outside the bank."""
-        return self._bank + z80_address - _WINDOW
-
-    def bytes_at(self, address: int, length: int) -> bytes:
-        if not self.contains(address, length):
-            raise RomError(f"read of {length} byte(s) at ${address:X}: outside the bank at ${self._bank:X}")
-        return super().bytes_at(address, length)
-
-    def byte(self, address: int) -> int:
-        return self.bytes_at(address, 1)[0]
 
 
 class Z80RamMemory(SoundMemory):

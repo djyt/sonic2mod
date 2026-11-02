@@ -15,10 +15,14 @@ place): z80_loads keeps each apart.
                 bne *-2 / addq.w #1,a1 / dbra d0,loop       (each byte written until it reads back)
     pointed     movea.l (p).l,a0 / move.l (q).l,d0 / subq.l #1,d0 /              OutRun
                 lea (z80_ram+n).l,a1 / move.b (a0)+,(a1)+ / dbra d0     (the source and length: longs at p, q)
+
+A Z80 driver's tables are found by the one place its code reads each (core.rom.pattern's listings):
+one_match, one_operand (a little-endian operand).
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import lru_cache
@@ -259,3 +263,20 @@ def _branch_target(rom: RomImage, at: int) -> int:
     if rom.byte(at) == _BRA_B and rom.byte(at + 1):
         return at + _OPCODE + rom.signed_byte(at + 1)
     return at
+
+
+def one_match(pattern: re.Pattern[bytes], z80: bytes, what: str, driver: str) -> re.Match[bytes]:
+    """The one place the driver's code reads as `pattern`; RomError (not `driver`'s) for none or several."""
+    found = list(pattern.finditer(z80))
+    if len(found) != 1:
+        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not {driver}'s driver")
+    return found[0]
+
+
+def one_operand(pattern: re.Pattern[bytes], z80: bytes, what: str, driver: str) -> int:
+    """The one value (group 1: a little-endian word, or a byte) every match of `pattern` names: a
+    table, or a header word, the driver may read in several places."""
+    found = {int.from_bytes(match.group(1), "little") for match in pattern.finditer(z80)}
+    if len(found) != 1:
+        raise RomError(f"Z80 driver: {len(found)} {what}s, not one: not {driver}'s driver")
+    return found.pop()

@@ -18,9 +18,10 @@ from functools import lru_cache, partial
 
 from core.rom.header import is_index, is_music_header, is_sfx_header, read_index
 from core.rom.image import RomError, RomImage
+from core.rom.memory import BANK_SIZE
 from core.rom.variant import SoundIndex
 
-from ..memory import BANK_SIZE, BankedZ80Memory
+from ..memory import BankedZ80Memory
 from ..program import driver_ram
 from .layout import HEADER_TYPE0
 

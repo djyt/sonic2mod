@@ -1849,3 +1849,8 @@ read_streets_of_rage_2:
   date: '2026-11-01'
   inputs:
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
+read_time_trax:
+  commit: 64f9abf-dirty
+  date: '2026-11-02'
+  inputs:
+    input/roms/Time Trax (USA) (Proto).md: 830410ab309d

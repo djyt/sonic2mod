@@ -168,6 +168,7 @@ cases:
 - read_space_harrier_2
 - read_streets_of_rage
 - read_streets_of_rage_2
+- read_time_trax
 functions:
   core/audio/gain.py::db_to_gain: 7fe3f00e00000039ce739ce739ce739ce739ce
   core/audio/pitch.py::hz_to_midi: 11000000008500035ad7bdaf7bdaf7bdef7bded
@@ -350,9 +351,9 @@ functions:
   core/config/song.py::variant_output_file: '400080260840000000000000000000000000000'
   core/convert/prepare.py::_apply_auto_bpm: 1fffffffffff0000000000000000000000000000
   core/convert/prepare.py::prepare_conversion: 1fffffffffff0000000000000000000000000000
-  core/drivers/detect.py::detect_variant: f8e07fe3f00e00cffc800000000000000000000000
-  core/drivers/games.py::data_fixes: e8e07fe3f00e000000800000000000000000000000
-  core/drivers/games.py::known_game: f8e07fe3f00e00cffc800000000000000000000000
+  core/drivers/detect.py::detect_variant: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/drivers/games.py::data_fixes: 1e8e07fe3f00e000000800000000000000000000000
+  core/drivers/games.py::known_game: 1f8e07fe3f00e00cffc800000000000000000000000
   core/drivers/mucom/md/dac.py::mucom_md_dac: 80007c000000000840000000000000000000000000
   core/drivers/mucom/md/grammar.py::_prefix: '800058000000000840800000000000000000000000'
   core/drivers/mucom/md/grammar.py::_psg_note: 80007c000000000840800000000000000000000000
@@ -375,14 +376,14 @@ functions:
   core/drivers/mucom/md/variant.py::_fm_kept_step: 80007c000000000840800000000000000000000000
   core/drivers/mucom/md/variant.py::_psg_dividers: 80007c000000000840800000000000000000000000
   core/drivers/mucom/md/variant.py::_rules_from_rom: 80007c000000000840800000000000000000000000
-  core/drivers/read.py::_rules: f8e07fe3f00e00cffc800000000000000000000000
-  core/drivers/read.py::dac_samples: f8e07fe3f00e00cffc000000000000000000000000
-  core/drivers/read.py::locate_sounds: f8e000000000000000800000000000000000000000
-  core/drivers/read.py::read_rom_code: f8e07fe3f00e00cffc800000000000000000000000
+  core/drivers/read.py::_rules: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/drivers/read.py::dac_samples: 1f8e07fe3f00e00cffc000000000000000000000000
+  core/drivers/read.py::locate_sounds: 1f8e000000000000000800000000000000000000000
+  core/drivers/read.py::read_rom_code: 1f8e07fe3f00e00cffc800000000000000000000000
   core/drivers/read.py::read_rom_song: 7fe3f00e00cffc000000000000000000000000
-  core/drivers/reference.py::_psg_n: ffff801c7ff1fff420000000000000000000000000
-  core/drivers/reference.py::_round_half_up: ffff801c7ff1fff420000000000000000000000000
-  core/drivers/registry.py::load_driver: f8fffffffffffffffc800000000000000000000000
+  core/drivers/reference.py::_psg_n: 1ffff801c7ff1fff420000000000000000000000000
+  core/drivers/reference.py::_round_half_up: 1ffff801c7ff1fff420000000000000000000000000
+  core/drivers/registry.py::load_driver: 1f8fffffffffffffffc800000000000000000000000
   core/drivers/smps68k/dac.py::pitch_table: 18400000700000c000000000000000000000000000
   core/drivers/smps68k/locate.py::_go_block: 18400000700000c000000000000000000000000000
   core/drivers/smps68k/locate.py::_go_slots: 18400000700000c000000000000000000000000000
@@ -512,6 +513,39 @@ functions:
   core/drivers/smpsz80/type0fm/variant.py::_fm_drums: 200000000e000084000000000000000000000000
   core/drivers/smpsz80/type0fm/variant.py::_memory: 200000000e000084000000000000000000000000
   core/drivers/smpsz80/type0fm/variant.py::_rules_from_rom: 200000000e000084000000000000000000000000
+  core/drivers/timetrax/commands.py::counted: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/grammar.py::_effect: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/grammar.py::_note: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/grammar.py::_read: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/grammar.py::_rest: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/grammar.py::command: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/grammar.py::instruction: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/header.py::_entries: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/header.py::is_sound: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/header.py::read_header: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/header.py::track_count: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/header.py::track_numbers: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::_Window.__init__: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::_bank: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::_fm_words: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::_one: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::_pans: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::driver_tables: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::locate: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/locate.py::time_trax_memory: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/memory.py::TimeTraxMemory.__init__: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/memory.py::TimeTraxMemory.reading: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/memory.py::TimeTraxMemory.with_reading: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/variant.py::_rules_from_rom: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/variant.py::_song_memory: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/voices.py::read_voices: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/walk.py::_Signals.first_after: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/walk.py::_goes_on: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/walk.py::_keep: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/walk.py::_next_repeat: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/walk.py::_reading: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/walk.py::_walk: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/walk.py::walk_song: '1000000000000000000000000000000000000000000'
   core/files.py::write_shared: 7c037000000000000000000000000000000000
   core/mod/cell.py::Cell.decode: 1fffffffffff0000000000000000000000000000
   core/mod/file.py::ModFile.get_name: 1ffffffffffffffc7fffffffffffffffffffffff
@@ -646,15 +680,16 @@ functions:
   core/rom/envelopes.py::is_envelope: 18c00003f00000c108000000000000000000000000
   core/rom/envelopes.py::read_envelopes: 58c00003f00000c528000000000000000000000000
   core/rom/fixes.py::RomFix.same_length: '80000000000000000000000000000000000000000'
-  core/rom/fixes.py::apply_fixes: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/fixes.py::apply_fixes: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/flags.py::drop: f8fffffffffffffffc800000000000000000000000
   core/rom/flags.py::effect: f8fffffffffffffffc800000000000000000000000
   core/rom/flags.py::every_kind: 187f801c7ffffff084000000000000000000000000
-  core/rom/flags.py::read: e0807fe38000000f78800000000000000000000000
+  core/rom/flags.py::read: 1e0807fe38000000f78800000000000000000000000
   core/rom/flags.py::refuse: e0e07fe3f00e00cffc800000000000000000000000
   core/rom/grammar/__init__.py::_operand_count: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/grammar/__init__.py::flag_instruction: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/grammar/__init__.py::track_label: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/grammar/__init__.py::as_instruction: '1000000000000000000000000000000000000000000'
+  core/rom/grammar/__init__.py::flag_instruction: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/grammar/__init__.py::track_label: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/grammar/mucom.py::MucomDialect._note: c0007c000000000c60800000000000000000000000
   core/rom/grammar/mucom.py::MucomDialect.instruction: c0007c000000000c60800000000000000000000000
   core/rom/grammar/mucom.py::MucomDialect.pan: c00078000000000c60800000000000000000000000
@@ -676,38 +711,45 @@ functions:
   core/rom/header.py::is_index: 18600000700e00c084000000000000000000000000
   core/rom/header.py::is_music_header: 58e00003f00e00c5ac000000000000000000000000
   core/rom/header.py::is_sfx_header: 18600000700e00c084000000000000000000000000
-  core/rom/header.py::music_header: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/header.py::music_header: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/header.py::read_index: f8e07fe3f00e00cffc800000000000000000000000
   core/rom/header.py::read_music_header: 58e00003f00e00c5ac000000000000000000000000
   core/rom/header.py::read_sfx_header: d86000000000000000000000000000000000000000
   core/rom/header.py::sfx_header: d86000000000000000000000000000000000000000
-  core/rom/image.py::RomImage._check: f8e07fe3f00e00cfff800000000000000000000000
+  core/rom/image.py::RomImage._check: 1f8e07fe3f00e00cfff800000000000000000000000
   core/rom/image.py::RomImage.byte: f8607fe0700e00cef4800000000000000000000000
-  core/rom/image.py::RomImage.bytes_at: f8e07fe3f00e00cfff800000000000000000000000
-  core/rom/image.py::RomImage.contains: f8e07fe3f00e00cfff800000000000000000000000
-  core/rom/image.py::RomImage.find_all: f8e07fe3f00e00cffe000000000000000000000000
-  core/rom/image.py::RomImage.load: f8e07fe3f00e00cfff800000000000000000000000
-  core/rom/image.py::RomImage.long: f8e07fe3f00e00cffe800000000000000000000000
-  core/rom/image.py::RomImage.serial: f8e000000000000000000000000000000000000000
-  core/rom/image.py::RomImage.sha1: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/image.py::RomImage.bytes_at: 1f8e07fe3f00e00cfff800000000000000000000000
+  core/rom/image.py::RomImage.contains: 1f8e07fe3f00e00cfff800000000000000000000000
+  core/rom/image.py::RomImage.find_all: 1f8e07fe3f00e00cffe000000000000000000000000
+  core/rom/image.py::RomImage.load: 1f8e07fe3f00e00cfff800000000000000000000000
+  core/rom/image.py::RomImage.long: 1f8e07fe3f00e00cffe800000000000000000000000
+  core/rom/image.py::RomImage.serial: 1f8e000000000000000000000000000000000000000
+  core/rom/image.py::RomImage.sha1: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/image.py::RomImage.signed_byte: 780003e00000000630000000000000000000000000
   core/rom/image.py::RomImage.signed_word: d8407c00700000cc61800000000000000000000000
-  core/rom/image.py::RomImage.title: f8e000000000000000000000000000000000000000
-  core/rom/image.py::RomImage.word: f8e07fe3f00e00cffe800000000000000000000000
-  core/rom/image.py::_text: f8e000000000000000000000000000000000000000
-  core/rom/image.py::is_rom_path: fffffffffffffffffc000000000000000000000000
+  core/rom/image.py::RomImage.title: 1f8e000000000000000000000000000000000000000
+  core/rom/image.py::RomImage.word: 1f8e07fe3f00e00cffe800000000000000000000000
+  core/rom/image.py::_text: 1f8e000000000000000000000000000000000000000
+  core/rom/image.py::is_rom_path: 1fffffffffffffffffc000000000000000000000000
   core/rom/kosinski.py::_Reader.__init__: '580000000000000420000000000000000000000000'
   core/rom/kosinski.py::_Reader._descriptor: '580000000000000420000000000000000000000000'
   core/rom/kosinski.py::_Reader.bit: '580000000000000420000000000000000000000000'
   core/rom/kosinski.py::_Reader.byte: '580000000000000420000000000000000000000000'
   core/rom/kosinski.py::kosinski: '580000000000000420000000000000000000000000'
-  core/rom/memory.py::SoundMemory.__init__: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/memory.py::BankedMemory.__init__: '1000000000000000000000000000000000000000000'
+  core/rom/memory.py::BankedMemory.byte: '1000000000000000000000000000000000000000000'
+  core/rom/memory.py::BankedMemory.bytes_at: '1000000000000000000000000000000000000000000'
+  core/rom/memory.py::BankedMemory.code_pointer: '1000000000000000000000000000000000000000000'
+  core/rom/memory.py::BankedMemory.contains: '1000000000000000000000000000000000000000000'
+  core/rom/memory.py::BankedMemory.header_pointer: '1000000000000000000000000000000000000000000'
+  core/rom/memory.py::BankedMemory.rom_address: '1000000000000000000000000000000000000000000'
+  core/rom/memory.py::SoundMemory.__init__: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/memory.py::SoundMemory.byte: f8607fe0700e00cef4800000000000000000000000
-  core/rom/memory.py::SoundMemory.bytes_at: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/memory.py::SoundMemory.contains: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/memory.py::SoundMemory.bytes_at: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/memory.py::SoundMemory.contains: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/memory.py::SoundMemory.patched: '80000000000000000000000000000000000000000'
-  core/rom/memory.py::SoundMemory.word: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/pattern.py::code_pattern: a0a07fe3800e000bdc800000000000000000000000
+  core/rom/memory.py::SoundMemory.word: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/pattern.py::code_pattern: 1a0a07fe3800e000bdc800000000000000000000000
   core/rom/pcm/__init__.py::PcmTable.__init__: d8c07c03f00000cd68000000000000000000000000
   core/rom/pcm/__init__.py::PcmTable._address: d8c07c03f00000cd68000000000000000000000000
   core/rom/pcm/__init__.py::PcmTable._data: d8c07c03f00000cd68000000000000000000000000
@@ -728,40 +770,45 @@ functions:
   core/rom/pcm/sor.py::RunDpcm.cycles: c0007c000000000c60000000000000000000000000
   core/rom/pcm/sor.py::RunDpcm.decode: c0007c000000000c60000000000000000000000000
   core/rom/pcm/sor.py::player_samples: c0007c000000000c60000000000000000000000000
-  core/rom/tracks.py::_check_overlaps: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/tracks.py::_check_overlaps: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/tracks.py::_check_shared: '8000020000000108000000000000000000000000'
-  core/rom/tracks.py::_flag: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/tracks.py::_instruction: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/tracks.py::_layout: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/tracks.py::_loop_ends: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/tracks.py::_flag: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/tracks.py::_instruction: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/tracks.py::_layout: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/tracks.py::_loop_ends: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/tracks.py::_splice: '80000000000000000000000000000000000000000'
   core/rom/tracks.py::_stops_reached: '800078000000000840800000000000000000000000'
-  core/rom/tracks.py::decode_tracks: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/tracks.py::decode_tracks: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/tracks.py::song_tracks: '1000000000000000000000000000000000000000000'
   core/rom/variant.py::DacSample.is_pitched_copy: d8c00000000000cd68000000000000000000000000
   core/rom/variant.py::HeaderLayout.entries_at: 58e00003f00e00c5ac000000000000000000000000
-  core/rom/variant.py::SmpsVariant.__post_init__: f8fffffffffffffffc800000000000000000000000
-  core/rom/variant.py::SoundIndex.address: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/variant.py::SoundIndex.is_sfx: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/variant.py::VoiceLayout.feedback_at: d8e07c03f00e00cdec800000000000000000000000
-  core/rom/variant.py::VoiceLayout.groups_at: d8e07c03f00e00cdec800000000000000000000000
-  core/rom/variant.py::VoiceLayout.size: d8e07c03f00e00cdec800000000000000000000000
-  core/rom/voices.py::_voice: d8e07c03f00e00cdec800000000000000000000000
-  core/rom/voices.py::bank_voices: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/variant.py::SmpsVariant.__post_init__: 1f8fffffffffffffffc800000000000000000000000
+  core/rom/variant.py::SoundIndex.address: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/variant.py::SoundIndex.is_sfx: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/variant.py::VoiceLayout.feedback_at: 1d8e07c03f00e00cdec800000000000000000000000
+  core/rom/variant.py::VoiceLayout.groups_at: 1d8e07c03f00e00cdec800000000000000000000000
+  core/rom/variant.py::VoiceLayout.size: 1d8e07c03f00e00cdec800000000000000000000000
+  core/rom/voices.py::_voice: 1d8e07c03f00e00cdec800000000000000000000000
+  core/rom/voices.py::bank_voices: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/voices.py::read_voice: '1000000000000000000000000000000000000000000'
   core/rom/voices.py::read_voices: d8e07c03f00e00cdec800000000000000000000000
-  core/rom/voices.py::voice_from_registers: f8e07fe3f00e00cffc800000000000000000000000
-  core/rom/voices.py::voices_used: f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/voices.py::voice_from_registers: 1f8e07fe3f00e00cffc800000000000000000000000
+  core/rom/voices.py::voices_used: 1f8e07fe3f00e00cffc800000000000000000000000
   core/rom/z80.py::Z80Load.ram: 20a003e3800e00039c000000000000000000000000
   core/rom/z80.py::_branch_target: 200003e00000000210000000000000000000000000
-  core/rom/z80.py::_buffered: f8e07fe3f00e00cffe000000000000000000000000
-  core/rom/z80.py::_copied: f8e07fe3f00e00cffe000000000000000000000000
+  core/rom/z80.py::_buffered: 1f8e07fe3f00e00cffe000000000000000000000000
+  core/rom/z80.py::_copied: 1f8e07fe3f00e00cffe000000000000000000000000
   core/rom/z80.py::_decompressed: '580000000000000420000000000000000000000000'
-  core/rom/z80.py::_kosinski: f8e07fe3f00e00cffe000000000000000000000000
-  core/rom/z80.py::_lea_register: c0607c00700e00cce6000000000000000000000000
-  core/rom/z80.py::_pointed: f8e07fe3f00e00cffe000000000000000000000000
-  core/rom/z80.py::_verified: f8e07fe3f00e00cffe000000000000000000000000
-  core/rom/z80.py::z80_loads: f8e07fe3f00e00cffe000000000000000000000000
-  core/rom/z80.py::z80_ram: d8407c00700000cc62000000000000000000000000
-  core/rom/z80.py::z80_word: f8e07fe3f00e00cffc000000000000000000000000
+  core/rom/z80.py::_kosinski: 1f8e07fe3f00e00cffe000000000000000000000000
+  core/rom/z80.py::_lea_register: 1c0607c00700e00cce6000000000000000000000000
+  core/rom/z80.py::_leas_before: '1000000000000000000000000000000000000000000'
+  core/rom/z80.py::_past_bus_wait: '1000000000000000000000000000000000000000000'
+  core/rom/z80.py::_pointed: 1f8e07fe3f00e00cffe000000000000000000000000
+  core/rom/z80.py::_verified: 1f8e07fe3f00e00cffe000000000000000000000000
+  core/rom/z80.py::one_match: '1000000000000000000000000000000000000000000'
+  core/rom/z80.py::z80_loads: 1f8e07fe3f00e00cffe000000000000000000000000
+  core/rom/z80.py::z80_ram: 1d8407c00700000cc62000000000000000000000000
+  core/rom/z80.py::z80_word: 1f8e07fe3f00e00cffc000000000000000000000000
   core/smps/adsr.py::Adsr.at: 80007c000000000840000000000000000000000000
   core/smps/adsr.py::Adsr.levels: 80007c000000000840000000000000000000000000
   core/smps/adsr.py::Adsr.name: 80007c000000000840000000000000000000000000
@@ -772,40 +819,40 @@ functions:
   core/smps/adsr.py::_step: 80007c000000000840000000000000000000000000
   core/smps/adsr.py::volume_family: '10000000000000000000000000000000000000'
   core/smps/clock.py::update_hz: 1fffffffffff0000000000000000000000000000
-  core/smps/code.py::SmpsCode.__post_init__: fffffffffffffffffc800000000000000000000000
-  core/smps/code.py::SongCode.song: f8e07fe3f00e00cffc000000000000000000000000
-  core/smps/code.py::_Walker.__init__: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._before_note: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._byte: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._close_pending: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._duration: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._effect: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._keyed_off: fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::SmpsCode.__post_init__: 1fffffffffffffffffc800000000000000000000000
+  core/smps/code.py::SongCode.song: 1f8e07fe3f00e00cffc000000000000000000000000
+  core/smps/code.py::_Walker.__init__: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._before_note: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._byte: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._close_pending: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._duration: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._effect: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._keyed_off: 1fffffffffffffffffc000000000000000000000000
   core/smps/code.py::_Walker._label_precedes_duration: 3fd800ae34c118b318000000000000000000000000
   core/smps/code.py::_Walker._loop_end: c0005c000000000c60000000000000000000000000
-  core/smps/code.py::_Walker._mark_label: fffffffffffdfffffc000000000000000000000000
-  core/smps/code.py::_Walker._next_op: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._note: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._on_byte: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._on_call: 3be983bfbcc538f39c000000000000000000000000
-  core/smps/code.py::_Walker._on_effect: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker._on_end: ffffa7fffff7fffffc000000000000000000000000
-  core/smps/code.py::_Walker._on_jump: ffe9fbff3fcdc0bffc000000000000000000000000
-  core/smps/code.py::_Walker._on_label: ffffffbffffdfffffc000000000000000000000000
-  core/smps/code.py::_Walker._on_loop: fff9ffbdfffd3ffffc000000000000000000000000
+  core/smps/code.py::_Walker._mark_label: 1fffffffffffdfffffc000000000000000000000000
+  core/smps/code.py::_Walker._next_op: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._note: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._on_byte: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._on_call: 13be983bfbcc538f39c000000000000000000000000
+  core/smps/code.py::_Walker._on_effect: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._on_end: 1ffffa7fffff7fffffc000000000000000000000000
+  core/smps/code.py::_Walker._on_jump: 1ffe9fbff3fcdc0bffc000000000000000000000000
+  core/smps/code.py::_Walker._on_label: 1ffffffbffffdfffffc000000000000000000000000
+  core/smps/code.py::_Walker._on_loop: 1fff9ffbdfffd3ffffc000000000000000000000000
   core/smps/code.py::_Walker._on_loop_exit: c0005c000000000c60000000000000000000000000
-  core/smps/code.py::_Walker._open_note: fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._open_note: 1fffffffffffffffffc000000000000000000000000
   core/smps/code.py::_Walker._prev_op: dfeffc13f8ce1ebdec000000000000000000000000
-  core/smps/code.py::_Walker._replay_differs: fbe9fbbf3fcd00bffc000000000000000000000000
-  core/smps/code.py::_Walker._replay_tie: fbe9fbbf3fcd00bffc000000000000000000000000
+  core/smps/code.py::_Walker._replay_differs: 1fbe9fbbf3fcd00bffc000000000000000000000000
+  core/smps/code.py::_Walker._replay_tie: 1fbe9fbbf3fcd00bffc000000000000000000000000
   core/smps/code.py::_Walker._sample_pan: fbff7fbf7ffffefffc000000000000000000000000
   core/smps/code.py::_Walker._step_pan: '200002000000000210000000000000000000000000'
-  core/smps/code.py::_Walker._tie: ffeffc13f8ce1ebdec000000000000000000000000
-  core/smps/code.py::_Walker._walk: fffffffffffffffffc000000000000000000000000
-  core/smps/code.py::_Walker.walk: fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker._tie: 1ffeffc13f8ce1ebdec000000000000000000000000
+  core/smps/code.py::_Walker._walk: 1fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::_Walker.walk: 1fffffffffffffffffc000000000000000000000000
   core/smps/code.py::_standalone_note: 3fff83b33fc9eef39c000000000000000000000000
   core/smps/code.py::effect_from_bytes: f8e07fe3f00e00cffc800000000000000000000000
-  core/smps/code.py::song_from_code: fffffffffffffffffc000000000000000000000000
+  core/smps/code.py::song_from_code: 1fffffffffffffffffc000000000000000000000000
   core/smps/code.py::track_byte: 3fff83fffffffff39c000000000000000000000000
   core/smps/compare.py::ChannelDiff.counts: f000000000000000000000000000
   core/smps/compare.py::ChannelDiff.ok: f000000000000000000000000000
@@ -821,29 +868,29 @@ functions:
   core/smps/driver_tables.py::PsgEnvelope.frames: '68000000000000000000000000'
   core/smps/driver_tables.py::PsgTable.divider: dbd900133fc028fd68000000000000000000000000
   core/smps/driver_tables.py::PsgTable.divider_cents: fa0123cc0c90000000000000000000000000000
-  core/smps/driver_tables.py::PsgTable.of: fbfffffffffffffffc000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.of: 1fbfffffffffffffffc000000000000000000000000
   core/smps/driver_tables.py::PsgTable.render_divider: 580c0000200000000000000000000000000000
   core/smps/driver_tables.py::PsgTable.semitone: 1ffc1f3fc0e90000000000000000000000000000
   core/smps/driver_tables.py::_divider_semitone: fbdffffffff1ffff78000000000000000000000000
   core/smps/driver_tables.py::chip_pitch: 1fffffffffff0000000000000000000000000000
-  core/smps/driver_tables.py::fm_note_index: fbe00000000000fffc000000000000000000000000
+  core/smps/driver_tables.py::fm_note_index: 1fbe00000000000fffc000000000000000000000000
   core/smps/driver_tables.py::fm_render_word: 580c0000200000000000000000000000000000
   core/smps/driver_tables.py::fm_table_index: 1fffffffffff0000000000000000000000000000
   core/smps/driver_tables.py::psg_note_index: dbc00000000000fd68000000000000000000000000
-  core/smps/driver_tables.py::psg_voice_name: ffffffffffffffffffffffffffffffffffffffffff
-  core/smps/driver_tables.py::signed_byte: fff97fffffcffffffc800000000000000000000000
-  core/smps/driver_tables.py::signed_word: dfd97c1fbfc1e9bd68000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.__init__: fffffffffffffffffc000000000000000000000000
+  core/smps/driver_tables.py::psg_voice_name: 1ffffffffffffffffffffffffffffffffffffffffff
+  core/smps/driver_tables.py::signed_byte: 1fff97fffffcffffffc800000000000000000000000
+  core/smps/driver_tables.py::signed_word: 1dfd97c1fbfc1e9bd68000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.__init__: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack._altered: c0007c000000000c60000000000000000000000000
   core/smps/driver_track.py::DriverTrack._channel_number: c0007c000000000c60000000000000000000000000
-  core/smps/driver_track.py::DriverTrack._detune: dfd97c1fbfc1e9bd68000000000000000000000000
+  core/smps/driver_track.py::DriverTrack._detune: 1dfd97c1fbfc1e9bd68000000000000000000000000
   core/smps/driver_track.py::DriverTrack._envelope: 80007c000000000840000000000000000000000000
-  core/smps/driver_track.py::DriverTrack._held: fffffffffffffffffc000000000000000000000000
-  core/smps/driver_track.py::DriverTrack._load_voice: fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack._held: 1fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack._load_voice: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack._patched: c0007c000000000c60000000000000000000000000
   core/smps/driver_track.py::DriverTrack._preset: 80007c000000000840000000000000000000000000
   core/smps/driver_track.py::DriverTrack._restored: '800058000000000840000000000000000000000000'
-  core/smps/driver_track.py::DriverTrack._shifted: fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack._shifted: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack._soft_release: '800058000000000840000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._softened_level: '800058000000000840000000000000000000000000'
   core/smps/driver_track.py::DriverTrack._special_mode: c00070000000000c60000000000000000000000000
@@ -851,39 +898,39 @@ functions:
   core/smps/driver_track.py::DriverTrack._volume: c0007c000000000c60000000000000000000000000
   core/smps/driver_track.py::DriverTrack._volume_change: c0007c000000000c60000000000000000000000000
   core/smps/driver_track.py::DriverTrack._volume_written: c0007c000000000c60000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.before_note: fffffffffffffffffc000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.cut: fffffffffffffffffc000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.duration: fffffffffffffffffc000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.effect: fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.before_note: 1fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.cut: 1fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.duration: 1fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.effect: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack.exit_clears_tie: c0005c000000000c60000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.jump_clears_tie: ffe9fbff3fcdc0bffc000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.legato: fffffffffffffffffc000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.note: fffffffffffffffffc000000000000000000000000
-  core/smps/driver_track.py::DriverTrack.opening: fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.jump_clears_tie: 1ffe9fbff3fcdc0bffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.legato: 1fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.note: 1fffffffffffffffffc000000000000000000000000
+  core/smps/driver_track.py::DriverTrack.opening: 1fffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack.ties: dfeffc13f8ce1ebdec000000000000000000000000
   core/smps/driver_track.py::_split: c0007c000000000c60000000000000000000000000
   core/smps/effects.py::Fm3Special.offsets: c00070000000000c60000000000000000000000000
-  core/smps/effects.py::Legato.on: '200002800000000210000000000000000000000000'
-  core/smps/effects.py::Pan.side: fbeffbfff4ced8fffc000000000000000000000000
-  core/smps/effects.py::SmpsEffect.values: fffffc1c74f128fc60000000000000000000000000
-  core/smps/effects.py::_subclasses: ffffffffffffffffffffffffffffffffffffffffff
+  core/smps/effects.py::Legato.on: '1200002800000000210000000000000000000000000'
+  core/smps/effects.py::Pan.side: 1fbeffbfff4ced8fffc000000000000000000000000
+  core/smps/effects.py::SmpsEffect.values: 1fffffc1c74f128fc60000000000000000000000000
+  core/smps/effects.py::_subclasses: 1ffffffffffffffffffffffffffffffffffffffffff
   core/smps/effects.py::effect_of: f8e07fe3f00e00cffc800000000000000000000000
   core/smps/effects.py::pan_is_hard: e000000000000000000000000000000
-  core/smps/effects.py::pan_side: fbeffbfff4ced8fffc000000000000000000000000
+  core/smps/effects.py::pan_side: 1fbeffbfff4ced8fffc000000000000000000000000
   core/smps/lfo.py::_Frequencies.__init__: c00058000000000c60000000000000000000000000
   core/smps/lfo.py::_Frequencies.at: c00058000000000c60000000000000000000000000
   core/smps/lfo.py::_first_attack: c00058000000000c60000000000000000000000000
   core/smps/lfo.py::_lfo: c00058000000000c60000000000000000000000000
   core/smps/lfo.py::_set_voices: c00058000000000c60000000000000000000000000
-  core/smps/lfo.py::apply_lfo: fffffffffffffffffc000000000000000000000000
-  core/smps/names.py::_build_smps_note_names: ffffffffffffffffffffffffffffffffffffffffff
+  core/smps/lfo.py::apply_lfo: 1fffffffffffffffffc000000000000000000000000
+  core/smps/names.py::_build_smps_note_names: 1ffffffffffffffffffffffffffffffffffffffffff
   core/smps/names.py::note_label: 7fe3f00e000000000000000000000000000000
   core/smps/names.py::parse_smps_note: 1fffffffffff3000000000000000000000000000
   core/smps/names.py::parse_synth_note: '10000000000000000000000000000000000000'
-  core/smps/names.py::source_map: fffffffffffffffffc000000000000000000000000
-  core/smps/names.py::source_names: fffffffffffffffffc000000000000000000000000
+  core/smps/names.py::source_map: 1fffffffffffffffffc000000000000000000000000
+  core/smps/names.py::source_names: 1fffffffffffffffffc000000000000000000000000
   core/smps/names.py::synth_note_name: 7fe3f00e000000000000000000000000000000
-  core/smps/names.py::track_names: fffffffffffffffffc000000000000000000000000
+  core/smps/names.py::track_names: 1fffffffffffffffffc000000000000000000000000
   core/smps/names.py::voice_field_from_macro: 71f801c0ff1ff3000000000000000000000000000
   core/smps/parser.py::SmpsParser.__init__: 71f801c0ff1ff3000000000000000000000000000
   core/smps/parser.py::SmpsParser._code: 71f801c0ff1ff3000000000000000000000000000
@@ -903,64 +950,64 @@ functions:
   core/smps/playback.py::PlayedNote.aspect: f000000000000000000000000000
   core/smps/playback.py::PlayedNote.onset: f000000000000000000000000000
   core/smps/playback.py::PlayedSong.loop_span: b000000000000000000000000000
-  core/smps/playback.py::_filled: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_first_step: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_fixed_noise: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_fixed_noise_apart: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_fm_voice: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_note: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_played_channel: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_rest: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::_table_word: fbe00000000000fffc000000000000000000000000
-  core/smps/playback.py::played_song: fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_filled: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_first_step: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_fixed_noise: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_fixed_noise_apart: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_fm_voice: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_note: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_played_channel: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_rest: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_table_word: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::played_song: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::psg_render_divider: 580c0000200000000000000000000000000000
   core/smps/rules.py::OctaveWrap.wrapped: a00000000e00018c000000000000000000000000
   core/smps/rules.py::PitchRules.shift: dfdffc1f3fc0e9fd68000000000000000000000000
-  core/smps/rules.py::PlaybackRules.psg_table: fbfffffffffffffffc000000000000000000000000
-  core/smps/rules.py::PlaybackRules.track: fffffffffffffffffc800000000000000000000000
+  core/smps/rules.py::PlaybackRules.psg_table: 1fbfffffffffffffffc000000000000000000000000
+  core/smps/rules.py::PlaybackRules.track: 1fffffffffffffffffc800000000000000000000000
   core/smps/rules.py::SoftReleaseLaw.step: '800058000000000840000000000000000000000000'
   core/smps/run_out.py::_cut: 200000000e000084000000000000000000000000
   core/smps/run_out.py::_with: '2000000006000084000000000000000000000000'
-  core/smps/run_out.py::apply_run_out: fffffffffffffffffc000000000000000000000000
-  core/smps/song.py::SmpsEvent.is_effect: fbfffffffffffffffc000000000000000000000000
+  core/smps/run_out.py::apply_run_out: 1fffffffffffffffffc000000000000000000000000
+  core/smps/song.py::SmpsEvent.is_effect: 1fbfffffffffffffffc000000000000000000000000
   core/smps/song.py::SmpsEvent.is_note: 1b1fffffffffff2000000000000000000000000000
-  core/smps/song.py::SmpsSong.end_tick: fbe07fe3f00e00fffc000000000000000000000000
-  core/smps/song.py::SmpsSong.loop_target_tick: fbe07fe3f00e00fffc000000000000000000000000
-  core/smps/song.py::SmpsSong.tempo_changes: fbe00000000e00fffc000000000000000000000000
-  core/smps/song.py::SmpsSong.tempo_schedule: fbe00000000e00fffc000000000000000000000000
-  core/smps/song.py::SmpsVoice.carrier_registers: fbe07fa0000e00fffc000000000000000000000000
-  core/smps/song.py::SmpsVoice.channel_fnum_offset: fbfffffffffffffffc000000000000000000000000
-  core/smps/song.py::SmpsVoice.chip_registers: fbe00000000000fffc000000000000000000000000
-  core/smps/song.py::SmpsVoice.feedback_algorithm: fbe00000000000fffc000000000000000000000000
+  core/smps/song.py::SmpsSong.end_tick: 1fbe07fe3f00e00fffc000000000000000000000000
+  core/smps/song.py::SmpsSong.loop_target_tick: 1fbe07fe3f00e00fffc000000000000000000000000
+  core/smps/song.py::SmpsSong.tempo_changes: 1fbe00000000e00fffc000000000000000000000000
+  core/smps/song.py::SmpsSong.tempo_schedule: 1fbe00000000e00fffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.carrier_registers: 1fbe07fa0000e00fffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.channel_fnum_offset: 1fbfffffffffffffffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.chip_registers: 1fbe00000000000fffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.feedback_algorithm: 1fbe00000000000fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.level_fixed: '800000000000000840000000000000000000000000'
-  core/smps/song.py::SmpsVoice.operator_values: fbe07fa0000e00fffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.operator_values: 1fbe07fa0000e00fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.patched: c0007c000000000c60000000000000000000000000
-  core/smps/song.py::SmpsVoice.registers: fbe003a0000e00fffc000000000000000000000000
-  core/smps/song.py::SmpsVoice.volume_registers: fbe07fa0000e00fffc000000000000000000000000
-  core/smps/song_prep.py::_apply_global_tempo_div: fbe07fe3f00e00fffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.registers: 1fbe003a0000e00fffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.volume_registers: 1fbe07fa0000e00fffc000000000000000000000000
+  core/smps/song_prep.py::_apply_global_tempo_div: 1fbe07fe3f00e00fffc000000000000000000000000
   core/smps/song_prep.py::_apply_global_tempo_div.retime: 1b0000000000002000000000000000000000000000
-  core/smps/song_prep.py::_extend_looping_channels: fbe07fe3f00e00fffc000000000000000000000000
-  core/smps/song_prep.py::_loop_end: fbe07fe3f00e00fffc000000000000000000000000
-  core/smps/song_prep.py::_loop_period: fbe07fe3f00e00fffc000000000000000000000000
-  core/smps/song_prep.py::_repeats: fbe07ba3300c00bffc000000000000000000000000
-  core/smps/song_prep.py::_signature: fbe07ba3300c00bffc000000000000000000000000
-  core/smps/song_prep.py::prepare_song: fbe07fe3f00e00fffc000000000000000000000000
-  core/smps/tempo.py::TempoSegment.frame_of: fbe00000000e00fffc000000000000000000000000
+  core/smps/song_prep.py::_extend_looping_channels: 1fbe07fe3f00e00fffc000000000000000000000000
+  core/smps/song_prep.py::_loop_end: 1fbe07fe3f00e00fffc000000000000000000000000
+  core/smps/song_prep.py::_loop_period: 1fbe07fe3f00e00fffc000000000000000000000000
+  core/smps/song_prep.py::_repeats: 1fbe07ba3300c00bffc000000000000000000000000
+  core/smps/song_prep.py::_signature: 1fbe07ba3300c00bffc000000000000000000000000
+  core/smps/song_prep.py::prepare_song: 1fbe07fe3f00e00fffc000000000000000000000000
+  core/smps/tempo.py::TempoSegment.frame_of: 1fbe00000000e00fffc000000000000000000000000
   core/smps/tempo.py::TempoSegment.holds: 200000000e00f084000000000000000000000000
   core/smps/tempo.py::TempoSegment.tick_at: 1b600000000e00f084000000000000000000000000
-  core/smps/tempo.py::frame_of_tick: fbe00000000e00fffc000000000000000000000000
-  core/smps/tempo.py::tempo_schedule: fbe00000000e00fffc000000000000000000000000
+  core/smps/tempo.py::frame_of_tick: 1fbe00000000e00fffc000000000000000000000000
+  core/smps/tempo.py::tempo_schedule: 1fbe00000000e00fffc000000000000000000000000
   core/smps/tempo.py::tick_at_frame: 1b600000000e00f084000000000000000000000000
-  core/smps/track.py::TrackState.__init__: fbfffffffffffffffc000000000000000000000000
+  core/smps/track.py::TrackState.__init__: 1fbfffffffffffffffc000000000000000000000000
   core/smps/track.py::TrackState._set_level: fbf97c9fffc53ffffc000000000000000000000000
-  core/smps/track.py::TrackState.apply: fbfffffffffffffffc000000000000000000000000
-  core/smps/track.py::TrackState.for_channel: fbe00000000000fffc000000000000000000000000
+  core/smps/track.py::TrackState.apply: 1fbfffffffffffffffc000000000000000000000000
+  core/smps/track.py::TrackState.for_channel: 1fbe00000000000fffc000000000000000000000000
   core/smps/track.py::TrackState.in_noise_mode: 1fffffffffff0000000000000000000000000000
   core/smps/voice_patch.py::VoiceChanges.applied: c0007c000000000c60000000000000000000000000
   core/smps/voice_patch.py::VoiceChanges.level_written: '800018000000000840000000000000000000000000'
   core/smps/voice_patch.py::VoiceChanges.written: c00074000000000c60000000000000000000000000
-  core/smps/voice_patch.py::VoicePatcher.__init__: fffffffffffffffffc000000000000000000000000
-  core/smps/voice_patch.py::VoicePatcher.copy: fffffffffffffffffc000000000000000000000000
+  core/smps/voice_patch.py::VoicePatcher.__init__: 1fffffffffffffffffc000000000000000000000000
+  core/smps/voice_patch.py::VoicePatcher.copy: 1fffffffffffffffffc000000000000000000000000
   core/smps/voice_patch.py::VoicePatcher.under_lfo: c00058000000000c60000000000000000000000000
   core/source/load.py::_variant: 7fe3f00e00cffc000000000000000000000000
   core/source/load.py::read_dac: 7fe3f00e00fffc000000000000000000000000
@@ -1144,18 +1191,18 @@ functions:
   tools/rom/flag_census.py::_songs: '800000000000000000000000'
   tools/rom/flag_census.py::census: '800000000000000000000000'
   tools/rom/flag_census.py::main: '800000000000000000000000'
-  tools/rom/song_dump.py::_dac: f8e000000000000000000000000000000000000000
-  tools/rom/song_dump.py::_digest: f8e000000000000000000000000000000000000000
-  tools/rom/song_dump.py::_event: ffe000000000000000000000000000000000000000
-  tools/rom/song_dump.py::_fields: f8e000000000000000000000000000000000000000
-  tools/rom/song_dump.py::_op: f8e000000000000000000000000000000000000000
-  tools/rom/song_dump.py::_played: fbe000000000000000000000000000000000000000
-  tools/rom/song_dump.py::_rules: f8e000000000000000000000000000000000000000
-  tools/rom/song_dump.py::_song: ffe000000000000000000000000000000000000000
-  tools/rom/song_dump.py::_voice: ffe000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_dac: 1f8e000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_digest: 1f8e000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_event: 1ffe000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_fields: 1f8e000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_op: 1f8e000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_played: 1fbe000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_rules: 1f8e000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_song: 1ffe000000000000000000000000000000000000000
+  tools/rom/song_dump.py::_voice: 1ffe000000000000000000000000000000000000000
   tools/rom/song_dump.py::dump_asm: '70000000000000000000000000000000000000000'
-  tools/rom/song_dump.py::dump_rom: f8e000000000000000000000000000000000000000
-  tools/rom/song_dump.py::main: ffe000000000000000000000000000000000000000
+  tools/rom/song_dump.py::dump_rom: 1f8e000000000000000000000000000000000000000
+  tools/rom/song_dump.py::main: 1ffe000000000000000000000000000000000000000
   tools/vgm/vgm_analyze.py::_dac_line: '42100421084210042108421'
   tools/vgm/vgm_analyze.py::_fm_line: '42108421084210842108421'
   tools/vgm/vgm_analyze.py::_frame_lines: '42108421084210842108421'

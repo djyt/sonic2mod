@@ -21,6 +21,7 @@ _PACKAGES: dict[SmpsDriver, tuple[str, str]] = {
     SmpsDriver.SH2: ("smpsz80.sh2", "SH2"),
     SmpsDriver.OUTRUN: ("smpsz80.outrun", "OUTRUN"),
     SmpsDriver.MUCOM_MD: ("mucom.md", "MUCOM_MD"),
+    SmpsDriver.TIMETRAX: ("timetrax", "TIMETRAX"),
 }
 
 assert set(_PACKAGES) == set(SmpsDriver), "a driver name without a package"

@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from ..smps import ChannelType, FlagRead, Op, OpKind, SmpsCode
 from .fixes import RomFix
@@ -20,6 +21,9 @@ from .image import RomError
 from .memory import SoundMemory
 from .variant import SmpsVariant
 
+if TYPE_CHECKING:
+    from .header import RomHeader
+
 
 @dataclass
 class DecodedTracks:
@@ -27,6 +31,15 @@ class DecodedTracks:
     labels: dict[str, int]                                   # each label's address
     dropped: Counter[str] = field(default_factory=Counter)   # flags read and left out, by name
     flags: list[FlagRead] = field(default_factory=list)      # every flag, in address order
+
+
+def song_tracks(memory: SoundMemory, head: RomHeader, variant: SmpsVariant,
+                splices: dict[int, RomFix] | None = None) -> DecodedTracks:
+    """A song's tracks: decode_tracks from its header's starts and loops, through the memory its
+    driver reads that song by (SmpsVariant.song_memory)."""
+    if variant.song_memory:
+        memory = variant.song_memory(memory, head)
+    return decode_tracks(memory, head.tracks, variant, splices, head.loops)
 
 
 def decode_tracks(memory: SoundMemory, starts: dict[int, ChannelType], variant: SmpsVariant,

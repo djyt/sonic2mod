@@ -1,7 +1,7 @@
 # Time Trax (prototype): Tim Follin's Z80 driver
 
 Probed 2026-11-01.  Goal: `convert.py` reads Time Trax's six songs from the ROM.  Read since
-2026-11-02 (Phase 1; 1.4's rip glitches open); this is the probe and the plan.
+2026-11-02 (Phase 1 done); this is the probe and the plan.
 
 **Verdict.**  Not SMPS: Tim Follin's own Z80 driver, a new family.  *Reading* it is small: a 100-line
 scratch walker decodes all six songs, and their key-ons land on the rips' frames with the rips'
@@ -266,10 +266,16 @@ reached.  A glide is the same with another curve: D4 uses it.
 - [x] 1.3 The sync: song 0's FM5 waits 636 frames each pass, read as a rest (walk.py: FM3's
   signal, FM5 reading `$8E` every other frame).  Every channel of every song loops its song's pass.
   `configs/time_trax/` (minimal, `region: pal`) and `rips.yaml`.
-- [ ] 1.4 Run: `vgm_lift --all --configs configs/time_trax --aspects onset length note` and
+- [x] 1.4 Run: `vgm_lift --all --configs configs/time_trax --aspects onset length note` and
   `vgm_frames --all`: 0 of 6 clean, as expected before Phase 2.  Pitch misses a semitone (the
-  transposition dropped); level the volume law; length rests that hold, `$96` / `$98`.  Open: the
-  rips' lost frames (0.3): confirm in the writes, then `glitches:` in `rips.yaml`.
+  transposition dropped); level the volume law; length rests that hold, `$96` / `$98`.  The rips'
+  lost frames (0.3) confirmed: V-ints the driver loses ($06F4), 77 in `rips.yaml` (10-25 a song).
+  Each set checked whole: every rip then loops its song's frames, and the lift's onsets fall
+  (3734 / 4369 / 4798 / 2877 / 5845 -> 13 / 29 / 25 / 282 / 40; song 3's left: notes the lift
+  misses at 63-66 s, Phase 2).  `vgm_analyze --updates` flags most; three it misses, placed by the
+  notes: an update that ends just short of the next frame (song 0's 5618), one split by a late
+  burst (song 4's 2330, 8995).  One of its flags is no loss (song 4's 3099), and song 4's 6688 sits
+  somewhere in an idle 6688-6692.
 
 ### Phase 2: the walk
 - [ ] 2.1 Rests as ties; `$96` / `$98`; legato; set transposition; pan; detune.

@@ -178,9 +178,9 @@ cases:
 - read_time_trax
 functions:
   core/audio/gain.py::db_to_gain: f03ff1f807800000039ce739ce739ce739ce739ce
-  core/audio/pitch.py::hz_to_midi: e08c000000021400035ad7bdaf7bdaf7bdef7bded
-  core/audio/pitch.py::midi_name: e08c000000021400035ad7bdaf7bdaf7bdef7bded
-  core/audio/pitch.py::pitch_name: e08c000000021400035ad7bdaf7bdaf7bdef7bded
+  core/audio/pitch.py::hz_to_midi: e088000000021400035ad7bdaf7bdaf7bdef7bded
+  core/audio/pitch.py::midi_name: e088000000021400035ad7bdaf7bdaf7bdef7bded
+  core/audio/pitch.py::pitch_name: e088000000021400035ad7bdaf7bdaf7bdef7bded
   core/audio/pitch.py::semitone_to_hz: 800ffffffffffffc2080000000000000000000000000
   core/audit/frame_check.py::FrameCheck.missed: fc000000000000000000000000
   core/audit/frame_check.py::FrameCheck.ok: fc000000000000000000000000
@@ -223,11 +223,12 @@ functions:
   core/audit/pitch.py::_StartScorer.__init__: ffffffffffffc0000000000000000000000000000
   core/audit/pitch.py::_StartScorer.score: ffffffffffffc0000000000000000000000000000
   core/audit/pitch.py::_chip_starts: ffffffffffffc0000000000000000000000000000
+  core/audit/pitch.py::_fine_slid: c0000000200000000000000000000000000000
   core/audit/pitch.py::_judge: ffffffffffffc0000000000000000000000000000
   core/audit/pitch.py::_same_pitch: ffffffffffffc0000000000000000000000000000
   core/audit/pitch.py::_settled: ffffffffffffc0000000000000000000000000000
-  core/audit/pitch.py::_swept: f0040000020000000000000000000000000000000
-  core/audit/pitch.py::_with_sweeps: f0040000020000000000000000000000000000000
+  core/audit/pitch.py::_swept: f00c0000020200000000000000000000000000000
+  core/audit/pitch.py::_with_sweeps: f00c0000020200000000000000000000000000000
   core/audit/pitch.py::audit_pitches: ffffffffffffc0000000000000000000000000000
   core/audit/pitch.py::instrument_verdicts: ffffffffffffc0000000000000000000000000000
   core/audit/pitch.py::mod_pitch_timeline: ffffffffffffc0000000000000000000000000000
@@ -256,7 +257,7 @@ functions:
   core/audit/rip_diff.py::_rip_clock: 3c000000000000000000000000000
   core/audit/rip_diff.py::_tempo: 3c000000000000000000000000000
   core/audit/rip_diff.py::compare_with_rip: 3c000000000000000000000000000
-  core/audit/rips.py::RipFaults.__bool__: f0040000020033ffc000000000000000000000000
+  core/audit/rips.py::RipFaults.__bool__: f00c0000020033ffc000000000000000000000000
   core/audit/rips.py::RipFaults._shifts: '80000000000000000000000000'
   core/audit/rips.py::RipFaults.foreign_at: 3ffc000000000000000000000000
   core/audit/rips.py::RipFaults.foreign_throughout: 3c000000000000000000000000000
@@ -264,17 +265,17 @@ functions:
   core/audit/rips.py::RipFaults.realign: 3c0fc000000000000000000000000
   core/audit/rips.py::RipFaults.unlogged_aspect: fc000000000000000000000000
   core/audit/rips.py::RipShelf._rip_files: 2bffc000000000000000000000000
-  core/audit/rips.py::RipShelf.around: f004000002003fffc000000000000000000000000
+  core/audit/rips.py::RipShelf.around: f00c000002023fffc000000000000000000000000
   core/audit/rips.py::RipShelf.config_files: c000000000000000000000000000
   core/audit/rips.py::RipShelf.config_for: 2fffc000000000000000000000000
   core/audit/rips.py::RipShelf.faults_for: 3fffc000000000000000000000000
-  core/audit/rips.py::RipShelf.load: f004000002003fffc000000000000000000000000
+  core/audit/rips.py::RipShelf.load: f00c000002023fffc000000000000000000000000
   core/audit/rips.py::RipShelf.pairs: 2bffc000000000000000000000000
   core/audit/rips.py::RipShelf.rip_for: '10000000000000000000000000000'
   core/audit/rips.py::_check_keys: f000000002000279c000000000000000000000000
-  core/audit/rips.py::_entry: f0040000020033ffc000000000000000000000000
-  core/audit/rips.py::_mirror: f000000002003e79c000000000000000000000000
-  core/audit/rips.py::_read_map: f004000002003fffc000000000000000000000000
+  core/audit/rips.py::_entry: f00c0000020033ffc000000000000000000000000
+  core/audit/rips.py::_mirror: f000000002023e79c000000000000000000000000
+  core/audit/rips.py::_read_map: f00c000002023fffc000000000000000000000000
   core/audit/rips.py::dac_written: 3fffc000000000000000000000000
   core/audit/rips.py::frame_cut: ffffffffffffffffc000000000000000000000000
   core/audit/rips.py::named: 2bffc000000000000000000000000
@@ -293,6 +294,7 @@ functions:
   core/chips/psg.py::noise_follows_tone3: 6de0000000000003da68000000000000000000000000
   core/chips/psg.py::noise_rate: 6de0000000000003da680000001ce70000039ce739ce
   core/chips/psg.py::noise_white: 1ce70000039ce739ce
+  core/chips/psg.py::psg_divider_for_hz: '40000000000000000000000000000000000000'
   core/chips/psg.py::psg_frequency_hz: 7fddf1e603a7c00004217bdef7bc2f7bdef7bdef
   core/chips/psg.py::psg_level_db: 3e01980000000000000739ce7380e739ce739ce
   core/chips/ym2612/wrapper.py::output_rate: ffffffffffffffffc000000000000000000000000
@@ -331,7 +333,7 @@ functions:
   core/config/loader.py::read_yaml_file: ffffffffffffffffc000000000000000000000000
   core/config/settings.py::PsgSynthesisSettings.from_yaml: ffffffffffffffffc000000000000000000000000
   core/config/settings.py::SampleSettings._shared_fields: ffffffffffffffffc000000000000000000000000
-  core/config/settings.py::SampleSettings.max_sample_bytes: e0040000020000000000000000000000000000000
+  core/config/settings.py::SampleSettings.max_sample_bytes: e00c0000020000000000000000000000000000000
   core/config/settings.py::SynthesisSettings.from_yaml: ffffffffffffffffc000000000000000000000000
   core/config/settings.py::_builds: ffffffffffffffffc000000000000000000000000
   core/config/settings.py::_check_keys: ffffffffffffffffc000000000000000000000000
@@ -367,7 +369,7 @@ functions:
   core/config/song.py::ConversionConfig.validate_mod_channels: ffffffffffffffffc000000000000000000000000
   core/config/song.py::SampleRow.from_yaml: ffffffffffffffffc000000000000000000000000
   core/config/song.py::_channel_list: ffffffffffffffffc000000000000000000000000
-  core/config/song.py::_count: f0040000020002080000000000000000000000000
+  core/config/song.py::_count: f00c0000020202080000000000000000000000000
   core/config/song.py::_range_space: ffffffffffffffffc000000000000000000000000
   core/config/song.py::_region: ffffffffffffffffc000000000000000000000000
   core/config/song.py::variant_output_file: '2000401322100000000000000000000000000000'
@@ -584,10 +586,10 @@ functions:
   core/drivers/timetrax/walk.py::walk_song: 800f0000000000002080000000000000000000000000
   core/files.py::write_shared: 3e01b8000000000000000000000000000000000
   core/mod/cell.py::Cell.decode: ffffffffffffc0000000000000000000000000000
-  core/mod/file.py::ModFile.get_name: ffbfffffdffcda687fffffffffffffffffffffff
+  core/mod/file.py::ModFile.get_name: ff3fffffdfdcda687fffffffffffffffffffffff
   core/mod/file.py::ModFile.get_name_bytes: ffffffffffffffffc7fffffffffffffffffffffff
   core/mod/file.py::ModFile.set_name: ffffffffffffffffc7fffffffffffffffffffffff
-  core/mod/file.py::ModSample.get_name: ffbfffffdffcda687fffffffffffffffffffffff
+  core/mod/file.py::ModSample.get_name: ff3fffffdfdcda687fffffffffffffffffffffff
   core/mod/file.py::ModSample.set_name: ffffffffffffffffc7fffffffffffffffffffffff
   core/mod/limits.py::sample_limit_bytes: ffffffffffffffffc000000000000000000000000
   core/mod/notes.py::clamp_note: ffffffffffffc0000000000000000000000000000
@@ -605,14 +607,14 @@ functions:
   core/plan/baked.py::BakedPlan.pitch_envelopes: f0000000000000000000000000000000000000000
   core/plan/baked.py::BakedPlan.sweeps: f0000000000000000000000000000000000000000
   core/plan/baked.py::_Keyed.sweep: f0000000000000000000000000000000000000000
-  core/plan/baked.py::_Shapes.__init__: f0040000020000000000000000000000000000000
+  core/plan/baked.py::_Shapes.__init__: f00c0000020200000000000000000000000000000
   core/plan/baked.py::_Shapes.baked: f0000000000000000000000000000000000000000
   core/plan/baked.py::_Shapes.key: f0000000000000000000000000000000000000000
   core/plan/baked.py::_levels: f0000000000000000000000000000000000000000
-  core/plan/baked.py::plan_baked: f0040000020000000000000000000000000000000
+  core/plan/baked.py::plan_baked: f00c0000020200000000000000000000000000000
   core/plan/conversion.py::ConversionPlan.of: ffffffffffffc0000000000000000000000000000
   core/plan/conversion.py::ConversionPlan.pitch: ffffffffffffc0000000000000000000000000000
-  core/plan/conversion.py::ConversionPlan.with_baked: f0040000020000000000000000000000000000000
+  core/plan/conversion.py::ConversionPlan.with_baked: f00c0000020200000000000000000000000000000
   core/plan/conversion.py::ConversionPlan.with_detune: ffffffffffffc0000000000000000000000000000
   core/plan/conversion.py::ConversionPlan.with_pitches: ffffffffffffc0000000000000000000000000000
   core/plan/conversion.py::MergeRouting.fm_instruments: ffffffffffffffffc7fffffffffffffffffffffff
@@ -630,27 +632,27 @@ functions:
   core/plan/derive.py::_Deriver._fm_drum: 1d000078000000000000000000000000000000
   core/plan/derive.py::_Deriver._fm_slots: f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._fold_copies: f03ff1f8078000000000000000000000000000000
-  core/plan/derive.py::_Deriver._fold_levels: f0040000020000000000000000000000000000000
+  core/plan/derive.py::_Deriver._fold_levels: f00c0000020000000000000000000000000000000
   core/plan/derive.py::_Deriver._fold_one: '60080000000000000000000000000000000000000'
   core/plan/derive.py::_Deriver._folded_to: e0080000000000000000000000000000000000000
-  core/plan/derive.py::_Deriver._glided: f0040000020000000000000000000000000000000
+  core/plan/derive.py::_Deriver._glided: f00c0000020000000000000000000000000000000
   core/plan/derive.py::_Deriver._grid_options: f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._inherited: f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._items: f03ff1f8078000000000000000000000000000000
-  core/plan/derive.py::_Deriver._level_miss: f0040000020000000000000000000000000000000
+  core/plan/derive.py::_Deriver._level_miss: f00c0000020000000000000000000000000000000
   core/plan/derive.py::_Deriver._lowest_root: f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._max_span: f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._merged_fit: f02c0000020000000000000000000000000000000
   core/plan/derive.py::_Deriver._nearest: 3e01b8000000000000000000000000000000000
   core/plan/derive.py::_Deriver._noise: '120198000000000000000000000000000000000'
   core/plan/derive.py::_Deriver._notes: f03ff1f8078000000000000000000000000000000
-  core/plan/derive.py::_Deriver._rang: e0040000020000000000000000000000000000000
+  core/plan/derive.py::_Deriver._rang: e00c0000020000000000000000000000000000000
   core/plan/derive.py::_Deriver._refined: '2000000000000000000000000000000000000'
-  core/plan/derive.py::_Deriver._reserved_fit: f0040000020000000000000000000000000000000
-  core/plan/derive.py::_Deriver._ringing: e0040000020000000000000000000000000000000
-  core/plan/derive.py::_Deriver._root: e0040000020000000000000000000000000000000
+  core/plan/derive.py::_Deriver._reserved_fit: f00c0000020000000000000000000000000000000
+  core/plan/derive.py::_Deriver._ringing: e00c0000020000000000000000000000000000000
+  core/plan/derive.py::_Deriver._root: e00c0000020000000000000000000000000000000
   core/plan/derive.py::_Deriver._sample_list: f03ff1f8078000000000000000000000000000000
-  core/plan/derive.py::_Deriver._sharing: e0040000000000000000000000000000000000000
+  core/plan/derive.py::_Deriver._sharing: e00c0000000000000000000000000000000000000
   core/plan/derive.py::_Deriver._sources: f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._take: f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._timing: f03ff1f8078000000000000000000000000000000
@@ -671,11 +673,13 @@ functions:
   core/plan/derive.py::starting_volume: f03ff1f8078000000000000000000000000000000
   core/plan/detune.py::DetunePlan.add: f4b7ffdc604840000000000000000000000000000
   core/plan/detune.py::DetunePlan.envelope_of: f0000000000000000000000000000000000000000
+  core/plan/detune.py::_PsgDetunes.offsets: c0000000200000000000000000000000000000
   core/plan/detune.py::_Wanted.order: f4bfffdc604a40000000000000000000000000000
   core/plan/detune.py::_apart: ffffffffffffc0000000000000000000000000000
   core/plan/detune.py::_commonest: f4bff9dc604a40000000000000000000000000000
   core/plan/detune.py::_in_class: f0300000000200000000000000000000000000000
-  core/plan/detune.py::_psg_detunes: f02c0600020800000000000000000000000000000
+  core/plan/detune.py::_psg_detunes: f02c0600020a00000000000000000000000000000
+  core/plan/detune.py::_psg_offset: c0000000200000000000000000000000000000
   core/plan/detune.py::_rendered: f4bff9dc604a40000000000000000000000000000
   core/plan/detune.py::_stem: f4b7ffdc604840000000000000000000000000000
   core/plan/detune.py::_word_hz: 6cbfffdfe07a40000000000000000000000000000
@@ -694,12 +698,12 @@ functions:
   core/plan/driver_state.py::resolve_note: ffffffffffffc0000000000000000000000000000
   core/plan/driver_state.py::walk_channel: ffffffffffffc0000000000000000000000000000
   core/plan/glides.py::Read.levels: '60000000000000000000000000000000000000000'
-  core/plan/glides.py::channel_reads: f0040000020000000000000000000000000000000
+  core/plan/glides.py::channel_reads: f00c0000020200000000000000000000000000000
   core/plan/glides.py::reaches: f0000000000000000000000000000000000000000
   core/plan/glides.py::with_ties: f0000000000000000000000000000000000000000
   core/plan/glides.py::word_period: f0000000000000000000000000000000000000000
   core/plan/instrument_plan.py::_fm_word_cents: ffffffffffffc0000000000000000000000000000
-  core/plan/instrument_plan.py::_psg_render_hz: 2c0600000800000000000000000000000000000
+  core/plan/instrument_plan.py::_psg_render_hz: 2c0600000a00000000000000000000000000000
   core/plan/instrument_plan.py::prepare_instruments: ffffffffffffc0000000000000000000000000000
   core/plan/instrument_plan.py::sounding_pitches: ffffffffffffc0000000000000000000000000000
   core/plan/instruments.py::FmInstrument.rendered_semitone: ffffffffffffc0000000000000000000000000000
@@ -713,7 +717,7 @@ functions:
   core/plan/instruments.py::PsgInstrument.synth_idx: 7fc0f1e603a40000000000000000000000000000
   core/plan/instruments.py::PsgInstrument.synth_shift: 7fc0f1e603a40000000000000000000000000000
   core/plan/instruments.py::_add_detune_variants: ffffffffffffc0000000000000000000000000000
-  core/plan/instruments.py::_add_psg_detune_variants: f02c0600020800000000000000000000000000000
+  core/plan/instruments.py::_add_psg_detune_variants: f02c0600020a00000000000000000000000000000
   core/plan/instruments.py::fm_catalogue: ffffffffffffc0000000000000000000000000000
   core/plan/instruments.py::fm_catalogue.add: ffffffffffffc0000000000000000000000000000
   core/plan/instruments.py::fm_catalogue.rooted: ffffffffffffc0000000000000000000000000000
@@ -731,12 +735,12 @@ functions:
   core/plan/slot_fit.py::windows: f03ff1f8078000000000000000000000000000000
   core/plan/synth_roots.py::resolve_synth_roots: ffffffffffffc0000000000000000000000000000
   core/plan/synth_roots.py::resolve_synth_roots.entries: ffffffffffffc0000000000000000000000000000
-  core/plan/timeline.py::Timeline.__init__: f0040000020000000000000000000000000000000
-  core/plan/timeline.py::Timeline.collect_segments: e0040000020000000000000000000000000000000
-  core/plan/timeline.py::Timeline.segment_at: f0040000020000000000000000000000000000000
-  core/plan/timeline.py::Timeline.segments: f0040000020000000000000000000000000000000
-  core/plan/timeline.py::Timeline.ticks_per_frame: f0040000020000000000000000000000000000000
-  core/plan/timeline.py::Timeline.ticks_per_frame_at: f0040000020000000000000000000000000000000
+  core/plan/timeline.py::Timeline.__init__: f00c0000020200000000000000000000000000000
+  core/plan/timeline.py::Timeline.collect_segments: e00c0000020000000000000000000000000000000
+  core/plan/timeline.py::Timeline.segment_at: f00c0000020000000000000000000000000000000
+  core/plan/timeline.py::Timeline.segments: f00c0000020000000000000000000000000000000
+  core/plan/timeline.py::Timeline.ticks_per_frame: f00c0000020000000000000000000000000000000
+  core/plan/timeline.py::Timeline.ticks_per_frame_at: f00c0000020000000000000000000000000000000
   core/render_cache.py::RenderCache.__init__: 3fffc000000000000000000000000
   core/render_cache.py::RenderCache._store: 3fffc000000000000000000000000
   core/render_cache.py::RenderCache.get_bytes: 3fffc000000000000000000000000
@@ -754,14 +758,14 @@ functions:
   core/rom/flags.py::read: f04f03ff1c0000003ef8800000000000000000000000
   core/rom/flags.py::refuse: 707003ff1f8078031f7c800000000000000000000000
   core/rom/grammar/__init__.py::_operand_count: 7c7003ff1f8078031f7c800000000000000000000000
-  core/rom/grammar/__init__.py::as_instruction: e00f0040000000002080000000000000000000000000
+  core/rom/grammar/__init__.py::as_instruction: e00f00c0000000002080000000000000000000000000
   core/rom/grammar/__init__.py::flag_instruction: fc7f03ff1f8078033ffc800000000000000000000000
   core/rom/grammar/__init__.py::track_label: fc7f03ff1f8078033ffc800000000000000000000000
   core/rom/grammar/mucom.py::MucomDialect._note: 600003e0000000001860800000000000000000000000
   core/rom/grammar/mucom.py::MucomDialect.instruction: 600003e0000000001860800000000000000000000000
   core/rom/grammar/mucom.py::MucomDialect.pan: 600003c0000000001860800000000000000000000000
   core/rom/grammar/mucom.py::MucomDialect.vibrato: 600003e0000000001860800000000000000000000000
-  core/rom/grammar/mucom.py::as_instruction: 3a0000000001860800000000000000000000000
+  core/rom/grammar/mucom.py::as_instruction: '320000000001860800000000000000000000000'
   core/rom/grammar/mucom.py::dac_sample: 600003e0000000001860800000000000000000000000
   core/rom/grammar/mucom.py::detune: 600003e0000000001860800000000000000000000000
   core/rom/grammar/mucom.py::le_word: 600003e0000000001860800000000000000000000000
@@ -846,7 +850,7 @@ functions:
   core/rom/tracks.py::_splice: '4000000000000000000000000000000000000000000'
   core/rom/tracks.py::_stops_reached: 400003c0000000001040800000000000000000000000
   core/rom/tracks.py::decode_tracks: fc7f03ff1f8078033ffc800000000000000000000000
-  core/rom/tracks.py::song_tracks: f04f0040000020032594000000000000000000000000
+  core/rom/tracks.py::song_tracks: f04f00c0000020032594000000000000000000000000
   core/rom/variant.py::DacSample.is_pitched_copy: 6c600000000000031a68000000000000000000000000
   core/rom/variant.py::HeaderLayout.entries_at: 2c7000001f8078030b2c000000000000000000000000
   core/rom/variant.py::SmpsVariant.__post_init__: fc7ffffffffffffffffc800000000000000000000000
@@ -857,7 +861,7 @@ functions:
   core/rom/variant.py::VoiceLayout.size: ec7f03e01f8078033bec800000000000000000000000
   core/rom/voices.py::_voice: ec7f03e01f8078033bec800000000000000000000000
   core/rom/voices.py::bank_voices: fc7f03ff1f8078033ffc800000000000000000000000
-  core/rom/voices.py::read_voice: e04f0040000020032184000000000000000000000000
+  core/rom/voices.py::read_voice: e04f00c0000020032184000000000000000000000000
   core/rom/voices.py::read_voices: 6c7003e01f8078031b6c800000000000000000000000
   core/rom/voices.py::voice_from_registers: fc7f03ff1f8078033ffc800000000000000000000000
   core/rom/voices.py::voices_used: fc7f03ff1f8078033ffc800000000000000000000000
@@ -868,8 +872,8 @@ functions:
   core/rom/z80.py::_decompressed: 2c000000000000000820000000000000000000000000
   core/rom/z80.py::_kosinski: fc7f03ff1f8078033ffe000000000000000000000000
   core/rom/z80.py::_lea_register: e03f03e00380780339e6000000000000000000000000
-  core/rom/z80.py::_leas_before: e00f0040000020032184000000000000000000000000
-  core/rom/z80.py::_past_bus_wait: e00f0040000020032184000000000000000000000000
+  core/rom/z80.py::_leas_before: e00f00c0000020032184000000000000000000000000
+  core/rom/z80.py::_past_bus_wait: e00f00c0000020032184000000000000000000000000
   core/rom/z80.py::_pointed: fc7f03ff1f8078033ffe000000000000000000000000
   core/rom/z80.py::_verified: fc7f03ff1f8078033ffe000000000000000000000000
   core/rom/z80.py::one_match: 904f0000000000002490000000000000000000000000
@@ -934,15 +938,16 @@ functions:
   core/smps/compare.py::align_songs.score: 3c000000000000000000000000000
   core/smps/compare.py::compare_songs: 3c000000000000000000000000000
   core/smps/driver_tables.py::PsgEnvelope.frames: '68000000000000000000000000'
-  core/smps/driver_tables.py::PsgTable.divider: 6de0c80099fe00a3da68000000000000000000000000
-  core/smps/driver_tables.py::PsgTable.divider_cents: 7d0091e603240000000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.divider: 6de0c8c099fe00a3da68000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.divider_cents: 7d0091e603040000000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.nearest: c0000000200000000000000000000000000000
   core/smps/driver_tables.py::PsgTable.of: fdfffffffffffffffffc000000000000000000000000
-  core/smps/driver_tables.py::PsgTable.render_divider: 2c0600000800000000000000000000000000000
+  core/smps/driver_tables.py::PsgTable.render_divider: 2c0600000a00000000000000000000000000000
   core/smps/driver_tables.py::PsgTable.semitone: ffe0f9fe03a40000000000000000000000000000
   core/smps/driver_tables.py::_divider_semitone: 7de0ffffffff87ffde78000000000000000000000000
   core/smps/driver_tables.py::chip_pitch: ffffffffffffc0000000000000000000000000000
   core/smps/driver_tables.py::fm_note_index: fdf0000000000003fffc000000000000000000000000
-  core/smps/driver_tables.py::fm_render_word: 800f02c0600020802080000000000000000000000000
+  core/smps/driver_tables.py::fm_render_word: 800f02c0600020a02080000000000000000000000000
   core/smps/driver_tables.py::fm_table_index: 800ffffffffffffc2080000000000000000000000000
   core/smps/driver_tables.py::psg_note_index: 6de0000000000003da68000000000000000000000000
   core/smps/driver_tables.py::psg_voice_name: ffffffffffffffffffffffffffffffffffffffffffff
@@ -956,7 +961,7 @@ functions:
   core/smps/driver_track.py::DriverTrack._enveloped: 800f0000000000002080000000000000000000000000
   core/smps/driver_track.py::DriverTrack._held: fffffffffffffffffffc000000000000000000000000
   core/smps/driver_track.py::DriverTrack._holding: 800f0000000000002080000000000000000000000000
-  core/smps/driver_track.py::DriverTrack._keyed_off: f04f0040000020032594000000000000000000000000
+  core/smps/driver_track.py::DriverTrack._keyed_off: f04f00c0000020232594000000000000000000000000
   core/smps/driver_track.py::DriverTrack._law_levels: 800f0000000000002080000000000000000000000000
   core/smps/driver_track.py::DriverTrack._level_path: 800f0000000000002080000000000000000000000000
   core/smps/driver_track.py::DriverTrack._load_voice: fffffffffffffffffffc000000000000000000000000
@@ -1000,7 +1005,7 @@ functions:
   core/smps/names.py::_build_smps_note_names: ffffffffffffffffffffffffffffffffffffffffffff
   core/smps/names.py::note_label: f03ff1f8078000000000000000000000000000000
   core/smps/names.py::parse_smps_note: ffffffffffffce080000000000000000000000000
-  core/smps/names.py::parse_synth_note: '80000000000000000000000000000000000000'
+  core/smps/names.py::parse_synth_note: c0000000000000000000000000000000000000
   core/smps/names.py::source_map: fffffffffffffffffffc000000000000000000000000
   core/smps/names.py::source_names: fffffffffffffffffffc000000000000000000000000
   core/smps/names.py::synth_note_name: f03ff1f8078000000000000000000000000000000
@@ -1038,8 +1043,9 @@ functions:
   core/smps/playback.py::_table_word: fdf0000000000003fffc000000000000000000000000
   core/smps/playback.py::_unwritten: '80000000000000002080000000000000000000000000'
   core/smps/playback.py::played_song: fdf0000000000003fffc000000000000000000000000
-  core/smps/playback.py::psg_render_divider: 2c0600000800000000000000000000000000000
+  core/smps/playback.py::psg_render_divider: 2c0600000a00000000000000000000000000000
   core/smps/rules.py::OctaveWrap.wrapped: 50000000007800030c000000000000000000000000
+  core/smps/rules.py::PitchRules.divider: c0000000200000000000000000000000000000
   core/smps/rules.py::PitchRules.shift: 6fe0ffe0f9fe03a7da68000000000000000000000000
   core/smps/rules.py::PlaybackRules.psg_table: fdfffffffffffffffffc000000000000000000000000
   core/smps/rules.py::PlaybackRules.track: fffffffffffffffffffc800000000000000000000000
@@ -1051,7 +1057,7 @@ functions:
   core/smps/slide.py::PitchSlide._frame: 800f0000000000002080000000000000000000000000
   core/smps/slide.py::PitchSlide._word_at: 800f0000000000002080000000000000000000000000
   core/smps/slide.py::PitchSlide.apply: 800f0000000000002080000000000000000000000000
-  core/smps/slide.py::PitchSlide.for_channel: f04f0040000020032594000000000000000000000000
+  core/smps/slide.py::PitchSlide.for_channel: f04f00c0000020232594000000000000000000000000
   core/smps/slide.py::PitchSlide.frames: 800f0000000000002080000000000000000000000000
   core/smps/slide.py::_Rate.due: 800f0000000000002080000000000000000000000000
   core/smps/slide.py::_toward: 800f0000000000002080000000000000000000000000
@@ -1059,16 +1065,16 @@ functions:
   core/smps/song.py::SmpsEvent.is_note: d8ffffffffffffc8000000000000000000000000000
   core/smps/song.py::SmpsSong.end_tick: fdff03ff1f807803fffc000000000000000000000000
   core/smps/song.py::SmpsSong.loop_target_tick: fdff03ff1f807803fffc000000000000000000000000
-  core/smps/song.py::SmpsSong.tempo_changes: fdfe004000007803fffc000000000000000000000000
-  core/smps/song.py::SmpsSong.tempo_schedule: fdfe004000007803fffc000000000000000000000000
+  core/smps/song.py::SmpsSong.tempo_changes: fdfe00c000007803fffc000000000000000000000000
+  core/smps/song.py::SmpsSong.tempo_schedule: fdfe00c000007803fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.carrier_registers: fdff03fd00007803fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.channel_fnum_offset: 7dffffffffffffffdf7c000000000000000000000000
-  core/smps/song.py::SmpsVoice.chip_registers: fdff000000000003fffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.chip_registers: fdff008000000003fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.feedback_algorithm: fdf0000000000003fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.level_fixed: c00e00000000000030c0000000000000000000000000
   core/smps/song.py::SmpsVoice.operator_values: fdff03fd00007803fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.patched: e00603e00000000038e0000000000000000000000000
-  core/smps/song.py::SmpsVoice.registers: fdff001d00007803fffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.registers: fdff009d00007803fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.volume_registers: fdff03fd00007803fffc000000000000000000000000
   core/smps/song_prep.py::_apply_global_tempo_div: fdff03ff1f807803fffc000000000000000000000000
   core/smps/song_prep.py::_apply_global_tempo_div.retime: d800000000000008000000000000000000000000000
@@ -1082,7 +1088,7 @@ functions:
   core/smps/tempo.py::TempoSegment.holds: 10000000007803c104000000000000000000000000
   core/smps/tempo.py::TempoSegment.tick_at: db0000000007803c104000000000000000000000000
   core/smps/tempo.py::frame_of_tick: fdf0000000007803fffc000000000000000000000000
-  core/smps/tempo.py::tempo_schedule: fdfe004000007803fffc000000000000000000000000
+  core/smps/tempo.py::tempo_schedule: fdfe00c000007803fffc000000000000000000000000
   core/smps/tempo.py::tick_at_frame: db0000000007803c104000000000000000000000000
   core/smps/track.py::TrackState.__init__: fdfffffffffffffffffc000000000000000000000000
   core/smps/track.py::TrackState._set_level: fdffcbe4fffe34fffffc000000000000000000000000
@@ -1106,7 +1112,7 @@ functions:
   core/source/load.py::read_song: ffffffffffffffffc000000000000000000000000
   core/ui/cli.py::add_shelf_arguments: ffffffffffffffffc000000000000000000000000
   core/ui/cli.py::add_variant_argument: ffffffffffffc0000000000000000000000000000
-  core/ui/cli.py::rip_shelf: f004000002003fffc000000000000000000000000
+  core/ui/cli.py::rip_shelf: f00c000002023fffc000000000000000000000000
   core/ui/pitch_audit.py::print_audit: ffffffffffffc0000000000000000000000000000
   core/ui/pitch_audit.py::verdict_text: ffffffffffffc0000000000000000000000000000
   core/ui/song_diff.py::_aspect_counts: 3c000000000000000000000000000

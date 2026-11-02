@@ -15758,7 +15758,7 @@ pitch_credits:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: c6d0253-dirty
+  commit: 6d5b10b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -15798,10 +15798,12 @@ pitch_credits:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -15852,10 +15854,12 @@ pitch_credits:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -15896,11 +15900,13 @@ pitch_credits:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -15915,8 +15921,10 @@ pitch_credits:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -15925,12 +15933,14 @@ pitch_credits:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_pitch_audit.py
   inputs:
-    configs/sonic_1/13_credits.yaml: a5a2c99af2b0
+    configs/sonic_1/13_credits.yaml: adaba94e7f4e
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: 8317b07b6f7b
+    tests/baselines/credits_baseline.mod: fc127aba4a2b
     tests/settings.yaml: 1be2c231bd5e
 pitch_drowning:
   argv:
@@ -21998,7 +22008,7 @@ pitch_sor2_go_straight:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 719ea22-dirty
+  commit: 6d5b10b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -22181,7 +22191,7 @@ pitch_sor2_go_straight:
   inputs:
     configs/streets_of_rage_2/00_go_straight.yaml: 87420c3d5c0e
     reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
-    tests/baselines/sor2_go_straight_baseline.mod: 7a87b465468c
+    tests/baselines/sor2_go_straight_baseline.mod: 586a8a66d623
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_jungle_base:
   argv:
@@ -22193,7 +22203,7 @@ pitch_sor2_jungle_base:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 47ca32b-dirty
+  commit: 6d5b10b-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -22233,10 +22243,12 @@ pitch_sor2_jungle_base:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
@@ -22286,10 +22298,12 @@ pitch_sor2_jungle_base:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
   - core/plan/noise_derive.py
@@ -22332,11 +22346,13 @@ pitch_sor2_jungle_base:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -22351,8 +22367,10 @@ pitch_sor2_jungle_base:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -22361,12 +22379,14 @@ pitch_sor2_jungle_base:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_pitch_audit.py
   inputs:
-    configs/streets_of_rage_2/05_jungle_base.yaml: acfd7fe7f498
+    configs/streets_of_rage_2/05_jungle_base.yaml: eef1715a1906
     reference/vgz/streets_of_rage_2/13 - Jungle Base.vgz: ae9db06d6e9c
-    tests/baselines/sor2_jungle_base_baseline.mod: f258f7e40339
+    tests/baselines/sor2_jungle_base_baseline.mod: a9ce53659d7d
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_level_complete:
   argv:

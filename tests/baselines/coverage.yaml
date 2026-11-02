@@ -8845,7 +8845,7 @@ sor2_go_straight:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_go_straight.mod
-  commit: 719ea22-dirty
+  commit: 6d5b10b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9028,7 +9028,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: 719ea22-dirty
+  commit: 6d5b10b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9211,7 +9211,7 @@ sor2_level_complete:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_level_complete.mod
-  commit: 719ea22-dirty
+  commit: 6d5b10b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9394,7 +9394,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: 719ea22-dirty
+  commit: 6d5b10b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9577,7 +9577,7 @@ sor2_too_deep:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_too_deep.mod
-  commit: 719ea22-dirty
+  commit: 6d5b10b-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11675,7 +11675,7 @@ tt_mission_briefing:
   - tests/settings.yaml
   - --output
   - output/regression/tt_mission_briefing.mod
-  commit: 719ea22-dirty
+  commit: 6d5b10b-dirty
   files:
   - convert.py
   - core/__init__.py

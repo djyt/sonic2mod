@@ -240,27 +240,27 @@ sor2_game_over:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_go_straight:
-  commit: 719ea22
+  commit: 6d5b10b
   config: 7aca40110edd
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_jungle_base:
-  commit: 719ea22
+  commit: 6d5b10b
   config: 9401eecbdfc2
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_level_complete:
-  commit: 719ea22
+  commit: 6d5b10b
   config: cd1a3d62566b
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_song_12:
-  commit: 719ea22
+  commit: 6d5b10b
   config: 51b5789bab39
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 sor2_too_deep:
-  commit: 719ea22
+  commit: 6d5b10b
   config: f23b86609325
   date: '2026-11-02'
   settings: f08dfd2ff1bd
@@ -315,7 +315,7 @@ tt_game_over:
   date: '2026-11-02'
   settings: f08dfd2ff1bd
 tt_mission_briefing:
-  commit: 719ea22
+  commit: 6d5b10b
   config: 5e9ddbee01ca
   date: '2026-11-02'
   settings: f08dfd2ff1bd

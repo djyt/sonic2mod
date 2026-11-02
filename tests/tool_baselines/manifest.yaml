@@ -1411,12 +1411,12 @@ pitch_continue_screen_lofi:
     tests/baselines/continue_screen_lofi_baseline.mod: 5a9503014af6
     tests/settings.yaml: 1be2c231bd5e
 pitch_credits:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 6d5b10b-dirty
+  date: '2026-11-02'
   inputs:
-    configs/sonic_1/13_credits.yaml: a5a2c99af2b0
+    configs/sonic_1/13_credits.yaml: adaba94e7f4e
     reference/vgz/sonic_1/13 - Staff Roll.vgz: 0c03c5a787bb
-    tests/baselines/credits_baseline.mod: 8317b07b6f7b
+    tests/baselines/credits_baseline.mod: fc127aba4a2b
     tests/settings.yaml: 1be2c231bd5e
 pitch_drowning:
   commit: c6d0253-dirty
@@ -1675,20 +1675,20 @@ pitch_sor2_game_over:
     tests/baselines/sor2_game_over_baseline.mod: 33767398ef02
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_go_straight:
-  commit: 719ea22-dirty
+  commit: 6d5b10b-dirty
   date: '2026-11-02'
   inputs:
     configs/streets_of_rage_2/00_go_straight.yaml: 87420c3d5c0e
     reference/vgz/streets_of_rage_2/02 - Go Straight.vgz: eb080c921bdb
-    tests/baselines/sor2_go_straight_baseline.mod: 7a87b465468c
+    tests/baselines/sor2_go_straight_baseline.mod: 586a8a66d623
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_jungle_base:
-  commit: 47ca32b-dirty
-  date: '2026-11-01'
+  commit: 6d5b10b-dirty
+  date: '2026-11-02'
   inputs:
-    configs/streets_of_rage_2/05_jungle_base.yaml: acfd7fe7f498
+    configs/streets_of_rage_2/05_jungle_base.yaml: eef1715a1906
     reference/vgz/streets_of_rage_2/13 - Jungle Base.vgz: ae9db06d6e9c
-    tests/baselines/sor2_jungle_base_baseline.mod: f258f7e40339
+    tests/baselines/sor2_jungle_base_baseline.mod: a9ce53659d7d
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_level_complete:
   commit: c6d0253-dirty

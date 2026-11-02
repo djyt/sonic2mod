@@ -133,6 +133,7 @@ functions:
   core/chips/fm.py::split_freq_word: 3fffffffffffffffff
   core/chips/fm.py::split_operator_register: 1800fc000000000000
   core/chips/fm.py::timer_a_hz: e000000000
+  core/chips/psg.py::psg_divider_for_hz: '8000000000000'
   core/chips/psg.py::psg_frequency_hz: 42f81f0f07000161
   core/chips/psg.py::psg_level_db: 3fffc1fcfffc01f61
   core/chips/sn76489/build.py::get_lib_path: 3ffffbfcfffc01f61
@@ -272,6 +273,7 @@ functions:
   core/convert/channel_writer/context.py::WriterContext.detune: 3fffffffffffffffff
   core/convert/channel_writer/context.py::WriterContext.legato_mode: 3fffffffffffffffff
   core/convert/channel_writer/context.py::WriterContext.merge: 3fffffffffffffffff
+  core/convert/channel_writer/context.py::WriterContext.note_cents: 800d0000000000000
   core/convert/channel_writer/context.py::WriterContext.sample_cents: 3fffffffffffffffff
   core/convert/channel_writer/fades.py::Fades.__init__: 3fffffffffffffffff
   core/convert/channel_writer/fades.py::Fades._decay_of: 3fffffffffffffffff
@@ -352,6 +354,7 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._played: 3fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._release_rate: 3fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._resolve_legato: 3fffffffffffffffff
+  core/convert/channel_writer/writer.py::ChannelWriter._retune_attack: 800f8000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._retune_tie: 3c41f810eb07c2007e
   core/convert/channel_writer/writer.py::ChannelWriter._ring_note: 3fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._slide_tie: 3c0000000000000000
@@ -455,7 +458,7 @@ functions:
   core/diagnostics.py::Diagnostics.remap_instruments: 130000c0062b01818
   core/diagnostics.py::Diagnostics.remap_instruments.item: 130000c0062b01818
   core/diagnostics.py::Diagnostics.remap_instruments.slot: 130000c0062b01818
-  core/diagnostics.py::Diagnostics.warn: 3d72d92e2062b00060
+  core/diagnostics.py::Diagnostics.warn: 3d72d12e2062b00060
   core/drivers/detect.py::detect_variant: 3e00ffe0fe0403c040
   core/drivers/games.py::data_fixes: 3e00ffe0fe0403c040
   core/drivers/games.py::known_game: 3e00ffe0fe0403c040
@@ -942,11 +945,13 @@ functions:
   core/plan/detune.py::DetunePlan.envelope_of: 3c0000000000000000
   core/plan/detune.py::DetunePlan.instrument_for: 3fffffffffffffffff
   core/plan/detune.py::DetunePlan.share_base: 3fffffffffffffffff
+  core/plan/detune.py::_PsgDetunes.offsets: 800f8000000000000
   core/plan/detune.py::_Wanted.order: 3c42ffffef07c02161
   core/plan/detune.py::_apart: 3fffffffffffffffff
   core/plan/detune.py::_commonest: 3c42fff0ef07c02161
   core/plan/detune.py::_in_class: 3c00a0000000000060
   core/plan/detune.py::_psg_detunes: 3c42ffbf0f7f3da17f
+  core/plan/detune.py::_psg_offset: f8000000000000
   core/plan/detune.py::_rendered: 3c42fff0ef07c02161
   core/plan/detune.py::_stem: 3c42afffef07c02101
   core/plan/detune.py::_word_hz: 3fffffffffffffffff
@@ -1199,8 +1204,10 @@ functions:
   core/smps/code.py::track_byte: 3ff03ffffffffffff
   core/smps/driver_tables.py::PsgEnvelope.frames: 3ff781fcfffc01f61
   core/smps/driver_tables.py::PsgEnvelope.loops: 3c22010cfffc00160
-  core/smps/driver_tables.py::PsgTable.divider: 3c2d810cfffc00160
+  core/smps/driver_tables.py::PsgTable.divider: 3c2f810cfffc00160
+  core/smps/driver_tables.py::PsgTable.nearest: f8000000000000
   core/smps/driver_tables.py::PsgTable.of: 3fffffffffffffffff
+  core/smps/driver_tables.py::PsgTable.offset_cents: f8000000000000
   core/smps/driver_tables.py::PsgTable.render_divider: 42f81f0f07000161
   core/smps/driver_tables.py::PsgTable.semitone: 3fffc1fcfffc01f61
   core/smps/driver_tables.py::_divider_semitone: 3fffffffffffc3fff
@@ -1265,7 +1272,7 @@ functions:
   core/smps/names.py::_build_smps_note_names: 3fffffffffffffffff
   core/smps/names.py::note_label: 3c00ffe0fc0003c000
   core/smps/names.py::parse_smps_note: 3fffffffffffffffff
-  core/smps/names.py::parse_synth_note: '10000000000000'
+  core/smps/names.py::parse_synth_note: '18000000000000'
   core/smps/names.py::semitone_to_note_name: 3fffffffffffffffff
   core/smps/names.py::source_map: 3fffffffffffffffff
   core/smps/names.py::source_names: 3fffffffffffffffff
@@ -1289,6 +1296,7 @@ functions:
   core/smps/pitch_envelope.py::_scaled: 3e00000000000
   core/smps/playback.py::psg_render_divider: 42f81f0f07000161
   core/smps/rules.py::OctaveWrap.wrapped: e00003c000
+  core/smps/rules.py::PitchRules.divider: f8000000000000
   core/smps/rules.py::PitchRules.shift: 3fffc1fcfffc01f61
   core/smps/rules.py::PlaybackRules.psg_table: 3fffffffffffffffff
   core/smps/rules.py::PlaybackRules.track: 3fffffffffffffffff
@@ -1426,7 +1434,7 @@ functions:
   core/ui/report.py::_section: 3fffffffffffffffff
   core/ui/report.py::_w_clamp: 3c0000000000000000
   core/ui/report.py::_w_copy_no_slot: '180050000000000000'
-  core/ui/report.py::_w_detune_no_slot: 1800d8000000000060
+  core/ui/report.py::_w_detune_no_slot: 1800d0000000000060
   core/ui/report.py::_w_loop_drift: '1000000000000'
   core/ui/report.py::_w_map_gap: 3c0000000000000000
   core/ui/report.py::_w_merge_fill_lost: '22800000'

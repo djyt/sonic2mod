@@ -1068,6 +1068,8 @@ python tools/vgm/vgm_lift.py --all --configs configs/moonwalker --skip DAC  # ev
   sides (a song's already multiplied by it), so it never moves a note; it sets how the converter counts
   rows (`ticks_per_row` × divider).
 - Aspects: what the lift reads (`LIFTED_ASPECTS`: onset, length, note; `--aspects` a few of them).
+  `vgm_frames.py --aspects` alike: pitch, level, voice, pan, pitch-path, level-path (default all); the
+  rip's offset is found on every one.
   The lift matches a note to the song's own FM table and holds at its phase (`lift_song(frames,
   song.rules, ...)`); the song's FM notes are compared as it reads one, the table entry nearest the
   pitch that sounds (detune and channel 3's offset in).  Pitch, level, voice, pan: `vgm_frames.py`.
@@ -1124,8 +1126,18 @@ and `--glitches` print them):
   overlap are one candidate: a **glitch** when every channel playing across it moved (two at least;
   one silent across several glitches moves by their sum), else the song's (one channel alone, or
   from a channel's first attack).  Each candidate prints its frame, seconds and each moved channel's
-  attacks on time before / after; `[rips.yaml]` once logged.  The scan prints, never writes: a
-  glitch goes into `rips.yaml` once its writes are read (`vgm_analyze.py --frames` around it).
+  attacks on time before / after; `[rips.yaml]` once logged.  Under it, the driver's updates
+  around it more than a frame apart (`core/vgm/updates.py`): `update gaps: 1276 1.90 after an
+  overrun: a V-int lost` - the update before ran into the next frame and none came there; `updates a
+  frame apart: no V-int lost` - something else moved the channels.  An idle frame after a long
+  update reads alike (a driver writes nothing where nothing changes): the song's notes decide.  The
+  scan prints, never writes: a glitch goes into `rips.yaml` once its writes are read
+  (`vgm_analyze.py --frames` / `--updates` around it).
+- `vgm_analyze.py --updates`: every update (the bursts starting in one frame, and a late one going on
+  into the next) with its first write's sample, how late against the log's phase, its length and
+  writes, and the gap to the one before in samples and frames; `V-int lost` on an update two frames
+  after one that ran into the next frame (`runs into N`).  What `--frames` / `--writes` hide: they
+  place each write in a frame, not the sample it falls on.
 - `vgm_frames` alone cannot see a glitch: it judges the registers on a note's frame, and a frame late
   they mostly still hold the note.  Path of Fiend "matched" every note at offset -1 with its glitch in
   place; with it undone, at its true offset 0.

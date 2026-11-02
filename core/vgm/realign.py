@@ -10,7 +10,8 @@ Given where (a frame of the log) and by how much, the log is put back in step:
                       a frame inserted before F: F-1's state, nothing written
 
 Indices and samples (frame windows, DAC starts, the loop and the end) follow the frames they
-belong to, so a lift and a frame check read the log as if it had run in step.
+belong to, so a lift and a frame check read the log as if it had run in step.  The bursts, the
+log's as recorded, are dropped.
 """
 
 from __future__ import annotations
@@ -55,7 +56,7 @@ def realigned(log: FrameLog, shifts: Mapping[int, int]) -> FrameLog:
         return sample + (moved[old] - old) * log.frame_samples
 
     loop = None if log.loop_sample is None else follow(log.loop_sample)
-    return dataclasses.replace(log, frames=frames, loop_sample=loop, end_sample=follow(log.end_sample))
+    return dataclasses.replace(log, frames=frames, loop_sample=loop, end_sample=follow(log.end_sample), bursts=())
 
 
 def _merged(group: list[Frame], index: int, start: int, frame_samples: int) -> Frame:

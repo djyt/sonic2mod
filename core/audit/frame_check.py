@@ -93,6 +93,7 @@ class FrameAspect(StrEnum):
 
 # A path aspect -> the aspect its frames read (and rips.yaml's unlogged name for it)
 _PATH_OF = {FrameAspect.PITCH_PATH: FrameAspect.PITCH, FrameAspect.LEVEL_PATH: FrameAspect.LEVEL}
+FRAME_ASPECTS = frozenset(FrameAspect)
 
 
 class Excuse(StrEnum):
@@ -135,15 +136,25 @@ class FrameCheck:
 
 
 def check_frames(song: SmpsSong, frames: FrameLog, channels: ChannelChoice = _EVERY_CHANNEL,
-                 faults: RipFaults = _NO_FAULTS) -> FrameCheck:
+                 faults: RipFaults = _NO_FAULTS, aspects: frozenset[FrameAspect] = FRAME_ASPECTS) -> FrameCheck:
     """Each FM and PSG note `song` plays against `frames` on its frame, at the hold phase that
-    matches the rip better (the song's first); `faults`: the rip's own, undone or set aside."""
+    matches the rip better (the song's first); `faults`: the rip's own, undone or set aside.
+    `aspects`: those counted and missed (the offset and phase are found on every one)."""
     frames = faults.realign(frames)
     played = played_song(song)
     excuses = _Excuses(faults, _re_entries(song), frames)
     checks = [_check_at(song, _note_spans(song, early, played), early, frames, channels, excuses)
               for early in (False, True)]
-    return min(checks, key=_attack_misses)
+    return _only(min(checks, key=_attack_misses), aspects)
+
+
+def _only(check: FrameCheck, aspects: frozenset[FrameAspect]) -> FrameCheck:
+    """`check` with `aspects` alone counted and missed."""
+    if aspects == FRAME_ASPECTS:
+        return check
+    checked = Counter({key: n for key, n in check.checked.items() if key[1] in aspects})
+    misses = [m for m in check.misses if m.aspect in aspects]
+    return FrameCheck(check.offset, check.holds_early, checked, misses, check.excused)
 
 
 def note_frames(song: SmpsSong, holds_early: bool = False, played: PlayedSong | None = None) -> NoteFrames:

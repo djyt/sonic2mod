@@ -42,6 +42,12 @@ class Frames(unittest.TestCase):
         self.assertEqual(len(set(keyed)), 6)
         self.assertTrue(all(f.fm[0].keys == (0xF, 0) for f in fl.frames if f.fm[0].keys))
 
+    def test_bursts_are_kept_each_due_at_the_phase(self):
+        burst = _fm(0, 0x28, 0xF0)
+        fl = frame_log(decode_vgm(_vgm(_wait(300) + burst + _wait(_FRAME) + burst + burst)))
+        self.assertEqual([(b.first, b.writes) for b in fl.bursts], [(300, 1), (300 + _FRAME, 2)])
+        self.assertEqual([fl.burst_due(fl.frame_of(b.first)) for b in fl.bursts], [300, 300 + _FRAME])
+
     def test_dac_gaps_restart_at_a_seek(self):
         bank = bytes(8)
         block = b"\x67\x66\x00" + struct.pack("<I", len(bank)) + bank

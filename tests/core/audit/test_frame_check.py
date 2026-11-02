@@ -6,14 +6,38 @@
 from __future__ import annotations
 
 import unittest
+from collections import Counter
 from pathlib import Path
 
-from core.audit import Excuse, ForeignSound, FrameAspect, FrameCheck, RipFaults, RipShelf, check_frames
-from core.audit.frame_check import _judge_path
+from core.audit import (
+    FRAME_ASPECTS,
+    Excuse,
+    ForeignSound,
+    FrameAspect,
+    FrameCheck,
+    FrameMiss,
+    RipFaults,
+    RipShelf,
+    check_frames,
+)
+from core.audit.frame_check import _judge_path, _only
 from core.drivers import read_rom_song
+from core.drivers.reference import SONIC1_RULES
 from core.rom import RomImage
+from core.smps import TempoSegment
 from core.smps.playback import PlayedNote
-from core.vgm import DacFrame, FmFrame, Frame, FrameLog, PsgFrame, load_frames
+from core.vgm import (
+    DacFrame,
+    FmFrame,
+    Frame,
+    FrameLog,
+    LiftOptions,
+    PsgFrame,
+    decode_vgm,
+    frame_log,
+    lift_song,
+    load_frames,
+)
 from tests.roms import (
     GOLDEN_AXE_RIPS,
     GOLDEN_AXE_ROM,
@@ -25,6 +49,7 @@ from tests.roms import (
     needs_space_harrier_2_rips,
     needs_streets_of_rage_rips,
 )
+from tests.vgm_build import fm_notes
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -136,3 +161,28 @@ class NotePath(unittest.TestCase):
         frames = self._frames([0x2000, 0x2400], [10, 10])
         check = self._judge(PlayedNote(0, 2, rest=False, pitch=0x2000, level=(10,)), frames)
         self.assertEqual((check.misses, sum(check.checked.values())), ([], 0))
+
+
+_MODIFIER = 3                   # the hand-built song's tempo
+
+
+class Aspects(unittest.TestCase):
+    """check_frames' `aspects`: those alone counted and missed."""
+
+    def test_only_the_aspects_chosen_are_counted(self):
+        tempo = TempoSegment(0, 0, _MODIFIER)
+        notes = {0: [tempo.frame_of(t) for t in range(0, 48, 4)], 1: [tempo.frame_of(t) for t in range(2, 48, 8)]}
+        log = frame_log(decode_vgm(fm_notes(notes, tempo.frame_of(48))))
+        song = lift_song(log, SONIC1_RULES, LiftOptions(tempo_modifier=_MODIFIER))
+        every = check_frames(song, log)
+        pitch = check_frames(song, log, aspects=frozenset({FrameAspect.PITCH}))
+        self.assertEqual({key[1] for key in pitch.checked}, {FrameAspect.PITCH})
+        self.assertEqual(sum(pitch.checked.values()), sum(n for key, n in every.checked.items() if key[1] is FrameAspect.PITCH))
+        self.assertEqual(pitch.offset, every.offset)
+
+    def test_misses_of_others_are_dropped(self):
+        check = FrameCheck(0, checked=Counter({("FM1", FrameAspect.PITCH, False): 2, ("FM1", FrameAspect.LEVEL, False): 2}),
+                           misses=[FrameMiss("FM1", 0, False, FrameAspect.LEVEL, (1,), (2,))])
+        only = _only(check, frozenset({FrameAspect.PITCH}))
+        self.assertEqual((only.misses, dict(only.checked)), ([], {("FM1", FrameAspect.PITCH, False): 2}))
+        self.assertIs(_only(check, FRAME_ASPECTS), check)

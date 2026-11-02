@@ -15,7 +15,7 @@ from core.drivers.reference import SONIC1_RULES
 from core.smps import TempoSegment
 from core.vgm import LiftOptions, decode_vgm, frame_log, lift_song, load_frames
 from tests.roms import needs_golden_axe_rips, needs_space_harrier_2_rips
-from tests.vgm_build import fm_notes
+from tests.vgm_build import BURST, FRAME, fm_notes, with_writes
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -36,8 +36,17 @@ _NOTES = {0: _frames(list(itertools.accumulate([0, *[2, 4, 6] * 9]))[:-1]),
 _LENGTH = TempoSegment(0, 0, _MODIFIER).frame_of(_END)
 
 
-def _log(late: tuple[int, ...] = ()):
-    return frame_log(decode_vgm(fm_notes(_NOTES, _LENGTH, _A4, _LOST, late)))
+_STEP = 150                     # samples between a long update's writes: one burst
+
+
+def _log(late: tuple[int, ...] = (), overrun: bool = False):
+    """The song's log, `late` channels a frame late from _LOST on; `overrun`: the update before _LOST
+    written on into _LOST's (the V-int lost inside it)."""
+    log = decode_vgm(fm_notes(_NOTES, _LENGTH, _A4, _LOST, late))
+    if overrun:
+        start = (_LOST - 1) * FRAME + BURST
+        log = with_writes(log, list(range(start, start + FRAME + _STEP, _STEP)))
+    return frame_log(log)
 
 
 class Scan(unittest.TestCase):
@@ -56,6 +65,15 @@ class Scan(unittest.TestCase):
         self.assertEqual((glitch.shift, len(glitch.moves), glitch.steady), (-1, 3, ()))
         self.assertTrue(start is not None and start < log.frame_of(_LOST * 735) < end)
         self.assertEqual(glitch.frame, end)
+
+    def test_an_overrun_before_the_glitch_is_its_evidence(self):
+        glitch = scan_glitches(self.song, _log(late=(0, 1, 2), overrun=True)).glitches[0]
+        self.assertEqual(glitch.lost_vints, 1)
+        self.assertTrue(any(u.lost for u in glitch.updates))
+
+    def test_a_glitch_with_no_overrun_shows_none_lost(self):
+        glitch = scan_glitches(self.song, _log(late=(0, 1, 2))).glitches[0]
+        self.assertEqual(glitch.lost_vints, 0)
 
     def test_one_channel_moving_alone_is_the_songs(self):
         scan = scan_glitches(self.song, _log(late=(0,)))

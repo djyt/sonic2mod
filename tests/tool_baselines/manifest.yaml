@@ -1002,8 +1002,8 @@ frames_streets_of_rage_2:
     reference/vgz/streets_of_rage_2/23 - Beta - Walking Bottom.vgz: ca38175a16a4
     reference/vgz/streets_of_rage_2/24 - Little Money Avenue.vgz: 2a53e8aca5fa
 glitches_golden_axe:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: dd453df-dirty
+  date: '2026-11-02'
   inputs:
     configs/golden_axe/81_wilderness.yaml: 701580eb8960
     configs/golden_axe/82_turtle_village_1.yaml: f68728200961
@@ -1050,8 +1050,8 @@ glitches_outrun:
     reference/vgz/outrun/04 - Last Wave.vgz: b7a88f63e71c
     reference/vgz/outrun/05 - Step on Beat.vgz: a7be399dfb8c
 glitches_space_harrier_2:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: dd453df-dirty
+  date: '2026-11-02'
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
     configs/space_harrier_2/87_an_omen.yaml: 09339311b850

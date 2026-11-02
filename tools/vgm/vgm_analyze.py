@@ -15,6 +15,7 @@ Usage::
     python tools/vgm/vgm_analyze.py file.vgz --max-rows 500 --clock 7670454
     python tools/vgm/vgm_analyze.py file.vgz --frames --chip all --channel FM1 PSG1   # frame by frame
     python tools/vgm/vgm_analyze.py file.vgz --writes --chip all --channel FM3 --from 0 --to 8   # every write, in order
+    python tools/vgm/vgm_analyze.py file.vgz --updates --from 1270 --to 1280   # each update's sample, gap, lost V-ints
 
 Output columns (FM):
     time_ms   — milliseconds from track start (VGM 44100 Hz sample clock)
@@ -80,6 +81,7 @@ from core.vgm import (
     PSG_NAMES,
     ChipState,
     DacFrame,
+    DriverUpdate,
     FmFrame,
     Frame,
     NoteStart,
@@ -87,6 +89,7 @@ from core.vgm import (
     VgmError,
     VgmLog,
     decoded_writes,
+    driver_updates,
     frame_log,
     noise_rate,
     noise_white,
@@ -313,6 +316,40 @@ def print_frames(log: VgmLog, state: ChipState, chip: str, channel_filter: set[s
 
 
 # ---------------------------------------------------------------------------
+# Driver updates
+# ---------------------------------------------------------------------------
+
+def _update_note(u: DriverUpdate) -> str:
+    """'V-int lost' after an overrun; 'runs into 1275' on the overrun itself."""
+    notes = ["V-int lost"] if u.lost else []
+    notes += [f"runs into {u.frame + 1}"] if u.overran else []
+    return ", ".join(notes)
+
+
+def print_updates(log: VgmLog, state: ChipState, frames: range, max_rows: int) -> None:
+    """Each driver update in `frames` (core.vgm.driver_updates): its first write's sample, how late
+    against the log's phase, and the gap since the update before, in samples and frames.  A gap of
+    two frames after an update running into the next: a V-int lost."""
+    fl = frame_log(log, state)
+    updates = driver_updates(fl)
+    lost = [u.before + 1 for u in updates if u.lost and u.before is not None]     # the frames run into
+    print(f"Updates: {len(updates)} in {len(fl.frames)} frames of {fl.frame_samples} samples, bursts at +{fl.phase};"
+          f" {len(lost)} V-ints lost (an update running into the next frame, then none for a frame)")
+    if lost:
+        print(f"Lost   : frames {' '.join(str(f) for f in lost)}")
+    print()
+    print(f"{'frame':>6}  {'sample':>9}  {'late':>5}  {'length':>6}  {'writes':>6}  {'gap':>6}  {'frames':>6}")
+    print("-" * 68)
+
+    shown = [u for u in updates if u.frame in frames]
+    for u in shown[:max_rows] if max_rows else shown:
+        gap = "" if u.gap is None else f"{u.gap:>6}  {u.gap_frames:>6.2f}"
+        print(f"{u.frame:>6}  {u.first:>9}  {u.late:>+5}  {u.length:>6}  {u.writes:>6}  {gap:<14}  {_update_note(u)}".rstrip())
+    if max_rows and len(shown) > max_rows:
+        print(f"  ... {len(shown) - max_rows} more rows (use --max-rows, --from / --to)")
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -406,8 +443,16 @@ def main() -> None:
         help="Print every register write in order, decoded (TL op1, key on, pan ...), with its frame; "
              "a run of one field a row",
     )
-    ap.add_argument("--from", type=int, default=0, dest="first", metavar="FRAME", help="--writes, --frames: the first frame (0)")
-    ap.add_argument("--to", type=int, default=None, dest="last", metavar="FRAME", help="--writes, --frames: the last frame (the end)")
+    ap.add_argument(
+        "--updates", action="store_true",
+        help="Print each driver update (its bursts of writes): its first write's sample, how late, the gap "
+             "to the one before in samples and frames; a V-int lost flagged (an update running into the next "
+             "frame, then a gap of two)",
+    )
+    ap.add_argument("--from", type=int, default=0, dest="first", metavar="FRAME",
+                    help="--writes, --frames, --updates: the first frame (0)")
+    ap.add_argument("--to", type=int, default=None, dest="last", metavar="FRAME",
+                    help="--writes, --frames, --updates: the last frame (the end)")
     args = ap.parse_args()
 
     with contextlib.suppress(Exception):
@@ -436,6 +481,11 @@ def main() -> None:
         state = ChipState.for_log(log, args.clock, args.psg_clock)
         last = len(frame_log(log, state).frames) - 1 if args.last is None else args.last
         print_writes(log, state, args.chip, channel_filter, range(args.first, last + 1), args.max_rows)
+        return
+    if args.updates:
+        print(f"File   : {path}")
+        last = sys.maxsize if args.last is None else args.last
+        print_updates(log, ChipState.for_log(log, args.clock, args.psg_clock), range(args.first, last + 1), args.max_rows)
         return
     if args.frames:
         print(f"File   : {path}")

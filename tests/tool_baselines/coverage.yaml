@@ -12831,7 +12831,7 @@ glitches_golden_axe:
   - --glitches
   - --configs
   - configs/golden_axe
-  commit: c6d0253-dirty
+  commit: dd453df-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -12987,6 +12987,7 @@ glitches_golden_axe:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
   - core/vgm/frames.py
@@ -12997,6 +12998,7 @@ glitches_golden_axe:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:
@@ -13225,7 +13227,7 @@ glitches_space_harrier_2:
   - --glitches
   - --configs
   - configs/space_harrier_2
-  commit: c6d0253-dirty
+  commit: dd453df-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -13385,6 +13387,7 @@ glitches_space_harrier_2:
   - core/ui/report.py
   - core/ui/song_diff.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
   - core/vgm/frames.py
@@ -13395,6 +13398,7 @@ glitches_space_harrier_2:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   - tools/vgm/vgm_frames.py
   inputs:

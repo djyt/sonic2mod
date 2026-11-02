@@ -11,8 +11,8 @@ phase, so a whole burst lands in one frame:
                 |q|=========.......                        |
                  quarter frame early
 
-The phase is the commonest burst start (mod the frame), found from the writes themselves; the
-first frame is the one holding the log's first write.  This table is what the lift reads.
+The phase is the commonest burst start (mod the frame), found from the writes themselves
+(bursts.py); the first frame is the one holding the log's first write.  This table is what the lift reads.
 
 A DAC sample starts at a PCM seek, or where bytes resume after a pause.  A ripper's bank is the
 stream as heard, so a sample cutting into another often needs neither (Streets of Rage 2's: no
@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from ..chips import OPERATOR_SLOT_OFFSETS, split_operator_register
+from .bursts import Burst, write_bursts
 from .chipstate import FM_CHANNELS, NOISE_CHANNEL, PSG_TONE_CHANNELS, Change, ChangeKind, ChipState
 from .reader import VGM_SAMPLE_RATE, VgmLog, VgmOp, VgmWrite
 from .writes import is_dac_byte
@@ -52,7 +53,6 @@ class FrameCut(Enum):
     VINT = "V-int"              # a fixed period, at the bursts' phase
     TIMER_A = "Timer A"         # after each Timer A reset ($27 bit 4): the update's last write
 
-_BURST_GAP = 200                # samples: writes closer than this belong to one burst
 _PHASE_WINDOW = 16              # samples either side of a phase that count towards it
 _FRAME_LEAD_DIVISOR = 4         # a frame's window opens a quarter frame before the phase
 _DAC_PAUSE_DIVISOR = 4          # DAC bytes resuming after a quarter frame's silence: a sample started
@@ -150,11 +150,18 @@ class FrameLog:
     end_sample: int = 0             # where the log ends (and a looping one jumps back)
     cuts: tuple[int, ...] = ()      # cut at the driver's resets: each frame's last sample (the
                                     # last frame's, to the log's end, none); empty: a fixed cut
+    bursts: tuple[Burst, ...] = ()  # the writes' bursts, as recorded (realigned: none)
 
     def frame_of(self, sample: int) -> int:
         if self.cuts:
             return bisect.bisect_left(self.cuts, sample)
         return (sample - self.origin) // self.frame_samples
+
+    def burst_due(self, frame: int) -> int:
+        """Where `frame`'s burst is due: the phase in its window (a cut log: the window's start)."""
+        if self.cuts:
+            return self.cuts[frame - 1] if frame else 0
+        return self.origin + frame * self.frame_samples + self.frame_samples // _FRAME_LEAD_DIVISOR
 
     def burst_frame(self, sample: int) -> int:
         """The frame whose driver burst `sample` follows: what the Z80 does a little after the
@@ -190,12 +197,14 @@ def frame_log(log: VgmLog, state: ChipState | None = None, cut: FrameCut = Frame
     if cut is FrameCut.TIMER_A:
         return _cut_at_resets(log, state, samples)
     frame_samples = VGM_SAMPLE_RATE // (log.header.rate or NTSC_RATE)
-    phase = _burst_phase(log.writes, frame_samples)
+    bursts = write_bursts(log.writes)
+    phase = _burst_phase(bursts, frame_samples)
     lead = phase - frame_samples // _FRAME_LEAD_DIVISOR
     origin = -((frame_samples - lead % frame_samples) % frame_samples)
 
     builder = _FrameBuilder(state, origin, frame_samples, samples=samples)
-    return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample, log.pcm, log.end_sample)
+    return FrameLog(list(builder.run(log)), frame_samples, origin, phase, log.loop_sample, log.pcm, log.end_sample,
+                    bursts=bursts)
 
 
 def _cut_at_resets(log: VgmLog, state: ChipState, samples: dict[int, bytes]) -> FrameLog:
@@ -207,23 +216,17 @@ def _cut_at_resets(log: VgmLog, state: ChipState, samples: dict[int, bytes]) -> 
     mean = round((timed[-1] - timed[0]) / (len(timed) - 1)) if len(timed) > 1 else VGM_SAMPLE_RATE // NTSC_RATE
 
     builder = _FrameBuilder(state, 0, mean, cuts, samples)
-    return FrameLog(list(builder.run(log)), mean, 0, 0, log.loop_sample, log.pcm, log.end_sample, cuts)
+    return FrameLog(list(builder.run(log)), mean, 0, 0, log.loop_sample, log.pcm, log.end_sample, cuts,
+                    write_bursts(log.writes))
 
 
 def _is_reset(w: VgmWrite) -> bool:
     return w.op is VgmOp.FM and w.port == 0 and w.reg == _REG_MODE and bool(w.value & _RESET_A)
 
 
-def _burst_phase(writes: list[VgmWrite], frame_samples: int) -> int:
+def _burst_phase(bursts: tuple[Burst, ...], frame_samples: int) -> int:
     """The commonest burst start within a frame, counting starts within _PHASE_WINDOW of it."""
-    starts: list[int] = []
-    last = None
-    for w in writes:
-        if is_dac_byte(w) or w.op is VgmOp.PCM_SEEK:
-            continue
-        if last is None or w.sample - last > _BURST_GAP:
-            starts.append(w.sample % frame_samples)
-        last = w.sample
+    starts = [b.first % frame_samples for b in bursts]
     if not starts:
         return 0
 

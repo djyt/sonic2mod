@@ -272,7 +272,7 @@ functions:
   core/chips/fm.py::freq_word_hz: 1ffffffffffff000000000000000000000000000
   core/chips/fm.py::keyed_carriers: 3a0000e000000000000000000000000000000
   core/chips/fm.py::operator_bits: 7c000000000000000000000000
-  core/chips/fm.py::split_freq_word: 20bffffffffffffffc7fffffffffffffffffffffff
+  core/chips/fm.py::split_freq_word: 120bffffffffffffffc7fffffffffffffffffffffff
   core/chips/fm.py::split_operator_register: 1c0007c000000000c7c421084210842108421084210
   core/chips/fm.py::timer_a_hz: '38000000000000000000000000000000000'
   core/chips/psg.py::noise_follows_tone3: dbc00000000000fd68000000000000000000000000
@@ -519,6 +519,9 @@ functions:
   core/drivers/smpsz80/type0fm/variant.py::_memory: 200000000e000084000000000000000000000000
   core/drivers/smpsz80/type0fm/variant.py::_rules_from_rom: 200000000e000084000000000000000000000000
   core/drivers/timetrax/commands.py::counted: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/glide.py::TimeTraxGlide.toward: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/glide.py::_down: '1000000000000000000000000000000000000000000'
+  core/drivers/timetrax/glide.py::_up: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/grammar.py::_effect: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/grammar.py::_note: '1000000000000000000000000000000000000000000'
   core/drivers/timetrax/grammar.py::_read: '1000000000000000000000000000000000000000000'
@@ -968,8 +971,10 @@ functions:
   core/smps/playback.py::_fixed_noise_apart: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_fm_voice: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_note: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_pitch: e08000000000000000000000000000000000000000
   core/smps/playback.py::_played_channel: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::_rest: 1fbe00000000000fffc000000000000000000000000
+  core/smps/playback.py::_slid: '1000000000000000000000000000000000000000000'
   core/smps/playback.py::_table_word: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::played_song: 1fbe00000000000fffc000000000000000000000000
   core/smps/playback.py::psg_render_divider: 580c0000200000000000000000000000000000
@@ -981,6 +986,14 @@ functions:
   core/smps/run_out.py::_cut: 200000000e000084000000000000000000000000
   core/smps/run_out.py::_with: '2000000006000084000000000000000000000000'
   core/smps/run_out.py::apply_run_out: 1fffffffffffffffffc000000000000000000000000
+  core/smps/slide.py::PitchSlide.__init__: '1000000000000000000000000000000000000000000'
+  core/smps/slide.py::PitchSlide._frame: '1000000000000000000000000000000000000000000'
+  core/smps/slide.py::PitchSlide._word_at: '1000000000000000000000000000000000000000000'
+  core/smps/slide.py::PitchSlide.apply: '1000000000000000000000000000000000000000000'
+  core/smps/slide.py::PitchSlide.for_channel: 1e08000000000000000000000000000000000000000
+  core/smps/slide.py::PitchSlide.frames: '1000000000000000000000000000000000000000000'
+  core/smps/slide.py::_Rate.due: '1000000000000000000000000000000000000000000'
+  core/smps/slide.py::_toward: '1000000000000000000000000000000000000000000'
   core/smps/song.py::SmpsEvent.is_effect: 1fbfffffffffffffffc000000000000000000000000
   core/smps/song.py::SmpsEvent.is_note: 1b1fffffffffff2000000000000000000000000000
   core/smps/song.py::SmpsSong.end_tick: 1fbe07fe3f00e00fffc000000000000000000000000
@@ -988,7 +1001,7 @@ functions:
   core/smps/song.py::SmpsSong.tempo_changes: 1fbe00000000e00fffc000000000000000000000000
   core/smps/song.py::SmpsSong.tempo_schedule: 1fbe00000000e00fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.carrier_registers: 1fbe07fa0000e00fffc000000000000000000000000
-  core/smps/song.py::SmpsVoice.channel_fnum_offset: 1fbfffffffffffffffc000000000000000000000000
+  core/smps/song.py::SmpsVoice.channel_fnum_offset: fbfffffffffffffffc000000000000000000000000
   core/smps/song.py::SmpsVoice.chip_registers: 1fbe00000000000fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.feedback_algorithm: 1fbe00000000000fffc000000000000000000000000
   core/smps/song.py::SmpsVoice.level_fixed: '1800000000000000840000000000000000000000000'

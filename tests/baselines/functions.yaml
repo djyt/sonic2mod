@@ -129,13 +129,13 @@ functions:
   core/chips/fm.py::fm_level_db: 7fffffffffffffffff
   core/chips/fm.py::fnum_block_for_hz: '80000000000000000'
   core/chips/fm.py::freq_word: 7fffffffffffffffff
-  core/chips/fm.py::freq_word_hz: 7c42ffbf0f7f3da17f
+  core/chips/fm.py::freq_word_hz: 7fffffffffffffffff
   core/chips/fm.py::keyed_carriers: 3a0000003c000
   core/chips/fm.py::split_freq_word: 7fffffffffffffffff
   core/chips/fm.py::split_operator_register: 3800fc000000000000
   core/chips/fm.py::timer_a_hz: e000000000
   core/chips/psg.py::psg_divider_for_hz: '8000000000000'
-  core/chips/psg.py::psg_frequency_hz: 42f81f0f07000161
+  core/chips/psg.py::psg_frequency_hz: 7ff81f8f87c01f61
   core/chips/psg.py::psg_level_db: 3fffc1fcfffc01f61
   core/chips/sn76489/build.py::get_lib_path: 3ffffbfcfffc01f61
   core/chips/sn76489/wrapper.py::SN76489.__del__: 3ffffbfcfffc01f61
@@ -212,6 +212,7 @@ functions:
   core/config/settings.py::SampleSettings.trims: 7fffffffffffffffff
   core/config/settings.py::SynthesisSettings.fm_volume_mode: 7fffffffffffffffff
   core/config/settings.py::SynthesisSettings.from_yaml: 7fffffffffffffffff
+  core/config/settings.py::SynthesisSettings.normalises: 7fffffffffffffffff
   core/config/settings.py::SynthesisSettings.player_for: 7fffffffffffffffff
   core/config/settings.py::SynthesisSettings.worker_threads: 7fffffffffffffffff
   core/config/settings.py::_builds: 7fffffffffffffffff
@@ -223,6 +224,7 @@ functions:
   core/config/settings.py::_mod_note: 7fffffffffffffffff
   core/config/settings.py::_names: 7fffffffffffffffff
   core/config/settings.py::_non_negative: 7fffffffffffffffff
+  core/config/settings.py::_normalise_volumes: 7fffffffffffffffff
   core/config/settings.py::_player: 7fffffffffffffffff
   core/config/settings.py::_positive_int: 7fffffffffffffffff
   core/config/settings.py::_psg_volume_mode: 7fffffffffffffffff
@@ -238,7 +240,7 @@ functions:
   core/config/song.py::ConversionConfig._read_source: 7fffffffffffffffff
   core/config/song.py::ConversionConfig.from_data: 7fffffffffffffffff
   core/config/song.py::ConversionConfig.from_yaml: 7fffffffffffffffff
-  core/config/song.py::ConversionConfig.is_derived: '380058000000000000'
+  core/config/song.py::ConversionConfig.is_derived: 7fffffffffffffffff
   core/config/song.py::ConversionConfig.is_minimal: 7fffffffffffffffff
   core/config/song.py::ConversionConfig.lift_options: 7fffffffffffffffff
   core/config/song.py::ConversionConfig.mod_channel_count: 7fffffffffffffffff
@@ -249,14 +251,14 @@ functions:
   core/config/song.py::ConversionConfig.validate_mod_channels: 7fffffffffffffffff
   core/config/song.py::SampleRow.from_yaml: 7fffffffffffffffff
   core/config/song.py::_channel_list: 7fffffffffffffffff
-  core/config/song.py::_count: 7c00fc000000000000
+  core/config/song.py::_count: 7fffffffffffffffff
   core/config/song.py::_range_space: 7fffffffffffffffff
   core/config/song.py::_region: 7fffffffffffffffff
   core/config/song.py::variant_output_file: 201800060030d90c0c
   core/convert/channel_writer/cells.py::Cells.__init__: 7fffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.cell: 7fffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.clear_stale_cut: 7fffffffffffffffff
-  core/convert/channel_writer/cells.py::Cells.cut: 2ff001007ffc01fe0
+  core/convert/channel_writer/cells.py::Cells.cut: 62ffb01007ffc01fe0
   core/convert/channel_writer/cells.py::Cells.cut_after: '2800000'
   core/convert/channel_writer/cells.py::Cells.effect_at: 18080c
   core/convert/channel_writer/cells.py::Cells.end: 7fffffffffffffffff
@@ -265,17 +267,18 @@ functions:
   core/convert/channel_writer/cells.py::Cells.free: 7c43ffe0d407d988ed
   core/convert/channel_writer/cells.py::Cells.grid_ticks: 7ffffc1f1c87fc2160
   core/convert/channel_writer/cells.py::Cells.in_song: 7fffffffffffffffff
-  core/convert/channel_writer/cells.py::Cells.note_at: 7fbcfc441002bc1fff
+  core/convert/channel_writer/cells.py::Cells.note_at: 7fbc7c441002bc1fff
   core/convert/channel_writer/cells.py::Cells.note_cell: 7fffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.put: 7fffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.put_note: 7fffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.row_total: 7fffffffffffffffff
+  core/convert/channel_writer/context.py::EmissionStats.heard: 7fffffffffffffffff
   core/convert/channel_writer/context.py::WriterContext.amiga_clock: 298080c
   core/convert/channel_writer/context.py::WriterContext.config: 7fffffffffffffffff
   core/convert/channel_writer/context.py::WriterContext.detune: 7fffffffffffffffff
   core/convert/channel_writer/context.py::WriterContext.legato_mode: 7fffffffffffffffff
   core/convert/channel_writer/context.py::WriterContext.merge: 7fffffffffffffffff
-  core/convert/channel_writer/context.py::WriterContext.note_cents: 3800d0000000000000
+  core/convert/channel_writer/context.py::WriterContext.note_cents: 3800d0000000000060
   core/convert/channel_writer/context.py::WriterContext.sample_cents: 7fffffffffffffffff
   core/convert/channel_writer/fades.py::Fades.__init__: 7fffffffffffffffff
   core/convert/channel_writer/fades.py::Fades._decay_of: 7fffffffffffffffff
@@ -284,10 +287,12 @@ functions:
   core/convert/channel_writer/fades.py::Fades.release_rate: 7fffffffffffffffff
   core/convert/channel_writer/fades.py::Fades.volume_at: 4000000007d8086c
   core/convert/channel_writer/fades.py::_slide_units: 7c43ffe09007d9886d
-  core/convert/channel_writer/level_curve.py::LevelCurve.__init__: 7c00fc000000000000
-  core/convert/channel_writer/level_curve.py::LevelCurve.write: 7c00fc000000000000
+  core/convert/channel_writer/level_curve.py::LevelCurve.__init__: 7fffffffffffffffff
+  core/convert/channel_writer/level_curve.py::LevelCurve.write: 7fffffffffffffffff
   core/convert/channel_writer/levels.py::Levels.__init__: 7fffffffffffffffff
+  core/convert/channel_writer/levels.py::Levels._heard: 7fffffffffffffffff
   core/convert/channel_writer/levels.py::Levels._level_volume: 2cffc13cf9fc00761
+  core/convert/channel_writer/levels.py::Levels.drum: 3feffbfdffffffffe
   core/convert/channel_writer/levels.py::Levels.emit: 7fffffffffffffffff
   core/convert/channel_writer/levels.py::Levels.on_change: 7fc2fc9fffffc1a1ff
   core/convert/channel_writer/levels.py::Levels.sample: 7fffffffffffffffff
@@ -301,11 +306,11 @@ functions:
   core/convert/channel_writer/modulation.py::Modulation.write: 7fffffffffffffffff
   core/convert/channel_writer/note.py::FillCut.cell: 2ff001007ffc01fe0
   core/convert/channel_writer/note.py::NoteOn.cell: 2fffc13cfffc01fe1
-  core/convert/channel_writer/note.py::NoteOn.row_total: 7ffffd1f5ffffc3fed
+  core/convert/channel_writer/note.py::NoteOn.row_total: 7fffffffffffffffff
   core/convert/channel_writer/note_warnings.py::warn_resolution: 7fffffffffffffffff
   core/convert/channel_writer/pitch_curve.py::PitchCurve.__init__: 7c0000000000000000
   core/convert/channel_writer/pitch_curve.py::PitchCurve._words: 7c0000000000000000
-  core/convert/channel_writer/pitch_curve.py::PitchCurve.for_channel: 7c00fc000000000000
+  core/convert/channel_writer/pitch_curve.py::PitchCurve.for_channel: 7fffffffffffffffff
   core/convert/channel_writer/pitch_curve.py::PitchCurve.moving: 7c0000000000000000
   core/convert/channel_writer/pitch_curve.py::PitchCurve.reaches: 7c0000000000000000
   core/convert/channel_writer/pitch_curve.py::PitchCurve.select: 7c0000000000000000
@@ -324,18 +329,19 @@ functions:
   core/convert/channel_writer/router.py::ColumnRouter.take: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter.__init__: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._attack_commands: 7fffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._baked: 7c00fc000000000000
+  core/convert/channel_writer/writer.py::ChannelWriter._baked: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._base_voice: 7c0000000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._collect_ring_ticks: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._cut_bank_sound: '2800000'
   core/convert/channel_writer/writer.py::ChannelWriter._cut_banked: 7fffffffffffffffff
+  core/convert/channel_writer/writer.py::ChannelWriter._cut_in_attack_row: 6800f8000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._cut_tick: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._emit_volume: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._fill_abs: 2ff001007ffc01fe0
-  core/convert/channel_writer/writer.py::ChannelWriter._glides_on: 7c00fc000000000000
+  core/convert/channel_writer/writer.py::ChannelWriter._glides_on: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._key_off: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._legato_allowed: 7fffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._level_tie: 7c00f8000000000000
+  core/convert/channel_writer/writer.py::ChannelWriter._level_tie: 7c41f810eb07c2007e
   core/convert/channel_writer/writer.py::ChannelWriter._melodic_note: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._move_cxx: 280085004007c000e1
   core/convert/channel_writer/writer.py::ChannelWriter._next_note_row: 7fffffffffffffffff
@@ -356,11 +362,11 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._played: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._release_rate: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._resolve_legato: 7fffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._retune_attack: 3800f8000000000000
+  core/convert/channel_writer/writer.py::ChannelWriter._retune_attack: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._retune_tie: 7c41f810eb07c2007e
   core/convert/channel_writer/writer.py::ChannelWriter._ring_note: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._slide_tie: 7c0000000000000000
-  core/convert/channel_writer/writer.py::ChannelWriter._sliding: 7c00fc000000000000
+  core/convert/channel_writer/writer.py::ChannelWriter._sliding: 7c7ffc10ff07c3c0fe
   core/convert/channel_writer/writer.py::ChannelWriter._stop_ringing: 7fffffbfffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._write_decay: 7fffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._write_pan_steps: 7fffffffffffffffff
@@ -381,6 +387,8 @@ functions:
   core/convert/level_plan.py::LevelPlanner.levels: 7fffffffffffffffff
   core/convert/level_plan.py::modal_level: 7fffffffffffffffff
   core/convert/level_plan.py::psg_att_to_mod: 2cffc13cf9fc00761
+  core/convert/normalise.py::normalise_gain: 7ecffff3ff9d4fe7e7
+  core/convert/normalise.py::raise_volumes: 4d3fd3af18002107
   core/convert/prepare.py::_apply_auto_bpm: 7fffffffffffffffff
   core/convert/prepare.py::prepare_conversion: 7fffffffffffffffff
   core/convert/sample_names.py::_fit: 7fffffffffffffffff
@@ -392,7 +400,7 @@ functions:
   core/convert/sample_names.py::sample_names: 7fffffffffffffffff
   core/convert/sample_names.py::sample_names.chans: 7fffffffffffffffff
   core/convert/samples.py::SampleInstaller.__init__: 7fffffffffffffffff
-  core/convert/samples.py::SampleInstaller._check_render_pitches: 7c42ffbf0f7f3da17f
+  core/convert/samples.py::SampleInstaller._check_render_pitches: 7fffffffffffffffff
   core/convert/samples.py::SampleInstaller._install_synthesized_samples: 7fffffffffffffffff
   core/convert/samples.py::SampleInstaller._load_aside_drums: 7fffffffffffffffff
   core/convert/samples.py::SampleInstaller._load_disk_samples: 7fffffffffffffffff
@@ -417,11 +425,13 @@ functions:
   core/convert/smps2mod.py::SmpsToModConverter._follow: 7fffffffffffffffff
   core/convert/smps2mod.py::SmpsToModConverter._merge: 7fffffffffffffffff
   core/convert/smps2mod.py::SmpsToModConverter._noise_envelopes: 7fffffffffffffffff
+  core/convert/smps2mod.py::SmpsToModConverter._normalise: 7ecffff3ff9d4fe7e7
   core/convert/smps2mod.py::SmpsToModConverter._psg_volume_mode: 7fffffffffffffffff
   core/convert/smps2mod.py::SmpsToModConverter._report_detune: 7fffffffffffffffff
   core/convert/smps2mod.py::SmpsToModConverter._report_emission: 7fffffffffffffffff
   core/convert/smps2mod.py::SmpsToModConverter._start: 7fffffffffffffffff
   core/convert/smps2mod.py::SmpsToModConverter._trim_tails: 130000c0062b01818
+  core/convert/smps2mod.py::SmpsToModConverter._write_channels: 7fffffffffffffffff
   core/convert/smps2mod.py::SmpsToModConverter.convert: 7fffffffffffffffff
   core/convert/smps2mod.py::SmpsToModConverter.level_baselines: 130000c0062b01818
   core/convert/smps2mod.py::SmpsToModConverter.pan_law_db: 7fffffffffffffffff
@@ -430,7 +440,7 @@ functions:
   core/convert/smps2mod.py::SmpsToModConverter.sample_secs: 130000c0062b01818
   core/convert/smps2mod.py::SmpsToModConverter.sample_sources: 7fffffffffffffffff
   core/convert/sustain_plan.py::SustainPlanner.__init__: 7fffffffffffffffff
-  core/convert/sustain_plan.py::SustainPlanner._gliding: 7c00fc000000000000
+  core/convert/sustain_plan.py::SustainPlanner._gliding: 7fffffffffffffffff
   core/convert/sustain_plan.py::SustainPlanner._mod_span: 7fffffffffffffffff
   core/convert/sustain_plan.py::SustainPlanner._mod_span.on_grid: 7fffffffffffffffff
   core/convert/sustain_plan.py::SustainPlanner._needs: 7fffffffffffffffff
@@ -448,10 +458,10 @@ functions:
   core/convert/vibrato.py::VibratoSpeed.too_slow: 3fffc1f1c87fc2160
   core/convert/vibrato.py::_cycle_frames: 3fffc1f1c87fc2160
   core/convert/vibrato.py::_fnum: 7fffffffffffffffff
-  core/convert/vibrato.py::curve_slides: 7c00dc000000000000
+  core/convert/vibrato.py::curve_slides: 7c00dc000400000000
   core/convert/vibrato.py::modulation_offset: dc000400000000
   core/convert/vibrato.py::modulation_slides: dc000400000000
-  core/convert/vibrato.py::modulation_slides.period_at: dc000000000000
+  core/convert/vibrato.py::modulation_slides.period_at: dc000400000000
   core/convert/vibrato.py::signed_delta: 7fffffffffffffffff
   core/convert/vibrato.py::vibrato_depth: 7fffffffffffffffff
   core/diagnostics.py::Diagnostics.__init__: 7fffffffffffffffff
@@ -508,13 +518,6 @@ functions:
   core/drivers/smps68k/type1a/dac.py::_Type1aDac._immediate_pitches: 1c00000000
   core/drivers/smps68k/type1a/dac.py::_Type1aDac.samples: 1c00000000
   core/drivers/smps68k/type1a/dac.py::type1a_dac: 1c00000000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.__init__: 3e0e00003c000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.byte: 3e0e00003c000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.bytes_at: 3e0e00003c000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.code_pointer: 3e0e000038000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.contains: 3e0e00003c000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.header_pointer: 3e0e00003c000
-  core/drivers/smpsz80/memory.py::BankedZ80Memory.rom_address: 3e0e00003c000
   core/drivers/smpsz80/memory.py::window_view: e000000000
   core/drivers/smpsz80/outrun/dac.py::_entry_at: e000000000
   core/drivers/smpsz80/outrun/dac.py::_size: e000000000
@@ -548,8 +551,6 @@ functions:
   core/drivers/smpsz80/program.py::_words: 3e0e00003c000
   core/drivers/smpsz80/program.py::driver_ram: 3e0e00003c000
   core/drivers/smpsz80/program.py::fm_frequencies: 3e0e00003c000
-  core/drivers/smpsz80/program.py::one_match: 3e0e000000000
-  core/drivers/smpsz80/program.py::one_operand: 3e0e000000000
   core/drivers/smpsz80/program.py::psg_frequencies: 3e0e000000000
   core/drivers/smpsz80/program.py::psg_read: 3e0e000000000
   core/drivers/smpsz80/program.py::psg_table: 3e0e000000000
@@ -804,7 +805,6 @@ functions:
   core/mod/file.py::ModFile.ensure_pattern: 7fffffffffffffffff
   core/mod/file.py::ModFile.free_effect_channel: 7fffffffffffffffff
   core/mod/file.py::ModFile.get_bytes: 7fffffffffffffffff
-  core/mod/file.py::ModFile.get_name: 3bd0040f080c25e80
   core/mod/file.py::ModFile.get_name_bytes: 7fffffffffffffffff
   core/mod/file.py::ModFile.image: 130000c0062b01818
   core/mod/file.py::ModFile.narrow_to: '2800000'
@@ -812,6 +812,7 @@ functions:
   core/mod/file.py::ModFile.put_effect: 7fffffffffffffffff
   core/mod/file.py::ModFile.put_note: 7fffffffffffffffff
   core/mod/file.py::ModFile.round_up_channels: 7fffffffffffffffff
+  core/mod/file.py::ModFile.scratch: 7ecffff3ff9d4fe7e7
   core/mod/file.py::ModFile.set_name: 7fffffffffffffffff
   core/mod/file.py::ModFile.trim_tails: 130000c0062b01818
   core/mod/file.py::ModFile.trim_to_pattern: 7bfffbffdfffffffff
@@ -830,7 +831,6 @@ functions:
   core/mod/file.py::ModSample.__init__: 7fffffffffffffffff
   core/mod/file.py::ModSample.finetune: 130000c0062b01818
   core/mod/file.py::ModSample.get_bytes: 7fffffffffffffffff
-  core/mod/file.py::ModSample.get_name: 3bd0040f080c25e80
   core/mod/file.py::ModSample.get_name_bytes: 7fffffffffffffffff
   core/mod/file.py::ModSample.looped: 7fffffffffffffffff
   core/mod/file.py::ModSample.name: '2800000'
@@ -838,9 +838,9 @@ functions:
   core/mod/file.py::ModSample.set_name: 7fffffffffffffffff
   core/mod/file.py::ModSample.set_volume: 7fffffffffffffffff
   core/mod/file.py::ModSample.stored_bytes: 7fffffffffffffffff
-  core/mod/file.py::ModSample.volume: 130000c0062b01818
+  core/mod/file.py::ModSample.volume: 17d3fdfaf7ab0391f
   core/mod/file.py::ModSample.zero_idle_word: 7fffffffffffffffff
-  core/mod/file.py::_name_field: 7c42ffbf0f7f3da17f
+  core/mod/file.py::_name_field: 7fffffffffffffffff
   core/mod/file.py::read_sample: 3fefc1fdffffc3ffe
   core/mod/limits.py::max_sustain_secs: 7fffffffffffffffff
   core/mod/limits.py::sample_limit_bytes: 7fffffffffffffffff
@@ -875,14 +875,14 @@ functions:
   core/plan/baked.py::BakedPlan.pitch_envelopes: 7c0000000000000000
   core/plan/baked.py::BakedPlan.sweeps: 7c0000000000000000
   core/plan/baked.py::_Keyed.sweep: 7c0000000000000000
-  core/plan/baked.py::_Shapes.__init__: 7c00fc000000000000
+  core/plan/baked.py::_Shapes.__init__: 7fffffffffffffffff
   core/plan/baked.py::_Shapes.baked: 7c0000000000000000
   core/plan/baked.py::_Shapes.key: 7c0000000000000000
   core/plan/baked.py::_levels: 7c0000000000000000
-  core/plan/baked.py::plan_baked: 7c00fc000000000000
+  core/plan/baked.py::plan_baked: 7fffffffffffffffff
   core/plan/conversion.py::ConversionPlan.of: 7fffffffffffffffff
   core/plan/conversion.py::ConversionPlan.pitch: 7fffffffffffffffff
-  core/plan/conversion.py::ConversionPlan.with_baked: 7c00fc000000000000
+  core/plan/conversion.py::ConversionPlan.with_baked: 7fffffffffffffffff
   core/plan/conversion.py::ConversionPlan.with_detune: 7fffffffffffffffff
   core/plan/conversion.py::ConversionPlan.with_merge: 130000c0062b01818
   core/plan/conversion.py::ConversionPlan.with_pitches: 7fffffffffffffffff
@@ -905,41 +905,39 @@ functions:
   core/plan/derive.py::_Deriver._fm_drum: 3a0000003c000
   core/plan/derive.py::_Deriver._fm_slots: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._fold_copies: 7c00ffe0fc0003c000
-  core/plan/derive.py::_Deriver._fold_levels: 7c00fc000000000000
+  core/plan/derive.py::_Deriver._fold_levels: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._fold_one: '380050000000000000'
   core/plan/derive.py::_Deriver._folded_to: '780050000000000000'
   core/plan/derive.py::_Deriver._frame_speed: '200000000000000000'
-  core/plan/derive.py::_Deriver._glided: 7c00fc000000000000
+  core/plan/derive.py::_Deriver._glided: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._grid_options: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._inherited: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._items: 7c00ffe0fc0003c000
-  core/plan/derive.py::_Deriver._level_miss: 7c00fc000000000000
+  core/plan/derive.py::_Deriver._level_miss: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._lowest_root: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._max_span: 7c00ffe0fc0003c000
-  core/plan/derive.py::_Deriver._merged_fit: 7c00ffa00c00018000
+  core/plan/derive.py::_Deriver._merged_fit: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._nearest: fc00dc00000000
   core/plan/derive.py::_Deriver._noise: 6400cc00000000
   core/plan/derive.py::_Deriver._notes: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._passing: '200000000000000000'
   core/plan/derive.py::_Deriver._phrase_breaks: '200000000000000000'
-  core/plan/derive.py::_Deriver._rang: 7c00fc000000000000
+  core/plan/derive.py::_Deriver._rang: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._refined: '400000000000'
-  core/plan/derive.py::_Deriver._reserved_fit: 7c00fc000000000000
-  core/plan/derive.py::_Deriver._ringing: 7c00fc000000000000
-  core/plan/derive.py::_Deriver._root: 7c00fc000000000000
+  core/plan/derive.py::_Deriver._reserved_fit: 7c00ffe0fc0003c000
+  core/plan/derive.py::_Deriver._ringing: 7c00ffe0fc0003c000
+  core/plan/derive.py::_Deriver._root: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._sample_list: 7c00ffe0fc0003c000
-  core/plan/derive.py::_Deriver._sharing: 7c00fc000000000000
+  core/plan/derive.py::_Deriver._sharing: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._sources: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._take: 7c00ffe0fc0003c000
-  core/plan/derive.py::_Deriver._timing: 4400a7e0fc0003c000
-  core/plan/derive.py::_Deriver._timing.on_rows: 4400a7e0fc0003c000
   core/plan/derive.py::_Deriver._tone_slots: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._tpr_options: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._widest: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver._windows: 7c00ffe0fc0003c000
   core/plan/derive.py::_Deriver.run: 7c00ffe0fc0003c000
-  core/plan/derive.py::_Deriver.timing: '380058000000000000'
-  core/plan/derive.py::_Deriver.timing.on_rows: '180058000000000000'
+  core/plan/derive.py::_Deriver.timing: 7c00ffe0fc0003c000
+  core/plan/derive.py::_Deriver.timing.on_rows: 5c00ffe0fc0003c000
   core/plan/derive.py::_drum_level: 3a0000003c000
   core/plan/derive.py::_drum_level.loudest: 3a0000003c000
   core/plan/derive.py::_lfo_voice: '380050000000000000'
@@ -955,13 +953,13 @@ functions:
   core/plan/detune.py::DetunePlan.envelope_of: 7c0000000000000000
   core/plan/detune.py::DetunePlan.instrument_for: 7fffffffffffffffff
   core/plan/detune.py::DetunePlan.share_base: 7fffffffffffffffff
-  core/plan/detune.py::_PsgDetunes.offsets: 3800f8000000000000
+  core/plan/detune.py::_PsgDetunes.offsets: 7fffffffffffffffff
   core/plan/detune.py::_Wanted.order: 7c42ffffef07c02161
   core/plan/detune.py::_apart: 7fffffffffffffffff
-  core/plan/detune.py::_commonest: 7c42fff0ef07c02161
+  core/plan/detune.py::_commonest: 7c42ffffef07c02161
   core/plan/detune.py::_in_class: 7c00a0000000000060
-  core/plan/detune.py::_psg_detunes: 7c42ffbf0f7f3da17f
-  core/plan/detune.py::_psg_offset: f8000000000000
+  core/plan/detune.py::_psg_detunes: 7fffffffffffffffff
+  core/plan/detune.py::_psg_offset: 7ff81f8f87c01f61
   core/plan/detune.py::_rendered: 7c42fff0ef07c02161
   core/plan/detune.py::_stem: 7c42afffef07c02101
   core/plan/detune.py::_word_hz: 7fffffffffffffffff
@@ -981,13 +979,13 @@ functions:
   core/plan/driver_state.py::resolve_note: 7fffffffffffffffff
   core/plan/driver_state.py::walk_channel: 7fffffffffffffffff
   core/plan/glides.py::Read.levels: '380000000000000000'
-  core/plan/glides.py::channel_reads: 7c00fc000000000000
+  core/plan/glides.py::channel_reads: 7fffffffffffffffff
   core/plan/glides.py::reaches: 7c0000000000000000
   core/plan/glides.py::with_ties: 7c0000000000000000
   core/plan/glides.py::word_period: 7c0000000000000000
-  core/plan/instrument_plan.py::_psg_render_hz: 42f81f0f07000161
+  core/plan/instrument_plan.py::_psg_render_hz: 7ff81f8f87c01f61
   core/plan/instrument_plan.py::prepare_instruments: 7fffffffffffffffff
-  core/plan/instrument_plan.py::rendered_pitches: 7c42ffbf0f7f3da17f
+  core/plan/instrument_plan.py::rendered_pitches: 7fffffffffffffffff
   core/plan/instruments.py::FmDrumInstrument.target_rate: 3a0000003c000
   core/plan/instruments.py::FmInstrument.decay_mode: 7fffffffffffffffff
   core/plan/instruments.py::FmInstrument.dither_mode: 7fffffffffffffffff
@@ -1005,7 +1003,7 @@ functions:
   core/plan/instruments.py::PsgInstrument.synth_shift: 3fffc1fcfffc01f61
   core/plan/instruments.py::PsgInstrument.target_rate: 3fffc1fcfffc01f61
   core/plan/instruments.py::_add_detune_variants: 7fffffffffffffffff
-  core/plan/instruments.py::_add_psg_detune_variants: 7c42ffbf0f7f3da17f
+  core/plan/instruments.py::_add_psg_detune_variants: 7fffffffffffffffff
   core/plan/instruments.py::fm_catalogue: 7fffffffffffffffff
   core/plan/instruments.py::fm_catalogue.add: 7fffffffffffffffff
   core/plan/instruments.py::fm_catalogue.rooted: 7fffffffffffffffff
@@ -1107,13 +1105,13 @@ functions:
   core/rom/image.py::RomImage.signed_word: 200fc001e04000040
   core/rom/image.py::RomImage.word: 7c00ffe0fc0003c000
   core/rom/image.py::is_rom_path: 7fffffffffffffffff
-  core/rom/memory.py::BankedMemory.__init__: 7c0000000000000000
-  core/rom/memory.py::BankedMemory.byte: 7c0000000000000000
-  core/rom/memory.py::BankedMemory.bytes_at: 7c0000000000000000
-  core/rom/memory.py::BankedMemory.code_pointer: 7c0000000000000000
-  core/rom/memory.py::BankedMemory.contains: 7c0000000000000000
-  core/rom/memory.py::BankedMemory.header_pointer: 7c0000000000000000
-  core/rom/memory.py::BankedMemory.rom_address: 7c0000000000000000
+  core/rom/memory.py::BankedMemory.__init__: 7c0003e0e00003c000
+  core/rom/memory.py::BankedMemory.byte: 7c0003e0e00003c000
+  core/rom/memory.py::BankedMemory.bytes_at: 7c0003e0e00003c000
+  core/rom/memory.py::BankedMemory.code_pointer: 7c0003e0e000038000
+  core/rom/memory.py::BankedMemory.contains: 7c0003e0e00003c000
+  core/rom/memory.py::BankedMemory.header_pointer: 7c0003e0e00003c000
+  core/rom/memory.py::BankedMemory.rom_address: 7c0003e0e00003c000
   core/rom/memory.py::SoundMemory.__init__: 7e00ffe0fe0403c040
   core/rom/memory.py::SoundMemory.byte: 200ffe01e0403c040
   core/rom/memory.py::SoundMemory.bytes_at: 7e00ffe0fe0403c040
@@ -1150,7 +1148,7 @@ functions:
   core/rom/tracks.py::_splice: '40'
   core/rom/tracks.py::_stops_reached: f8000000000000
   core/rom/tracks.py::decode_tracks: 7e00ffe0fe0403c040
-  core/rom/tracks.py::song_tracks: 7c00fc000000000000
+  core/rom/tracks.py::song_tracks: 7e00ffe0fe0403c040
   core/rom/variant.py::HeaderLayout.entries_at: 2000000fe0403c040
   core/rom/variant.py::SmpsVariant.__post_init__: 7fffffffffffffffff
   core/rom/variant.py::SoundIndex.address: 7e00ffe0fe0403c040
@@ -1160,7 +1158,7 @@ functions:
   core/rom/variant.py::VoiceLayout.size: 7e00fc00fe0403c040
   core/rom/voices.py::_voice: 7e00fc00fe0403c040
   core/rom/voices.py::bank_voices: 7e00ffe0fe0403c040
-  core/rom/voices.py::read_voice: 7c00fc000000000000
+  core/rom/voices.py::read_voice: 7e00fc00fe0403c040
   core/rom/voices.py::read_voices: 200fc00fe0403c040
   core/rom/voices.py::voice_from_registers: 7e00ffe0fe0403c040
   core/rom/voices.py::voices_used: 7e00ffe0fe0403c040
@@ -1170,11 +1168,12 @@ functions:
   core/rom/z80.py::_copied: 7c00ffe0fc0003c000
   core/rom/z80.py::_kosinski: 7c00ffe0fc0003c000
   core/rom/z80.py::_lea_register: 7c00fc001c0003c000
-  core/rom/z80.py::_leas_before: 7c00fc000000000000
-  core/rom/z80.py::_past_bus_wait: 7c00fc000000000000
+  core/rom/z80.py::_leas_before: 7c00fc001c0003c000
+  core/rom/z80.py::_past_bus_wait: 7c00fc001c0003c000
   core/rom/z80.py::_pointed: 7c00ffe0fc0003c000
   core/rom/z80.py::_verified: 7c00ffe0fc0003c000
-  core/rom/z80.py::one_match: 7c0000000000000000
+  core/rom/z80.py::one_match: 7c0003e0e000000000
+  core/rom/z80.py::one_operand: 3e0e000000000
   core/rom/z80.py::z80_loads: 7c00ffe0fc0003c000
   core/rom/z80.py::z80_ram: 7c00fc001c00000000
   core/rom/z80.py::z80_word: 7c00ffe0fc0003c000
@@ -1224,15 +1223,15 @@ functions:
   core/smps/code.py::track_byte: 3ff03ffffffffffff
   core/smps/driver_tables.py::PsgEnvelope.frames: 3ff781fcfffc01f61
   core/smps/driver_tables.py::PsgEnvelope.loops: 3c22010cfffc00160
-  core/smps/driver_tables.py::PsgTable.divider: 3c2f810cfffc00160
-  core/smps/driver_tables.py::PsgTable.nearest: f8000000000000
+  core/smps/driver_tables.py::PsgTable.divider: 3c2f81fcfffc00160
+  core/smps/driver_tables.py::PsgTable.nearest: f80f0300000160
   core/smps/driver_tables.py::PsgTable.of: 7fffffffffffffffff
-  core/smps/driver_tables.py::PsgTable.offset_cents: f8000000000000
-  core/smps/driver_tables.py::PsgTable.render_divider: 42f81f0f07000161
+  core/smps/driver_tables.py::PsgTable.offset_cents: f80f0300000160
+  core/smps/driver_tables.py::PsgTable.render_divider: 7ff81f8f87c01f61
   core/smps/driver_tables.py::PsgTable.semitone: 3fffc1fcfffc01f61
   core/smps/driver_tables.py::_divider_semitone: 3fffffffffffc3fff
   core/smps/driver_tables.py::chip_pitch: 7fffffffffffffffff
-  core/smps/driver_tables.py::fm_render_word: 7c42ffbf0f7f3da17f
+  core/smps/driver_tables.py::fm_render_word: 7fffffffffffffffff
   core/smps/driver_tables.py::fm_table_index: 7fffffffffffffffff
   core/smps/driver_tables.py::noise_envelope_frames: 3c26410cfffc00160
   core/smps/driver_tables.py::psg_note_index: 3c20010cfffc00160
@@ -1248,7 +1247,7 @@ functions:
   core/smps/driver_track.py::DriverTrack._enveloped: 7c0000000000000000
   core/smps/driver_track.py::DriverTrack._held: 7fffffffffffffffff
   core/smps/driver_track.py::DriverTrack._holding: 7c0000000000000000
-  core/smps/driver_track.py::DriverTrack._keyed_off: 7c00fc000000000000
+  core/smps/driver_track.py::DriverTrack._keyed_off: 7fffffffffffffffff
   core/smps/driver_track.py::DriverTrack._law_levels: 7c0000000000000000
   core/smps/driver_track.py::DriverTrack._level_path: 7c0000000000000000
   core/smps/driver_track.py::DriverTrack._load_voice: 7fffffffffffffffff
@@ -1314,9 +1313,9 @@ functions:
   core/smps/percussion.py::FmDrum.silent: 3a0000003c000
   core/smps/pitch_envelope.py::PitchEnvelope.offsets: 7c0003e04000000000
   core/smps/pitch_envelope.py::_scaled: 3e00000000000
-  core/smps/playback.py::psg_render_divider: 42f81f0f07000161
+  core/smps/playback.py::psg_render_divider: 7ff81f8f87c01f61
   core/smps/rules.py::OctaveWrap.wrapped: e00003c000
-  core/smps/rules.py::PitchRules.divider: f8000000000000
+  core/smps/rules.py::PitchRules.divider: f80f0300000160
   core/smps/rules.py::PitchRules.shift: 3fffc1fcfffc01f61
   core/smps/rules.py::PlaybackRules.psg_table: 7fffffffffffffffff
   core/smps/rules.py::PlaybackRules.track: 7fffffffffffffffff
@@ -1328,7 +1327,7 @@ functions:
   core/smps/slide.py::PitchSlide._frame: 7c0000000000000000
   core/smps/slide.py::PitchSlide._word_at: 7c0000000000000000
   core/smps/slide.py::PitchSlide.apply: 7c0000000000000000
-  core/smps/slide.py::PitchSlide.for_channel: 7c00fc000000000000
+  core/smps/slide.py::PitchSlide.for_channel: 7fffffffffffffffff
   core/smps/slide.py::PitchSlide.frames: 7c0000000000000000
   core/smps/slide.py::_Rate.due: 7c0000000000000000
   core/smps/slide.py::_toward: 7c0000000000000000
@@ -1366,7 +1365,7 @@ functions:
   core/smps/track.py::TrackState.apply: 7fffffffffffffffff
   core/smps/track.py::TrackState.for_channel: 7c0000000000000000
   core/smps/track.py::TrackState.in_noise_mode: 7fffffffffffffffff
-  core/smps/track.py::TrackState.is_silent: 3fffc1fcfffc01f61
+  core/smps/track.py::TrackState.is_silent: 7fffffffffffffffff
   core/smps/track.py::TrackState.level_db: 7fffffffffffffffff
   core/smps/voice_patch.py::VoiceChanges.applied: 7800fc000000000000
   core/smps/voice_patch.py::VoiceChanges.level_written: '58000000000000'
@@ -1407,7 +1406,7 @@ functions:
   core/synth/fm_samples.py::_FmRenderer._sustains: 7fffffffffffffffff
   core/synth/fm_samples.py::_FmRenderer.render: 7fffffffffffffffff
   core/synth/fm_samples.py::_RenderJob.inst: 7fffffffffffffffff
-  core/synth/fm_samples.py::_RenderJob.stepped: 7c00fc000000000000
+  core/synth/fm_samples.py::_RenderJob.stepped: 7fffffffffffffffff
   core/synth/fm_samples.py::_fm_cache: 7fffffffffffffffff
   core/synth/fm_samples.py::_jobs: 7fffffffffffffffff
   core/synth/fm_samples.py::_psg_salt: 3a00000000000

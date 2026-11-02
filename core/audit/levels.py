@@ -8,7 +8,7 @@ from pathlib import Path
 
 from ..audio import db_to_gain, gain_to_db
 from ..config import SampleRow
-from ..mod import ModImage, edx_delay, timed_pass
+from ..mod import MOD_MAX_VOLUME, ModImage, edx_delay, timed_pass
 from .signal import db, rms, seg_at
 
 
@@ -100,17 +100,24 @@ def instrument_levels(note_times: dict[str, list[float]], mod_chan: dict[str, in
     instruments = []
     for ins in sorted({g["instrument"] for g in out_groups}):
         plain = [g for g in out_groups if g["instrument"] == ins and g["cxx"] is None]
-        from_cxx = not plain
+        from_cxx = sum(g["notes"] for g in plain) < _LEVEL_MIN_NOTES
         if from_cxx:
-            # Its plain notes too short to measure (Invincibility FM5: the baked level is the fast run's,
-            # every long note a Cxx).  A Cxx is the volume scaled by the note's level difference, so its
-            # error is the volume's; one at 64 may be clamped and says nothing
-            plain = [g for g in out_groups if g["instrument"] == ins and g["cxx"] is not None and g["cxx"] < 64]
-            if not plain:
+            # Too few plain notes to measure (Invincibility FM5: the baked level is the fast run's,
+            # every long note a Cxx; Jungle Base's $09: 1 plain note, 20 at Cxx).  A Cxx is the volume
+            # scaled by the note's level difference, so its error is the volume's; one at 64 may be
+            # clamped and says nothing
+            cxx = [g for g in out_groups if g["instrument"] == ins and g["cxx"] is not None and g["cxx"] < 64]
+            if not cxx and not plain:
                 continue
+            plain = cxx + plain
         notes = sum(g["notes"] for g in plain)
         err = statistics.median(x for g in plain for x in groups[(g["channel"], ins, g["cxx"])]) - anchor
-        spread = max(g["err_db"] for g in plain) - min(g["err_db"] for g in plain)
+
+        # Channels sharing it should agree; a channel's Cxx groups differ by their rounding (C02 is 1.6 dB
+        # from 2.4), so each channel counts as the median of its notes
+        by_channel = [statistics.median(x for g in plain if g["channel"] == ch for x in groups[(ch, ins, g["cxx"])])
+                      for ch in {g["channel"] for g in plain}]
+        spread = max(by_channel) - min(by_channel)
         name, vol = samples.get(ins, ("?", 64))
         ok = notes >= _LEVEL_MIN_NOTES and spread <= LEVEL_MAX_SPREAD and abs(err) <= LEVEL_MAX_ERR
         instruments.append({
@@ -146,7 +153,13 @@ def suggest_volumes(instruments: list[dict]) -> float:
 def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.0,
                   settings_path: str | None = None) -> list[str]:
     """Set sample_list volumes to the suggested values; returns a line per change.  A minimal
-    config (derived under `settings_path`, as the MOD was) gains rows for derived samples it lacks."""
+    config (derived under `settings_path`, as the MOD was) gains rows for derived samples it lacks.
+
+    The suggestions are the MOD's volumes, which normalise_volumes may have raised by one gain
+    over the config's (core.convert.normalise): each is written as the config's row times the
+    suggestion's share of the MOD's volume.
+
+        config 16   MOD 41 (+8.2 dB)   suggested 12   ->   config 16 x 12 / 41 = 5"""
     text = config_path.read_text(encoding="utf-8")
     derived = _derived_rows(config_path, settings_path)
 
@@ -160,25 +173,31 @@ def write_volumes(config_path: Path, instruments: list[dict], min_db: float = 1.
         if new is None or new == it["volume"] or abs(gain_to_db(new / it["volume"])) < min_db:
             continue
         inst, row = it["instrument"], derived.get(it["instrument"])
-        change = f"  instrument {inst:>2} ({it['name']}): {it['volume']} -> {new}  ({it['err_db']:+.1f} dB)"
-        note = f"VGZ: {it['err_db']:+.1f} dB at {it['volume']}"
 
-        # The instrument's row: by slot, and by file in a minimal config
+        # The instrument's row: by slot, and by file in a minimal config.  Its volume is at most the
+        # MOD's (normalising only raises), else it is another sample's row
         m = _row_pattern(str(inst), re.escape(row.file) if row else _ANY_FILE).search(text)
+        stated = int(m["volume"]) if m else row.volume if row is not None else None
+        if stated is None or stated > it["volume"]:
+            changes.append(f"  !! instrument {inst}: no sample_list line with volume {it['volume']} or less — not changed")
+            continue
+        volume = max(1, min(MOD_MAX_VOLUME, round(stated * new / it["volume"])))
+        if volume == stated:
+            continue
+        change = f"  instrument {inst:>2} ({it['name']}): {stated} -> {volume}  ({it['err_db']:+.1f} dB)"
+        note = f"VGZ: {it['err_db']:+.1f} dB at {stated}"
 
         # A derived sample with no row: one added
-        if not m and row is not None and row.volume == it["volume"]:
-            added.append(f'  - [{inst}, "{row.file}", {new}, {row.finetune}]   # {note}')
+        if not m:
+            assert row is not None
+            added.append(f'  - [{inst}, "{row.file}", {volume}, {row.finetune}]   # {note}')
             changes.append(change)
-            continue
-        if not m or int(m["volume"]) != it["volume"]:
-            changes.append(f"  !! instrument {inst}: no sample_list line with volume {it['volume']} — not changed")
             continue
 
         # The volume replaced, the comment's earlier VGZ note with it
         tail = re.sub(r"\s*[;#]?\s*VGZ: [^;]*", "", m["tail"]).rstrip()
         tail = f"{tail}; {note}" if tail.strip().startswith("#") and tail.strip() != "#" else f" # {note}"
-        text = text[:m.start("volume")] + f"{new:>{len(m['volume'])}}{m['end']}{tail}" + text[m.end():]
+        text = text[:m.start("volume")] + f"{volume:>{len(m['volume'])}}{m['end']}{tail}" + text[m.end():]
         changes.append(change)
 
     if added:

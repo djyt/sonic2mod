@@ -489,6 +489,7 @@ regression runner exits 2 otherwise); add a new key to both.
 | `legato` | `retrigger` | `retrigger` | `smpsNoAttack` notes: `retrigger` (a note-on), `strict` (`3FF` where the sample allows), `loose` (`3FF` always).  `docs/pipeline.md` § Legato (`smpsNoAttack` before a note) |
 | `player` | `ft2` | `ft2` | Which player's vibrato depth `4xy` is fitted to: `ft2` or `pt2` |
 | `merged_player` | `player`'s | `pt2` | The same for a `--merged` build, the Amiga one (Aonic's engine plays it through ptplayer, a ProTracker 2 replayer) |
+| `normalise_volumes` | `reference` | `reference` | Every volume of the reference build (sample volumes and `Cxx` alike) raised by one gain until its loudest note plays at 64; `off`: the `sample_list`'s as they are.  Never the merged build.  `docs/pipeline.md` § Normalised volumes |
 | `end_trigger` | off | `1` | `E8x` (x = this, 1-15) on the row a song that stops ends on, for a replayer to report the end (ptplayer's `_mt_E8Trigger`); `off`: none.  `docs/pipeline.md` § A song that stops |
 
 ### `fm_synthesis:`

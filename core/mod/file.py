@@ -1,5 +1,6 @@
 """Writing a MOD: its samples, patterns and order, built up cell by cell (core.mod.cell)."""
 
+import copy
 import os
 from collections.abc import Iterator
 from typing import ClassVar
@@ -181,6 +182,15 @@ class ModFile:
 
     def set_name(self, name: str): self._name = name[:TITLE_BYTES]
     def get_name_bytes(self): return _name_field(self._name, TITLE_BYTES)
+
+    def scratch(self) -> "ModFile":
+        """A copy to write cells into and throw away: its patterns and order its own, the samples
+        this one's (read, not written)."""
+        out = copy.copy(self)
+        out.patterns = copy.deepcopy(self.patterns)
+        out.position_list = bytearray(self.position_list)
+        out.samples = list(self.samples)
+        return out
 
     def get_bytes(self):
         output = bytearray()

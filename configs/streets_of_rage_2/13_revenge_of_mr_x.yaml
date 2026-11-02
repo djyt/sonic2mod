@@ -6,6 +6,7 @@ rom_song: "$13"
 window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
+  - [30, "psg_$00_D3.raw", 4, 0]   # VGZ: +0.9 dB at 5
   - [4, "fm_v01_C4.raw", 52, 0]   # VGZ: -2.7 dB at 38
   - [7, "fm_v0c_A4.raw", 50, 0]   # VGZ: -3.9 dB at 32
   - [11, "fm_v10_D1.raw", 18, 0] # VGZ: -0.9 dB at 16
@@ -18,7 +19,7 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [21, "fm_v1e_D2.raw", 20, 0]   # VGZ: +4.1 dB at 32
   - [22, "fm_v20_Ab1.raw", 20, 0]   # VGZ: +4.0 dB at 32
   - [24, "fm_v05_D3.raw", 19, 0]   # VGZ: +2.2 dB at 25
-  - [25, "fm_v05_D5.raw", 24, 0]   # VGZ: +8.6 dB at 64
+  - [25, "fm_v05_D5.raw", 17, 0] # VGZ: +2.8 dB at 24
   - [1, "dac81.raw", 54, 5]   # VGZ: +1.5 dB at 64
   - [2, "dac82.raw", 54, -2]   # VGZ: +1.5 dB at 64
   - [3, "dac83.raw", 55, -2]   # VGZ: +1.4 dB at 64

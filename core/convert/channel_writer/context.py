@@ -20,6 +20,11 @@ class EmissionStats:
     tie_retunes: dict = field(default_factory=lambda: {'placed': 0, 'skipped': 0})   # E1x / E2x on ties
     attack_retunes: dict = field(default_factory=lambda: {'placed': 0, 'skipped': 0})   # ... on notes whose
                                    # detune found no slot (DetunePlan.unplaced)
+    peak_volume: float = 0.0       # the loudest volume a note asked for, before 64 clamped it
+
+    def heard(self, volume: float) -> None:
+        """A note asked for `volume` (normalise_volumes measures the song's loudest)."""
+        self.peak_volume = max(self.peak_volume, volume)
 
 
 @dataclass

@@ -274,10 +274,16 @@ class ChannelWriter:
             return
 
         # The note keyed off on its own attack row (a note shorter than a row, rounded onto the
-        # row its rest starts in: Time Trax's 1-frame notes): the key-off waits a row, else the
-        # note sounds nothing.  A note-on there ends it anyway
+        # row its rest starts in: Time Trax's 1-frame notes, Streets of Rage 2's 1-tick hits): an
+        # ECx inside the row where the release is a cut, else the key-off waits a row (a C00 on the
+        # attack row would sound nothing).  A note-on there ends it anyway
         if (pattern, row) == self._ring.cell:
-            tick = int((Cells.row_total(pattern, row) + 1) * self._timeline.ticks_per_row)
+            if self._cut_in_attack_row(pattern, row, tick):
+                return
+            waited = Cells.row_total(pattern, row) + 1
+            if self._next_note_row(tick) <= waited:
+                return              # this channel's next note-on, not written yet, lands there
+            tick = int(waited * self._timeline.ticks_per_row)
             pattern, row = self._timeline.pattern_row(tick)
             if not self._cells.in_song(pattern):
                 return
@@ -285,6 +291,22 @@ class ChannelWriter:
             if self._cells.note_at(pattern, row, self._col):
                 return
         self._key_off(pattern, row, tick)
+
+    def _cut_in_attack_row(self, pattern: int, row: int, tick: int) -> bool:
+        """A key-off on its note's own attack row, the voice's release a cut (Fades.release_rate):
+        ECx at the key-off's MOD tick, at least one in so the note sounds (Jungle Base's FM3 hits:
+        1 tick, then 30 dB down in 32 ms).  False where the release slides, the attack row's slot
+        is taken or another channel's notes take the column: the key-off waits a row."""
+        speed = self._config.target_speed
+        if speed < 2 or self._router.borrowed(self._col, tick):
+            return False
+        if self._release_rate(self._ring.inst, tick) is not None or not self._cells.free(pattern, row, self._col):
+            return False
+
+        row_total = Cells.row_total(pattern, row)
+        sub = round(tick * speed / self._timeline.ticks_per_row) - row_total * speed
+        self._cells.cut(self._col, row_total, max(1, min(speed - 1, sub)))
+        return True
 
     def _key_off(self, pattern: int, row: int, tick: int) -> None:
         """End what rings on the column: the note fades at the voice's release rate (the sample
@@ -358,7 +380,7 @@ class ChannelWriter:
             tick, dac_cfg.mod_instrument, MOD_NOTE_MAP[dac_cfg.mod_note])
         self._cells.put_note(pattern, row, self._col, dac_note, dac_inst)
         self._played(dac_inst, tick)
-        self._ring.inst, self._ring.volume = dac_inst, self._levels.sample(dac_inst)
+        self._ring.inst, self._ring.volume = dac_inst, self._levels.drum(dac_inst)
         self._ring.member = plan.bank_members.get((self._cfg.source, tick)) if plan is not None else None
         if region is None:
             return delay

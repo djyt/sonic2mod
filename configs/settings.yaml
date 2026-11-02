@@ -194,3 +194,10 @@ merged_player: pt2
 # (1..15), so a replayer that reports E8x can tell the game the song is over (ptplayer: _mt_E8Trigger,
 # which _mt_init clears to 0: x must not be 0).  FT2 clone ignores it.  off: no E8x.
 end_trigger: 1
+
+# Every volume of the reference build (sample_list volumes and Cxx alike) raised by one gain until the
+# song's loudest note plays at 64: the balance kept, the MOD as loud as the format allows.  The
+# sample_list keeps its own volumes (vgm_compare --write-volumes reads them back through the gain).
+#   off        the sample_list's volumes as they are
+#   reference  the reference build (the merged build never: its levels are set against Aonic's SFX)
+normalise_volumes: reference

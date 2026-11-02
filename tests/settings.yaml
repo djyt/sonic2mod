@@ -182,3 +182,4 @@ legato: retrigger
 player: ft2
 merged_player: pt2
 end_trigger: 1
+normalise_volumes: reference

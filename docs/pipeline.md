@@ -432,6 +432,29 @@ The same scheme on the SN76489: level = −2 dB × attenuation (`smpsHeaderPSG` 
 no `Cxx`, which leaves the slot to vibrato and in-row cuts.  Legacy mode `absolute`: `Cxx` on nearly
 every PSG note.
 
+### Normalised volumes (`normalise_volumes: reference`)
+
+The `sample_list` volumes are relative: a DAC drum starts at 64, everything else below it, and the
+song's loudest note often plays well under 64 (Spin on the Bridge's at 16).  The reference build
+raises every volume by one gain until that note plays at 64 (`core/convert/normalise.py`):
+
+```
+sample_list    4   12   44   52 (drum)       loudest note asks for 52
+gain           64 / 52 = +1.8 dB
+written        5   15   54   64              every Cxx, slide and fade from the raised volumes
+```
+
+- The loudest note is what the channel writers ask for before clamping
+  (`EmissionStats.peak_volume`), so the channels are written once into a scratch MOD
+  (`ModFile.scratch`), measured, and written again after the sample volumes are raised.  A note
+  already clamped at 64 leaves the song as it is.
+- Quiet instruments gain resolution: a PSG level at volume 1 could not tell its 2 dB steps apart; at
+  4 it can, and their `Cxx` take the slot from a `4xy` (effect priority).
+- The config keeps its own volumes: `--write-volumes` writes each suggestion as the config row times
+  its share of the MOD's volume (§ Per-instrument levels).
+- Never the merged build: Aonic's SFX levels are set against it.  The report's MOD line says
+  `volumes +1.8 dB`.
+
 ---
 
 ## Song start, loop and end
@@ -633,6 +656,13 @@ ends what is left (release rate 0 rings forever).  A release that falls 30 dB wi
 every Title Screen voice) stays a cut; PSG notes keep their cuts (attenuation 15 is instant).  On a
 column another channel's notes borrow, the end is a plain `C00`.  `_clear_stale_cut` removes a rest's
 `C00` from a cell a later note-on rounds onto (a note-on with `C00` is silent).
+
+A key-off on its note's own attack row (a note shorter than a row: Time Trax's 1-frame notes, Streets
+of Rage 2's 1-tick hits) cannot take a `C00` there - the note would sound nothing.  Where the release is
+a cut it is `ECx` at the key-off's tick, at least 1 (`_cut_in_attack_row`); otherwise, or with the slot
+taken, the key-off waits a row, and is dropped where the channel's next note lands on that row (its
+slide would fade the new note).  Jungle Base's FM3 `$1B` hits, muted by the attack-row `C00`, read
+7.4 dB quiet and had their volume raised to 64; heard a whole row each, they then read 15 dB loud.
 
 ### Sliding loops (`loop_decay: slide`)
 
@@ -1197,9 +1227,14 @@ inst sample            vol notes    err spread suggest   per channel (Cxx: err x
   11 ghz_v05_lo.raw     16   116   +4.6    0.2       9   FM3 C1D: +4.8 x20  FM4: +4.6 x58  FM5: +4.6 x58
 ```
 
-- Only notes without a `Cxx` say what the volume should be: `suggest = volume × 10^(−err/20)`.
+- Notes without a `Cxx` say what the volume should be: `suggest = volume × 10^(−err/20)`.  With fewer
+  than 4 of them the `Cxx` notes count too (a `Cxx` is the volume scaled by the note's level, so its
+  error is the volume's; one at 64 may be clamped and does not count): Jungle Base's `$09`, 1 plain
+  note and 20 at `Cxx`, read 10.6 dB loud.
 - In the baked modes every channel sharing an instrument must show the same error.  `spread` is their
-  disagreement; above 3 dB nothing is suggested — look at pan, fills, a wrong instrument, alignment.
+  disagreement, each channel the median of its notes (a channel's `Cxx` groups differ by their
+  rounding: `C02` is 1.6 dB from 2.4); above 3 dB nothing is suggested — look at pan, fills, a wrong
+  instrument, alignment.
 - Errors are relative to the song's median note.  The DAC (fixed samples at 64) becomes the anchor only
   when it sits 2 dB or more below that median.
 - A note's window ends 20 ms before the next key-on: the MOD's rows are even, the chip's ticks not, and
@@ -1209,7 +1244,9 @@ inst sample            vol notes    err spread suggest   per channel (Cxx: err x
   fast - 81 ms by 99 s, past a short drum hit.
 
 `--write-volumes` writes the suggestions of 1 dB or more into the config, with `# VGZ: +4.6 dB at 16`
-on the line; re-convert and re-run to verify.  `tools/vgm/measure_volumes.py` does it for every song
+on the line; re-convert and re-run to verify.  A normalised MOD's volumes are the config's raised by
+one gain: each suggestion is written as the row times its share of the MOD's volume (config 16, MOD
+41, suggested 12 → 5).  `tools/vgm/measure_volumes.py` does it for every song
 (cores − 1 in parallel): convert, one write pass, re-convert, verify, then a line per song with the
 volumes changed, what is still ≥ 1 dB off (ceiling, channels disagree, two-note instruments marked) and
 the pitch verdict.  Exactly one write pass: the errors are relative to the median, so a second pass

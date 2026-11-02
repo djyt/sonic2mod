@@ -7,10 +7,10 @@ window_root: highest      # each window's root as high as its range and the 64 K
 
 sample_list:   # volumes set from the VGZ; the rest is derived
   - [19, "fm_v16_Fs3.raw", 6, 0]   # VGZ: +5.5 dB at 12
-  - [10, "fm_v0d_F4.raw", 4, 0] # VGZ: +5.6 dB at 8
+  - [10, "fm_v0d_F4.raw", 5, 0] # VGZ: -1.2 dB at 4
   - [1, "dac81.raw", 57, 5]   # VGZ: +0.9 dB at 64
   - [6, "fm_v01_B3.raw", 15, 0] # VGZ: +2.0 dB at 19
-  - [11, "fm_v0e_Eb1.raw", 6, 0] # VGZ: -1.1 dB at 5
+  - [11, "fm_v0e_Eb1.raw", 5, 0] # VGZ: +1.1 dB at 6
   - [12, "fm_v0e_Eb4.raw", 10, 0] # VGZ: +2.9 dB at 14
   - [13, "fm_v12_Fs2.raw", 4, 0]   # VGZ: +4.6 dB at 7
   - [14, "fm_v13_Fs2.raw", 4, 0]   # VGZ: +4.2 dB at 7
@@ -21,14 +21,14 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [28, "psg_$00_F3.raw", 4, 0]   # VGZ: -5.7 dB at 2
   - [2, "dac82.raw", 48, -2]   # VGZ: +2.5 dB at 64
   - [3, "dac83.raw", 49, -2]   # VGZ: +2.3 dB at 64
-  - [4, "fm_v00_Fs2.raw", 7, 0] # VGZ: +0.7 dB at 8
+  - [4, "fm_v00_Fs2.raw", 9, 0] # VGZ: -2.0 dB at 7
   - [5, "fm_v00_Fs3.raw", 10, 0]   # VGZ: +1.6 dB at 12
   - [6, "fm_v00_F4.raw", 8, 0]   # VGZ: +2.9 dB at 11
   - [5, "fm_v01_Eb1.raw", 5, 0] # VGZ: +1.4 dB at 6
   - [8, "fm_v01_Fs3.raw", 17, 0]   # VGZ: +2.4 dB at 23
-  - [7, "fm_v0a_Bb4.raw", 29, 0] # VGZ: -1.9 dB at 23
+  - [7, "fm_v0a_Bb4.raw", 19, 0] # VGZ: +3.4 dB at 29
   - [10, "fm_v0a_Ab5.raw", 28, 0]   # VGZ: +7.3 dB at 64
-  - [8, "fm_v0b_C6.raw", 6, 0] # VGZ: -0.9 dB at 5
+  - [8, "fm_v0b_C6.raw", 5, 0] # VGZ: +1.1 dB at 6
   - [9, "fm_v0c_Cs2.raw", 46, 0]   # VGZ: -1.7 dB at 38
   - [13, "fm_v0c_Cs3.raw", 47, 0]   # VGZ: -1.9 dB at 38
   - [15, "fm_v02_Bb1.raw", 14, 0]   # VGZ: +2.9 dB at 19
@@ -42,5 +42,5 @@ sample_list:   # volumes set from the VGZ; the rest is derived
   - [27, "fm_v09_Bb5.raw", 10, 0]   # VGZ: +1.3 dB at 12
   - [29, "psg_$00_D5.raw", 7, 0] # VGZ: -1.2 dB at 6
   - [29, "psg_$00_Eb6.raw", 5, 0]   # VGZ: +2.3 dB at 6
-  - [30, "psg_$00_Ab7.raw", 6, 0] # VGZ: -0.9 dB at 5
-  - [31, "psg_adsr_ffffffbe010a_v15_Fs3.raw", 14, 0]   # VGZ: +1.1 dB at 16
+  - [30, "psg_$00_Ab7.raw", 5, 0] # VGZ: +0.8 dB at 6
+  - [31, "psg_adsr_ffffffbe010a_v15_Fs3.raw", 12, 0] # VGZ: +0.9 dB at 14

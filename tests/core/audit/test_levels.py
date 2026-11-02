@@ -38,6 +38,19 @@ class WriteVolumes(unittest.TestCase):
         self.assertIn('[7, "fm_v01_Cs3.raw", 14, 0]', out)                  # a window with no row: added
         self.assertNotIn("[5,", out)
 
+    def test_a_normalised_mods_suggestion_is_written_in_the_configs_volumes(self):
+        # normalise_volumes raised the row's 16 to 41 (+8.2 dB); the MOD-side suggestion 12 is 16 x 12 / 41
+        text = 'name: "x"\nsample_list:\n  - [26, "fm_v09_C2.raw", 16, 0]\n'
+        found = [{"instrument": 26, "name": "F3 $09", "volume": 41, "suggested": 12, "err_db": 10.6}]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "song.yaml"
+            path.write_text(text, encoding="utf-8")
+            with mock.patch.object(levels, "_derived_rows", return_value={}):
+                changes = levels.write_volumes(path, found)
+            out = path.read_text(encoding="utf-8")
+        self.assertIn('  - [26, "fm_v09_C2.raw",  5, 0] # VGZ: +10.6 dB at 16', out)
+        self.assertEqual(changes, ["  instrument 26 (F3 $09): 16 -> 5  (+10.6 dB)"])
+
 
 class NoteWindows(unittest.TestCase):
     def test_a_quiet_hit_is_not_read_from_the_loud_one_landing_early_after_it(self):
@@ -60,4 +73,26 @@ class NoteWindows(unittest.TestCase):
                                          frames / SR, {"FM3": vgm}, {"FM3": mod}, 0.0)
         for it in found["instruments"]:
             self.assertAlmostEqual(it["err_db"], 0.0, delta=0.5, msg=it["name"])
+
+    def test_cxx_notes_measure_an_instrument_with_too_few_plain_notes(self):
+        # Instrument 2 (Jungle Base's $09): 1 plain note, 6 at Cxx, all 10 dB loud in the MOD.
+        # Instrument 1 sets the song's median.
+        hit = 0.2
+        frames = round(hit * 16 * SR) + SR
+        vgm, mod = np.zeros((frames, 2)), np.zeros((frames, 2))
+        times, events = [], []
+        cxx = [None, 2, 3, 11, 11, 11, 12]
+        for k in range(14):
+            ins, t = 1 + k % 2, k * hit
+            loud = 10 ** (10 / 20) if ins == 2 else 1.0
+            a, b = round(t * SR), round((t + hit) * SR)
+            vgm[a:b], mod[a:b] = 0.05, 0.05 * loud
+            times.append(t)
+            events.append((t, ins, cxx[k // 2] if ins == 2 else None))
+        found = levels.instrument_levels({"FM3": times}, {"FM3": 0}, {0: events}, {1: ("a", 20), 2: ("b", 16)},
+                                         frames / SR, {"FM3": vgm}, {"FM3": mod}, 0.0)
+        it = next(i for i in found["instruments"] if i["instrument"] == 2)
+        self.assertTrue(it["from_cxx"])
+        self.assertAlmostEqual(it["err_db"], 10.0, delta=0.5)
+        self.assertEqual(it["suggested"], 5)
 

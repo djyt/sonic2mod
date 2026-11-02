@@ -458,7 +458,8 @@ def print_header(console: Console, rep: Report) -> None:
     sample_bytes = sum(len(sm.data) for sm in rep.converter.mod.samples if sm is not None)
     out = (f"[cyan]{escape(rep.output_path)}[/cyan]  [bold]{rep.output_bytes / 1024:.0f} KB[/bold]  "
            f"[dim]samples {sample_bytes / 1024:.0f} K · patterns {(rep.output_bytes - sample_bytes) / 1024:.0f} K · "
-           f"{rep.patterns} patterns" + (f" · loop → {loop['target']}" if loop else "") + "[/dim]")
+           f"{rep.patterns} patterns" + (f" · loop → {loop['target']}" if loop else "")
+           + "".join(f" · volumes {i['db']:+.1f} dB" for i in _infos(rep, InfoKind.NORMALISED)) + "[/dim]")
     if rep.derived:
         source += f"  [dim]· derived: {', '.join(rep.derived)}[/dim]"
     if rep.stale:

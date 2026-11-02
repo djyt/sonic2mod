@@ -31,7 +31,7 @@ SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_
 # settings.yaml's keys, by section (None: the top level)
 _KEYS = {
     None: {"fm_synthesis", "psg_synthesis", "samples", "amiga_clock", "fm_volume_scaling", "fm_pan_law_db",
-           "psg_volume_scaling", "legato", "player", "merged_player", "end_trigger"},
+           "psg_volume_scaling", "legato", "player", "merged_player", "end_trigger", "normalise_volumes"},
     "fm_synthesis": {"enabled", "mode", "clock_rate", "sustain_duration", "release_padding", "detune_variants",
                      "threads", "drum_psg_db"},
     "psg_synthesis": {"enabled", "clock_rate", "sustain_duration", "release_padding", "oversample"},
@@ -135,6 +135,19 @@ def _player(data: dict, default: str | None, filepath: str, key: str = "player")
     v = str(data[key]).lower()
     if v not in PLAYERS:
         raise ValueError(f"{filepath}: {key} must be one of {', '.join(PLAYERS)} (got '{v}')")
+    return v
+
+
+# settings.yaml `normalise_volumes`' values: the merged build is never normalised (its levels are
+# set against the SFX an Amiga engine mixes in)
+NORMALISE_MODES = ("off", "reference")
+
+
+def _normalise_volumes(data: dict, default: str, filepath: str) -> str:
+    """Top-level `normalise_volumes` of settings.yaml: off | reference."""
+    v = mode_word(data.get("normalise_volumes", default))
+    if v not in NORMALISE_MODES:
+        raise ValueError(f"{filepath}: normalise_volumes must be one of {', '.join(NORMALISE_MODES)} (got '{v}')")
     return v
 
 
@@ -370,6 +383,9 @@ class SynthesisSettings(SampleSettings):
     # settings.yaml `end_trigger` (top level): an E8x (x = this) on the row a song that stops ends on,
     # for a replayer to report the end by (ptplayer: _mt_E8Trigger); None = none
     end_trigger: int | None = None
+    # settings.yaml `normalise_volumes` (top level): "reference" raises every volume of the reference
+    # build by one gain until its loudest note plays at 64; "off" keeps the sample_list's
+    normalise_volumes: str = "reference"
     # settings.yaml `player` (top level): the tracker the MOD is made for, "ft2" (default) or "pt2"
     player: str = "ft2"
     # settings.yaml `merged_player` (top level): the tracker a --merged build (the Amiga build) is made
@@ -429,6 +445,10 @@ class SynthesisSettings(SampleSettings):
         where one is given, else `player`."""
         return self.merged_player if merged and self.merged_player else self.player
 
+    def normalises(self, merged: bool) -> bool:
+        """True when this build's volumes are raised until its loudest note plays at 64."""
+        return self.normalise_volumes == "reference" and not merged
+
     @classmethod
     def from_yaml(cls, filepath: str) -> "SynthesisSettings":
         data = read_yaml_file(filepath)
@@ -449,6 +469,7 @@ class SynthesisSettings(SampleSettings):
             player=_player(data, cls.player, filepath) or cls.player,
             merged_player=_player(data, cls.merged_player, filepath, "merged_player"),
             end_trigger=_end_trigger(data, cls.end_trigger, filepath),
+            normalise_volumes=_normalise_volumes(data, cls.normalise_volumes, filepath),
             pt_zero_bytes=_sample_flag(smp, "pt_zero_bytes", cls.pt_zero_bytes, filepath),
             **cls._shared_fields(data, smp, filepath),
         )

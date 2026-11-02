@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/regression/chaos_emerald.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -38,15 +38,18 @@ chaos_emerald:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -92,12 +95,15 @@ chaos_emerald:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -136,11 +142,13 @@ chaos_emerald:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -156,8 +164,10 @@ chaos_emerald:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -166,11 +176,13 @@ chaos_emerald:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/16_chaos_emerald.yaml: efafbb908d06
     input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 continue_screen:
   argv:
   - convert.py
@@ -179,7 +191,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/regression/continue_screen.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -210,15 +222,18 @@ continue_screen:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -264,12 +279,15 @@ continue_screen:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -308,11 +326,13 @@ continue_screen:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -328,8 +348,10 @@ continue_screen:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -338,11 +360,13 @@ continue_screen:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 50ec3fc758d4
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 continue_screen_lofi:
   argv:
   - convert.py
@@ -353,7 +377,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/regression/continue_screen_lofi.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -384,15 +408,18 @@ continue_screen_lofi:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -438,12 +465,15 @@ continue_screen_lofi:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -482,11 +512,13 @@ continue_screen_lofi:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -502,8 +534,10 @@ continue_screen_lofi:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -512,11 +546,13 @@ continue_screen_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 50ec3fc758d4
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 continue_screen_lofi_merged:
   argv:
   - convert.py
@@ -528,7 +564,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/regression/continue_screen_lofi_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -559,15 +595,18 @@ continue_screen_lofi_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -613,12 +652,15 @@ continue_screen_lofi_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -657,11 +699,13 @@ continue_screen_lofi_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -677,8 +721,10 @@ continue_screen_lofi_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -687,11 +733,13 @@ continue_screen_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 50ec3fc758d4
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 continue_screen_merged:
   argv:
   - convert.py
@@ -701,7 +749,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/regression/continue_screen_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -732,15 +780,18 @@ continue_screen_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -786,12 +837,15 @@ continue_screen_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -830,11 +884,13 @@ continue_screen_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -850,8 +906,10 @@ continue_screen_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -860,11 +918,13 @@ continue_screen_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/18_continue_screen.yaml: 50ec3fc758d4
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 credits:
   argv:
   - convert.py
@@ -873,7 +933,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/regression/credits.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -904,15 +964,18 @@ credits:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -958,12 +1021,15 @@ credits:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -1002,11 +1068,13 @@ credits:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -1022,8 +1090,10 @@ credits:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -1032,11 +1102,13 @@ credits:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/13_credits.yaml: adaba94e7f4e
     input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 credits_rom:
   argv:
   - convert.py
@@ -1049,7 +1121,7 @@ credits_rom:
   - $91
   - --output
   - output/regression/credits_rom.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1080,15 +1152,18 @@ credits_rom:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -1134,12 +1209,15 @@ credits_rom:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -1178,11 +1256,13 @@ credits_rom:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -1198,8 +1278,10 @@ credits_rom:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -1208,11 +1290,13 @@ credits_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/13_credits.yaml: adaba94e7f4e
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 drowning:
   argv:
   - convert.py
@@ -1221,7 +1305,7 @@ drowning:
   - tests/settings.yaml
   - --output
   - output/regression/drowning.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1252,15 +1336,18 @@ drowning:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -1306,12 +1393,15 @@ drowning:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -1350,11 +1440,13 @@ drowning:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -1370,8 +1462,10 @@ drowning:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -1380,11 +1474,13 @@ drowning:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/17_drowning.yaml: 81b857245faf
     input/sonic_1/Mus92 - Drowning.asm: 15581ae26473
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 ending_theme:
   argv:
   - convert.py
@@ -1393,7 +1489,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/regression/ending_theme.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1424,15 +1520,18 @@ ending_theme:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -1478,12 +1577,15 @@ ending_theme:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -1522,11 +1624,13 @@ ending_theme:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -1542,8 +1646,10 @@ ending_theme:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -1552,11 +1658,13 @@ ending_theme:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/12_ending_theme.yaml: b5982edb8adc
     input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 extra_life:
   argv:
   - convert.py
@@ -1565,7 +1673,7 @@ extra_life:
   - tests/settings.yaml
   - --output
   - output/regression/extra_life.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1596,15 +1704,18 @@ extra_life:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -1650,12 +1761,15 @@ extra_life:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -1694,11 +1808,13 @@ extra_life:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -1714,8 +1830,10 @@ extra_life:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -1724,11 +1842,13 @@ extra_life:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 extra_life_lofi:
   argv:
   - convert.py
@@ -1739,7 +1859,7 @@ extra_life_lofi:
   - lofi
   - --output
   - output/regression/extra_life_lofi.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1770,15 +1890,18 @@ extra_life_lofi:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -1824,12 +1947,15 @@ extra_life_lofi:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -1868,11 +1994,13 @@ extra_life_lofi:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -1888,8 +2016,10 @@ extra_life_lofi:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -1898,11 +2028,13 @@ extra_life_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 extra_life_lofi_merged:
   argv:
   - convert.py
@@ -1914,7 +2046,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/regression/extra_life_lofi_merged.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1945,15 +2077,18 @@ extra_life_lofi_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -1999,12 +2134,15 @@ extra_life_lofi_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -2043,11 +2181,13 @@ extra_life_lofi_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -2063,8 +2203,10 @@ extra_life_lofi_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -2073,11 +2215,13 @@ extra_life_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 extra_life_merged:
   argv:
   - convert.py
@@ -2087,7 +2231,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/regression/extra_life_merged.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2118,15 +2262,18 @@ extra_life_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -2172,12 +2319,15 @@ extra_life_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -2216,11 +2366,13 @@ extra_life_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -2236,8 +2388,10 @@ extra_life_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -2246,11 +2400,13 @@ extra_life_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/15_1up.yaml: f2ff14bb1a37
     input/sonic_1/Mus88 - Extra Life.asm: 160a613a525d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 final_zone:
   argv:
   - convert.py
@@ -2259,7 +2415,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/regression/final_zone.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2290,15 +2446,18 @@ final_zone:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -2344,12 +2503,15 @@ final_zone:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -2388,11 +2550,13 @@ final_zone:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -2408,8 +2572,10 @@ final_zone:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -2418,11 +2584,13 @@ final_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/10_final_zone.yaml: 3bff4dcd40df
     input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 ga_conclusion:
   argv:
   - convert.py
@@ -2431,7 +2599,7 @@ ga_conclusion:
   - tests/settings.yaml
   - --output
   - output/regression/ga_conclusion.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2462,15 +2630,18 @@ ga_conclusion:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -2515,12 +2686,15 @@ ga_conclusion:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -2558,11 +2732,13 @@ ga_conclusion:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -2578,8 +2754,10 @@ ga_conclusion:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -2588,11 +2766,13 @@ ga_conclusion:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/golden_axe/8d_conclusion.yaml: 150458b7cefb
+    configs/golden_axe/8d_conclusion.yaml: 275a0aceb6a7
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 ga_the_battle:
   argv:
   - convert.py
@@ -2601,7 +2781,7 @@ ga_the_battle:
   - tests/settings.yaml
   - --output
   - output/regression/ga_the_battle.mod
-  commit: 56511c6-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2632,15 +2812,18 @@ ga_the_battle:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -2685,12 +2868,15 @@ ga_the_battle:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -2728,11 +2914,13 @@ ga_the_battle:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -2748,8 +2936,10 @@ ga_the_battle:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -2758,11 +2948,13 @@ ga_the_battle:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/golden_axe/89_the_battle.yaml: 7fc4665f41a6
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 ga_the_battle_hq:
   argv:
   - convert.py
@@ -2773,7 +2965,7 @@ ga_the_battle_hq:
   - hq
   - --output
   - output/regression/ga_the_battle_hq.mod
-  commit: 56511c6-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2804,15 +2996,18 @@ ga_the_battle_hq:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -2857,12 +3052,15 @@ ga_the_battle_hq:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -2900,11 +3098,13 @@ ga_the_battle_hq:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -2920,8 +3120,10 @@ ga_the_battle_hq:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -2930,11 +3132,13 @@ ga_the_battle_hq:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/golden_axe/89_the_battle.yaml: 7fc4665f41a6
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 ga_theme_of_thief:
   argv:
   - convert.py
@@ -2943,7 +3147,7 @@ ga_theme_of_thief:
   - tests/settings.yaml
   - --output
   - output/regression/ga_theme_of_thief.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2974,15 +3178,18 @@ ga_theme_of_thief:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -3027,12 +3234,15 @@ ga_theme_of_thief:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -3070,11 +3280,13 @@ ga_theme_of_thief:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -3090,8 +3302,10 @@ ga_theme_of_thief:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -3100,11 +3314,13 @@ ga_theme_of_thief:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/golden_axe/8b_theme_of_thief.yaml: 052fb7a1b16d
+    configs/golden_axe/8b_theme_of_thief.yaml: 697dd35d045e
     input/roms/Golden Axe (World) (Rev A).md: e9f5340ecf81
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 game_over:
   argv:
   - convert.py
@@ -3113,7 +3329,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/regression/game_over.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3144,15 +3360,18 @@ game_over:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -3198,12 +3417,15 @@ game_over:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -3242,11 +3464,13 @@ game_over:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -3262,8 +3486,10 @@ game_over:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -3272,11 +3498,13 @@ game_over:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 95d6460e2eb6
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 game_over_lofi:
   argv:
   - convert.py
@@ -3287,7 +3515,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/regression/game_over_lofi.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3318,15 +3546,18 @@ game_over_lofi:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -3372,12 +3603,15 @@ game_over_lofi:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -3416,11 +3650,13 @@ game_over_lofi:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -3436,8 +3672,10 @@ game_over_lofi:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -3446,11 +3684,13 @@ game_over_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 95d6460e2eb6
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 game_over_lofi_merged:
   argv:
   - convert.py
@@ -3462,7 +3702,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/regression/game_over_lofi_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3493,15 +3733,18 @@ game_over_lofi_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -3547,12 +3790,15 @@ game_over_lofi_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -3591,11 +3837,13 @@ game_over_lofi_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -3611,8 +3859,10 @@ game_over_lofi_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -3621,11 +3871,13 @@ game_over_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 95d6460e2eb6
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 game_over_merged:
   argv:
   - convert.py
@@ -3635,7 +3887,7 @@ game_over_merged:
   - --merged
   - --output
   - output/regression/game_over_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3666,15 +3918,18 @@ game_over_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -3720,12 +3975,15 @@ game_over_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -3764,11 +4022,13 @@ game_over_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -3784,8 +4044,10 @@ game_over_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -3794,11 +4056,13 @@ game_over_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/19_game_over.yaml: 95d6460e2eb6
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 ghz_lofi:
   argv:
   - convert.py
@@ -3809,7 +4073,7 @@ ghz_lofi:
   - lofi
   - --output
   - output/regression/ghz_lofi.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3840,15 +4104,18 @@ ghz_lofi:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -3894,12 +4161,15 @@ ghz_lofi:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -3938,11 +4208,13 @@ ghz_lofi:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -3958,8 +4230,10 @@ ghz_lofi:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -3968,11 +4242,13 @@ ghz_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
+    configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 ghz_lofi_merged:
   argv:
   - convert.py
@@ -3984,7 +4260,7 @@ ghz_lofi_merged:
   - --merged
   - --output
   - output/regression/ghz_lofi_merged.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4015,15 +4291,18 @@ ghz_lofi_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -4069,12 +4348,15 @@ ghz_lofi_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -4113,11 +4395,13 @@ ghz_lofi_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -4133,8 +4417,10 @@ ghz_lofi_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -4143,11 +4429,13 @@ ghz_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
+    configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 green_hill_zone:
   argv:
   - convert.py
@@ -4156,7 +4444,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/regression/green_hill_zone.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4187,15 +4475,18 @@ green_hill_zone:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -4241,12 +4532,15 @@ green_hill_zone:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -4285,11 +4579,13 @@ green_hill_zone:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -4305,8 +4601,10 @@ green_hill_zone:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -4315,11 +4613,13 @@ green_hill_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 green_hill_zone_merged:
   argv:
   - convert.py
@@ -4329,7 +4629,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/regression/green_hill_zone_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4360,15 +4660,18 @@ green_hill_zone_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -4414,12 +4717,15 @@ green_hill_zone_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -4458,11 +4764,13 @@ green_hill_zone_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -4478,8 +4786,10 @@ green_hill_zone_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -4488,11 +4798,13 @@ green_hill_zone_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 green_hill_zone_rom:
   argv:
   - convert.py
@@ -4505,7 +4817,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/regression/green_hill_zone_rom.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4536,15 +4848,18 @@ green_hill_zone_rom:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -4590,12 +4905,15 @@ green_hill_zone_rom:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -4634,11 +4952,13 @@ green_hill_zone_rom:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -4654,8 +4974,10 @@ green_hill_zone_rom:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -4664,11 +4986,13 @@ green_hill_zone_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 invincibility:
   argv:
   - convert.py
@@ -4677,7 +5001,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/regression/invincibility.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4708,15 +5032,18 @@ invincibility:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -4762,12 +5089,15 @@ invincibility:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -4806,11 +5136,13 @@ invincibility:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -4826,8 +5158,10 @@ invincibility:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -4836,11 +5170,13 @@ invincibility:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: e446717bae1d
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 invincibility_lofi:
   argv:
   - convert.py
@@ -4851,7 +5187,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/regression/invincibility_lofi.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4882,15 +5218,18 @@ invincibility_lofi:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -4936,12 +5275,15 @@ invincibility_lofi:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -4980,11 +5322,13 @@ invincibility_lofi:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -5000,8 +5344,10 @@ invincibility_lofi:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -5010,11 +5356,13 @@ invincibility_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: e446717bae1d
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 invincibility_lofi_merged:
   argv:
   - convert.py
@@ -5026,7 +5374,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/regression/invincibility_lofi_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5057,15 +5405,18 @@ invincibility_lofi_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -5111,12 +5462,15 @@ invincibility_lofi_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -5155,11 +5509,13 @@ invincibility_lofi_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -5175,8 +5531,10 @@ invincibility_lofi_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -5185,11 +5543,13 @@ invincibility_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: e446717bae1d
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 invincibility_merged:
   argv:
   - convert.py
@@ -5199,7 +5559,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/regression/invincibility_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5230,15 +5590,18 @@ invincibility_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -5284,12 +5647,15 @@ invincibility_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -5328,11 +5694,13 @@ invincibility_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -5348,8 +5716,10 @@ invincibility_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -5358,11 +5728,13 @@ invincibility_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/14_invincibility.yaml: e446717bae1d
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 lab_zone:
   argv:
   - convert.py
@@ -5371,7 +5743,7 @@ lab_zone:
   - tests/settings.yaml
   - --output
   - output/regression/lab_zone.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5402,15 +5774,18 @@ lab_zone:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -5456,12 +5831,15 @@ lab_zone:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -5500,11 +5878,13 @@ lab_zone:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -5520,8 +5900,10 @@ lab_zone:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -5530,11 +5912,13 @@ lab_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/05_lab_zone.yaml: 28a70a07bc3d
     input/sonic_1/Mus82 - LZ.asm: 0a834d48c5c0
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 marble_zone:
   argv:
   - convert.py
@@ -5543,7 +5927,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/regression/marble_zone.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5574,15 +5958,18 @@ marble_zone:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -5628,12 +6015,15 @@ marble_zone:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -5672,11 +6062,13 @@ marble_zone:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -5692,8 +6084,10 @@ marble_zone:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -5702,11 +6096,13 @@ marble_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/03_marble_zone.yaml: d73142318eb4
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 marble_zone_rom:
   argv:
   - convert.py
@@ -5719,7 +6115,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/regression/marble_zone_rom.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5750,15 +6146,18 @@ marble_zone_rom:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -5804,12 +6203,15 @@ marble_zone_rom:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -5848,11 +6250,13 @@ marble_zone_rom:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -5868,8 +6272,10 @@ marble_zone_rom:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -5878,11 +6284,13 @@ marble_zone_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/03_marble_zone.yaml: d73142318eb4
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 mw_beat_it:
   argv:
   - convert.py
@@ -5891,7 +6299,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/regression/mw_beat_it.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5922,15 +6330,18 @@ mw_beat_it:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -5976,12 +6387,15 @@ mw_beat_it:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -6020,11 +6434,13 @@ mw_beat_it:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -6040,8 +6456,10 @@ mw_beat_it:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -6050,11 +6468,13 @@ mw_beat_it:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/moonwalker/82_beat_it.yaml: cb3fa1387340
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 mw_mr_big:
   argv:
   - convert.py
@@ -6063,7 +6483,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/regression/mw_mr_big.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6094,15 +6514,18 @@ mw_mr_big:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -6148,12 +6571,15 @@ mw_mr_big:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -6192,11 +6618,13 @@ mw_mr_big:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -6212,8 +6640,10 @@ mw_mr_big:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -6222,11 +6652,13 @@ mw_mr_big:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/moonwalker/89_mr_big.yaml: 6678fd378934
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 mw_title:
   argv:
   - convert.py
@@ -6235,7 +6667,7 @@ mw_title:
   - tests/settings.yaml
   - --output
   - output/regression/mw_title.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6266,15 +6698,18 @@ mw_title:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -6320,12 +6755,15 @@ mw_title:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -6364,11 +6802,13 @@ mw_title:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -6384,8 +6824,10 @@ mw_title:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -6394,11 +6836,13 @@ mw_title:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/moonwalker/86_title.yaml: a4e39f30e91d
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 or_last_wave:
   argv:
   - convert.py
@@ -6407,7 +6851,7 @@ or_last_wave:
   - tests/settings.yaml
   - --output
   - output/regression/or_last_wave.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6438,15 +6882,18 @@ or_last_wave:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -6492,12 +6939,15 @@ or_last_wave:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -6537,11 +6987,13 @@ or_last_wave:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -6557,8 +7009,10 @@ or_last_wave:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -6567,11 +7021,13 @@ or_last_wave:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/outrun/84_last_wave.yaml: 009fc08f1a5d
     input/roms/OutRun (USA, Europe).md: 231f52844398
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 or_passing_breeze:
   argv:
   - convert.py
@@ -6580,7 +7036,7 @@ or_passing_breeze:
   - tests/settings.yaml
   - --output
   - output/regression/or_passing_breeze.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6611,15 +7067,18 @@ or_passing_breeze:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -6665,12 +7124,15 @@ or_passing_breeze:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -6710,11 +7172,13 @@ or_passing_breeze:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -6730,8 +7194,10 @@ or_passing_breeze:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -6740,11 +7206,13 @@ or_passing_breeze:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/outrun/83_passing_breeze.yaml: 3a74ffd6c500
     input/roms/OutRun (USA, Europe).md: 231f52844398
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 or_step_on_beat:
   argv:
   - convert.py
@@ -6753,7 +7221,7 @@ or_step_on_beat:
   - tests/settings.yaml
   - --output
   - output/regression/or_step_on_beat.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6784,15 +7252,18 @@ or_step_on_beat:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -6838,12 +7309,15 @@ or_step_on_beat:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -6883,11 +7357,13 @@ or_step_on_beat:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -6903,8 +7379,10 @@ or_step_on_beat:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -6913,11 +7391,13 @@ or_step_on_beat:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/outrun/85_step_on_beat.yaml: 7f6952bc0719
+    configs/outrun/85_step_on_beat.yaml: bed92db67e89
     input/roms/OutRun (USA, Europe).md: 231f52844398
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 robotnik:
   argv:
   - convert.py
@@ -6926,7 +7406,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/regression/robotnik.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6957,15 +7437,18 @@ robotnik:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -7011,12 +7494,15 @@ robotnik:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -7055,11 +7541,13 @@ robotnik:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -7075,8 +7563,10 @@ robotnik:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -7085,11 +7575,13 @@ robotnik:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: a10771f77d6e
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 robotnik_lofi:
   argv:
   - convert.py
@@ -7100,7 +7592,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/regression/robotnik_lofi.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7131,15 +7623,18 @@ robotnik_lofi:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -7185,12 +7680,15 @@ robotnik_lofi:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -7229,11 +7727,13 @@ robotnik_lofi:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -7249,8 +7749,10 @@ robotnik_lofi:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -7259,11 +7761,13 @@ robotnik_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: a10771f77d6e
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 robotnik_lofi_merged:
   argv:
   - convert.py
@@ -7275,7 +7779,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/regression/robotnik_lofi_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7306,15 +7810,18 @@ robotnik_lofi_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -7360,12 +7867,15 @@ robotnik_lofi_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -7404,11 +7914,13 @@ robotnik_lofi_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -7424,8 +7936,10 @@ robotnik_lofi_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -7434,11 +7948,13 @@ robotnik_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: a10771f77d6e
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 robotnik_merged:
   argv:
   - convert.py
@@ -7448,7 +7964,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/regression/robotnik_merged.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7479,15 +7995,18 @@ robotnik_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -7533,12 +8052,15 @@ robotnik_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -7577,11 +8099,13 @@ robotnik_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -7597,8 +8121,10 @@ robotnik_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -7607,11 +8133,13 @@ robotnik_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/09_robotnik.yaml: a10771f77d6e
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 scrap_brain_zone:
   argv:
   - convert.py
@@ -7620,7 +8148,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/regression/scrap_brain_zone.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7651,15 +8179,18 @@ scrap_brain_zone:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -7705,12 +8236,15 @@ scrap_brain_zone:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -7749,11 +8283,13 @@ scrap_brain_zone:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -7769,8 +8305,10 @@ scrap_brain_zone:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -7779,11 +8317,13 @@ scrap_brain_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/07_scrap_brain_zone.yaml: 39bc51035fdc
     input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sh2_an_epitaph:
   argv:
   - convert.py
@@ -7792,7 +8332,7 @@ sh2_an_epitaph:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_an_epitaph.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7823,15 +8363,18 @@ sh2_an_epitaph:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -7880,12 +8423,15 @@ sh2_an_epitaph:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -7923,11 +8469,13 @@ sh2_an_epitaph:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -7943,8 +8491,10 @@ sh2_an_epitaph:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -7953,11 +8503,13 @@ sh2_an_epitaph:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/95_an_epitaph.yaml: 3d0f23dc4ef4
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sh2_game_over:
   argv:
   - convert.py
@@ -7966,7 +8518,7 @@ sh2_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_game_over.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7997,15 +8549,18 @@ sh2_game_over:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -8054,12 +8609,15 @@ sh2_game_over:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -8097,11 +8655,13 @@ sh2_game_over:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -8117,8 +8677,10 @@ sh2_game_over:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -8127,11 +8689,13 @@ sh2_game_over:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/97_game_over.yaml: a45e11506721
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sh2_harrier_saga:
   argv:
   - convert.py
@@ -8140,7 +8704,7 @@ sh2_harrier_saga:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_harrier_saga.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8171,15 +8735,18 @@ sh2_harrier_saga:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -8228,12 +8795,15 @@ sh2_harrier_saga:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -8271,11 +8841,13 @@ sh2_harrier_saga:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -8291,8 +8863,10 @@ sh2_harrier_saga:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -8301,11 +8875,13 @@ sh2_harrier_saga:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/81_harrier_saga.yaml: 07963801c17c
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sh2_motion:
   argv:
   - convert.py
@@ -8314,7 +8890,7 @@ sh2_motion:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_motion.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8345,15 +8921,18 @@ sh2_motion:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -8402,12 +8981,15 @@ sh2_motion:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -8445,11 +9027,13 @@ sh2_motion:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -8465,8 +9049,10 @@ sh2_motion:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -8475,11 +9061,13 @@ sh2_motion:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/98_motion.yaml: 0b5b6724a1aa
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sh2_winners_flight:
   argv:
   - convert.py
@@ -8488,7 +9076,7 @@ sh2_winners_flight:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_winners_flight.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8519,15 +9107,18 @@ sh2_winners_flight:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -8576,12 +9167,15 @@ sh2_winners_flight:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -8619,11 +9213,13 @@ sh2_winners_flight:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -8639,8 +9235,10 @@ sh2_winners_flight:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -8649,11 +9247,13 @@ sh2_winners_flight:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/space_harrier_2/94_winners_flight.yaml: 7153b4e59de6
     input/roms/Space Harrier II (World).md: 356beab7e21e
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sor2_game_over:
   argv:
   - convert.py
@@ -8662,7 +9262,7 @@ sor2_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_game_over.mod
-  commit: 719ea22-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8704,6 +9304,7 @@ sor2_game_over:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -8756,6 +9357,7 @@ sor2_game_over:
   - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -8834,9 +9436,9 @@ sor2_game_over:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/19_game_over.yaml: f106faf93877
+    configs/streets_of_rage_2/19_game_over.yaml: 21b833f326d7
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sor2_go_straight:
   argv:
   - convert.py
@@ -8845,7 +9447,7 @@ sor2_go_straight:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_go_straight.mod
-  commit: 766ea97-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8887,6 +9489,7 @@ sor2_go_straight:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -9018,9 +9621,9 @@ sor2_go_straight:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/00_go_straight.yaml: a4b00a1a399d
+    configs/streets_of_rage_2/00_go_straight.yaml: db1c45cba10f
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sor2_jungle_base:
   argv:
   - convert.py
@@ -9029,7 +9632,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: 766ea97-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9071,6 +9674,7 @@ sor2_jungle_base:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -9202,9 +9806,9 @@ sor2_jungle_base:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/05_jungle_base.yaml: ea14c7053969
+    configs/streets_of_rage_2/05_jungle_base.yaml: 2b0ad3b733c4
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sor2_level_complete:
   argv:
   - convert.py
@@ -9213,7 +9817,7 @@ sor2_level_complete:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_level_complete.mod
-  commit: 6d5b10b-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9255,6 +9859,7 @@ sor2_level_complete:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -9307,6 +9912,7 @@ sor2_level_complete:
   - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -9385,9 +9991,9 @@ sor2_level_complete:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/0b_level_complete.yaml: ce0146a80120
+    configs/streets_of_rage_2/0b_level_complete.yaml: e28fbce64bda
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sor2_song_12:
   argv:
   - convert.py
@@ -9396,7 +10002,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: 766ea97-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9438,6 +10044,7 @@ sor2_song_12:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -9571,7 +10178,7 @@ sor2_song_12:
   inputs:
     configs/streets_of_rage_2/12_song_12.yaml: bb39b80d59bf
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 sor2_too_deep:
   argv:
   - convert.py
@@ -9580,7 +10187,7 @@ sor2_too_deep:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_too_deep.mod
-  commit: 6d5b10b-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9622,6 +10229,7 @@ sor2_too_deep:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -9674,6 +10282,7 @@ sor2_too_deep:
   - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -9752,9 +10361,9 @@ sor2_too_deep:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/08_too_deep.yaml: 7cb9fcd42b29
+    configs/streets_of_rage_2/08_too_deep.yaml: 91af2e02ec9f
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 special_stage:
   argv:
   - convert.py
@@ -9763,7 +10372,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/regression/special_stage.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9794,15 +10403,18 @@ special_stage:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -9848,12 +10460,15 @@ special_stage:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -9892,11 +10507,13 @@ special_stage:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -9912,8 +10529,10 @@ special_stage:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -9922,11 +10541,13 @@ special_stage:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/08_special_stage.yaml: c0722d83dcf6
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 spring_yard_zone:
   argv:
   - convert.py
@@ -9935,7 +10556,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/regression/spring_yard_zone.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9966,15 +10587,18 @@ spring_yard_zone:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -10020,12 +10644,15 @@ spring_yard_zone:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -10064,11 +10691,13 @@ spring_yard_zone:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -10084,8 +10713,10 @@ spring_yard_zone:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -10094,11 +10725,13 @@ spring_yard_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/04_spring_yard_zone.yaml: 605727ad7a49
     input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 stage_clear:
   argv:
   - convert.py
@@ -10107,7 +10740,7 @@ stage_clear:
   - tests/settings.yaml
   - --output
   - output/regression/stage_clear.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10138,15 +10771,18 @@ stage_clear:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -10192,12 +10828,15 @@ stage_clear:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -10236,11 +10875,13 @@ stage_clear:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -10256,8 +10897,10 @@ stage_clear:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -10266,11 +10909,13 @@ stage_clear:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 09b47038b7c4
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 stage_clear_lofi:
   argv:
   - convert.py
@@ -10281,7 +10926,7 @@ stage_clear_lofi:
   - lofi
   - --output
   - output/regression/stage_clear_lofi.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10312,15 +10957,18 @@ stage_clear_lofi:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -10366,12 +11014,15 @@ stage_clear_lofi:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -10410,11 +11061,13 @@ stage_clear_lofi:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -10430,8 +11083,10 @@ stage_clear_lofi:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -10440,11 +11095,13 @@ stage_clear_lofi:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 09b47038b7c4
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 stage_clear_lofi_merged:
   argv:
   - convert.py
@@ -10456,7 +11113,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/regression/stage_clear_lofi_merged.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10487,15 +11144,18 @@ stage_clear_lofi_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -10541,12 +11201,15 @@ stage_clear_lofi_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -10585,11 +11248,13 @@ stage_clear_lofi_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -10605,8 +11270,10 @@ stage_clear_lofi_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -10615,11 +11282,13 @@ stage_clear_lofi_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 09b47038b7c4
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 stage_clear_merged:
   argv:
   - convert.py
@@ -10629,7 +11298,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/regression/stage_clear_merged.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10660,15 +11329,18 @@ stage_clear_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -10714,12 +11386,15 @@ stage_clear_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -10758,11 +11433,13 @@ stage_clear_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -10778,8 +11455,10 @@ stage_clear_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -10788,11 +11467,13 @@ stage_clear_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/11_stage_clear.yaml: 09b47038b7c4
     input/sonic_1/Mus8E - Sonic Got Through.asm: 61ac7a971a48
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 star_light_zone:
   argv:
   - convert.py
@@ -10801,7 +11482,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/regression/star_light_zone.mod
-  commit: caee39e-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10832,15 +11513,18 @@ star_light_zone:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -10886,12 +11570,15 @@ star_light_zone:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -10930,11 +11617,13 @@ star_light_zone:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -10950,8 +11639,10 @@ star_light_zone:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -10960,11 +11651,13 @@ star_light_zone:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/06_star_light_zone.yaml: a3730f87b5d9
     input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 title_screen:
   argv:
   - convert.py
@@ -10973,7 +11666,7 @@ title_screen:
   - tests/settings.yaml
   - --output
   - output/regression/title_screen.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11004,15 +11697,18 @@ title_screen:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -11058,12 +11754,15 @@ title_screen:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -11102,11 +11801,13 @@ title_screen:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -11122,8 +11823,10 @@ title_screen:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -11132,11 +11835,13 @@ title_screen:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 1719bae1b73b
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 title_screen_merged:
   argv:
   - convert.py
@@ -11146,7 +11851,7 @@ title_screen_merged:
   - --merged
   - --output
   - output/regression/title_screen_merged.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11177,15 +11882,18 @@ title_screen_merged:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -11231,12 +11939,15 @@ title_screen_merged:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -11275,11 +11986,13 @@ title_screen_merged:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -11295,8 +12008,10 @@ title_screen_merged:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -11305,11 +12020,13 @@ title_screen_merged:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 1719bae1b73b
     input/sonic_1/Mus8A - Title Screen.asm: bacd31e7cced
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 title_screen_rom:
   argv:
   - convert.py
@@ -11322,7 +12039,7 @@ title_screen_rom:
   - $8A
   - --output
   - output/regression/title_screen_rom.mod
-  commit: c6d0253-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11353,15 +12070,18 @@ title_screen_rom:
   - core/convert/channel_writer/cells.py
   - core/convert/channel_writer/context.py
   - core/convert/channel_writer/fades.py
+  - core/convert/channel_writer/level_curve.py
   - core/convert/channel_writer/levels.py
   - core/convert/channel_writer/modulation.py
   - core/convert/channel_writer/note.py
   - core/convert/channel_writer/note_warnings.py
+  - core/convert/channel_writer/pitch_curve.py
   - core/convert/channel_writer/router.py
   - core/convert/channel_writer/writer.py
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -11407,12 +12127,15 @@ title_screen_rom:
   - core/mod/timing.py
   - core/mod/volume.py
   - core/plan/__init__.py
+  - core/plan/baked.py
   - core/plan/conversion.py
   - core/plan/derive.py
   - core/plan/detune.py
   - core/plan/driver_state.py
+  - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -11451,11 +12174,13 @@ title_screen_rom:
   - core/smps/playback.py
   - core/smps/rules.py
   - core/smps/run_out.py
+  - core/smps/slide.py
   - core/smps/song.py
   - core/smps/song_prep.py
   - core/smps/tempo.py
   - core/smps/track.py
   - core/smps/voice_patch.py
+  - core/smps/volume_envelope.py
   - core/source/__init__.py
   - core/source/load.py
   - core/synth/__init__.py
@@ -11471,8 +12196,10 @@ title_screen_rom:
   - core/ui/song_diff.py
   - core/version.py
   - core/vgm/__init__.py
+  - core/vgm/bursts.py
   - core/vgm/cache.py
   - core/vgm/chipstate.py
+  - core/vgm/clock.py
   - core/vgm/frames.py
   - core/vgm/lift/__init__.py
   - core/vgm/lift/song.py
@@ -11481,11 +12208,13 @@ title_screen_rom:
   - core/vgm/notes.py
   - core/vgm/reader.py
   - core/vgm/realign.py
+  - core/vgm/spans.py
+  - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
     configs/sonic_1/01_title_screen.yaml: 1719bae1b73b
     input/roms/sonic_rev01.bin: c30832bccae0
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 tt_game_over:
   argv:
   - convert.py
@@ -11494,7 +12223,7 @@ tt_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/tt_game_over.mod
-  commit: 719ea22-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11536,6 +12265,7 @@ tt_game_over:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -11592,6 +12322,7 @@ tt_game_over:
   - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -11667,9 +12398,9 @@ tt_game_over:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/time_trax/05_game_over.yaml: 37fb21030e05
+    configs/time_trax/05_game_over.yaml: 230ad6b86c35
     input/roms/Time Trax (USA) (Proto).md: 830410ab309d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 tt_mission_briefing:
   argv:
   - convert.py
@@ -11678,7 +12409,7 @@ tt_mission_briefing:
   - tests/settings.yaml
   - --output
   - output/regression/tt_mission_briefing.mod
-  commit: 766ea97-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11720,6 +12451,7 @@ tt_mission_briefing:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -11852,9 +12584,9 @@ tt_mission_briefing:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/time_trax/04_mission_briefing.yaml: 79d1c4d13d14
+    configs/time_trax/04_mission_briefing.yaml: a34a84837db6
     input/roms/Time Trax (USA) (Proto).md: 830410ab309d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 tt_stages_2_5_7:
   argv:
   - convert.py
@@ -11863,7 +12595,7 @@ tt_stages_2_5_7:
   - tests/settings.yaml
   - --output
   - output/regression/tt_stages_2_5_7.mod
-  commit: 766ea97-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11905,6 +12637,7 @@ tt_stages_2_5_7:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -12037,9 +12770,9 @@ tt_stages_2_5_7:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/time_trax/01_stages_2_5_7.yaml: af21d02cabd1
+    configs/time_trax/01_stages_2_5_7.yaml: 46b087f5e782
     input/roms/Time Trax (USA) (Proto).md: 830410ab309d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 tt_stages_2_5_7_bar:
   argv:
   - convert.py
@@ -12050,7 +12783,7 @@ tt_stages_2_5_7_bar:
   - bar
   - --output
   - output/regression/tt_stages_2_5_7_bar.mod
-  commit: 766ea97-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -12092,6 +12825,7 @@ tt_stages_2_5_7_bar:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -12224,9 +12958,9 @@ tt_stages_2_5_7_bar:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/time_trax/01_stages_2_5_7.yaml: af21d02cabd1
+    configs/time_trax/01_stages_2_5_7.yaml: 46b087f5e782
     input/roms/Time Trax (USA) (Proto).md: 830410ab309d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c
 tt_title_screen:
   argv:
   - convert.py
@@ -12235,7 +12969,7 @@ tt_title_screen:
   - tests/settings.yaml
   - --output
   - output/regression/tt_title_screen.mod
-  commit: 719ea22-dirty
+  commit: 38e7866-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -12277,6 +13011,7 @@ tt_title_screen:
   - core/convert/fm_drums.py
   - core/convert/layout.py
   - core/convert/level_plan.py
+  - core/convert/normalise.py
   - core/convert/prepare.py
   - core/convert/sample_names.py
   - core/convert/samples.py
@@ -12333,6 +13068,7 @@ tt_title_screen:
   - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -12408,6 +13144,6 @@ tt_title_screen:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/time_trax/00_title_screen.yaml: a335a2b90db5
+    configs/time_trax/00_title_screen.yaml: ff52c116a859
     input/roms/Time Trax (USA) (Proto).md: 830410ab309d
-    tests/settings.yaml: 1be2c231bd5e
+    tests/settings.yaml: cbe7c5cb200c

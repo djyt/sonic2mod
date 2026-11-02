@@ -224,6 +224,7 @@ convert()
  │   │                                   sample_list files, DAC saturation, PSG generator
  │   ├─ (merged) MergedBuild.mix         pcm composites, then sample banks
  │   ├─ _convert_all_channels            LevelPlanner.levels → ChannelWriter per channel
+ │   │                                   (normalise_volumes: a scratch write first, the volumes raised)
  │   └─ ModLayout                        leading rests' C00, row-0 Fxx, mid-song tempo Fxx
  ├─ apply_pattern_breaks                 (mod/breaks.py)
  ├─ ModLayout.loop_point                 Bxx (+ Dxx) in the post-break layout
@@ -244,6 +245,7 @@ the song and config, until the slots reserved for sample banks match what the ba
 | `smps2mod.py` | `SmpsToModConverter`.  Public to the config tools: `prepare_song()`, `level_baselines()`, `pan_law_db`, `pattern_of_tick()`, `last_pattern()`, `tick_span_secs()`, `sample_secs()`; to the CLI: `convert()`, `warnings`, `infos`, `sample_sources()` |
 | `fm_drums.py` | `drum_rings`: how long each FM drum is heard (a hit to the drum track's next): its render's cap |
 | `level_plan.py` | `LevelPlanner`: baked levels per instrument, FM render levels; `fm_tl_to_mod`, `psg_att_to_mod`, `modal_level` |
+| `normalise.py` | `normalise_gain`, `raise_volumes`: `normalise_volumes`, the reference build's volumes raised until its loudest note plays at 64 |
 | `samples.py` | `SampleInstaller`: one pass's samples - FM, FM drums and PSG rendered, the rest loaded, the DAC drums saturated, mix-only sources kept aside; their loops, release rates, rates and unquantised renders for the rest of the pass |
 | `sustain_plan.py` | `SustainPlanner`: `sustain_duration: auto` per instrument, `sustain_short` warnings |
 | `channel_writer/` | `ChannelWriter` (`writer.py`): one channel's cells — note-ons, cuts, `3FF`, `9xx`, `Cxx`; `ColumnRouter` per-pattern columns, `Levels` volumes, `Modulation` `4xy` / slides, `Fades` release / decay slides, `Cells` row addressing, `EDx` placement, `E1x` / `E2x`; `PitchCurve` a glide's row slides, `LevelCurve` an envelope's `Cxx` where no sample bakes it |

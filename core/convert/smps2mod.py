@@ -10,6 +10,7 @@ import dataclasses
 import math
 import os
 
+from ..audio import gain_to_db
 from ..chips import DEFAULT_FM_PAN_LAW_DB, fm_level_db
 from ..config import (
     ConversionConfig,
@@ -43,6 +44,7 @@ from ..smps import source_map as source_map_for
 from .channel_writer import ChannelWriter, EmissionStats, WriterContext
 from .layout import ModLayout
 from .level_plan import LevelPlanner
+from .normalise import normalise_gain, raise_volumes
 from .sample_names import sample_names
 from .samples import SampleInstaller, psg_synth_instruments
 from .sustain_plan import SustainPlanner
@@ -508,13 +510,35 @@ class SmpsToModConverter:
             release_slides=samples.release_slides, player=self._player, leading_rests=self._leading_rest_channels,
             stats=self._emission, played=self._played,
             decay={i: (lp.flat_at, lp.decay_db) for i, lp in samples.loops.items() if lp.decay_db})
+        if self.synth is not None and self.synth.normalises(self.config.merge_active):
+            self._normalise(ctx, source_map)
+        self._write_channels(ctx, source_map)
+
+    def _write_channels(self, ctx: WriterContext, source_map: dict) -> None:
+        """Every configured channel written into ctx.mod."""
         for chan_cfg in self.config.channels:
             if not chan_cfg.enabled:
                 continue
 
             source = chan_cfg.source
             if source not in source_map:
-                self._diag.warn(WarningKind.MISSING_SOURCE, source=source)
+                ctx.diag.warn(WarningKind.MISSING_SOURCE, source=source)
                 continue
 
             ChannelWriter(ctx, source_map[source], chan_cfg).write()
+
+    def _normalise(self, ctx: WriterContext, source_map: dict) -> None:
+        """normalise_volumes: the channels written once into a scratch MOD, its loudest note
+        measured, then every sample volume raised by what lifts that note to 64 (core.convert.normalise)."""
+        diag = Diagnostics()
+        scratch = dataclasses.replace(ctx, mod=self.mod.scratch(), diag=diag,
+                                      vibrato=VibratoSpeed(self._timeline, self.config, diag),
+                                      leading_rests={}, stats=EmissionStats(), played={})
+        self._write_channels(scratch, source_map)
+
+        peak = scratch.stats.peak_volume
+        gain = normalise_gain(peak)
+        if gain == 1.0:
+            return
+        raise_volumes(self.mod, self._conv.samples, gain)
+        self._diag.info(InfoKind.NORMALISED, peak=peak, db=gain_to_db(gain))

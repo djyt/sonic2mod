@@ -45,6 +45,10 @@ class Levels:
         """The instrument's sample_list volume: what a note-on plays at with no Cxx."""
         return self._sample_vols.get(inst, MOD_MAX_VOLUME)
 
+    def drum(self, inst: int) -> int:
+        """The volume a drum hit plays at: its sample's."""
+        return self._heard(self.sample(inst))
+
     def on_change(self, eff: AlterVol | SetVol, st: DriverState) -> None:
         """st.apply moved the TL offset / attenuation; the non-baked modes keep their own
         MOD-volume accumulator on top of it: the channel volume less the TL steps the song
@@ -74,8 +78,8 @@ class Levels:
         shifted = db_to_gain(-TL_STEP_DB * tl_shift) if tl_shift and not st.is_psg else 1.0
         baked = self._psg_baked if st.is_psg else self._fm_baked
         if not baked:
-            return clamp_mod_volume(self._current_volume * sv / MOD_MAX_VOLUME * shifted)
-        if st.is_psg and st.is_silent:
+            return self._heard(self._current_volume * sv / MOD_MAX_VOLUME * shifted)
+        if st.is_silent:
             return 0
 
         level = st.level_db(self._ctx.pan_law_db) + gain_db
@@ -84,7 +88,14 @@ class Levels:
         rel_db = level - baseline.get(key, level)
         # A banked sound's bytes carry its own volume against the bank's (sv): at its own level
         # it needs no Cxx either
-        return clamp_mod_volume(sv * db_to_gain(rel_db) * self._volume / MOD_MAX_VOLUME * shifted)
+        return self._heard(sv * db_to_gain(rel_db) * self._volume / MOD_MAX_VOLUME * shifted)
+
+    def _heard(self, wanted: float) -> int:
+        """`wanted` as a MOD volume, counted towards the song's loudest (EmissionStats.heard).  A note
+        the chip sounds plays at 1 at least: rounded to 0 its note-on would carry C00 and sound nothing
+        (Go Straight's PSG2 at 0.4); silence is the driver state's (is_silent)."""
+        self._ctx.stats.heard(wanted)
+        return max(1, clamp_mod_volume(wanted)) if wanted > 0 else 0
 
     def _level_volume(self, st: DriverState) -> int:
         """The MOD volume st's level stands for outside baked mode: the PSG attenuation, or the

@@ -9,19 +9,21 @@ baked_slots: 4            # slots kept for baked drum sweeps and envelopes (core
 window_root: highest      # each window's root as high as its range and the 64 K limit allow: the most rate
 
 sample_list:   # volumes set from the VGZ; the rest is derived
-  - [1, "fm_v01_E4.raw", 57, 0]   # VGZ: +0.0 dB at 64
+  - [12, "fm_v18_Eb3.raw", 40, 0]   # VGZ: +1.9 dB at 49
+  - [15, "fm_v1e_Eb2.raw", 57, 0]   # VGZ: +1.0 dB at 64
+  - [1, "fm_v01_E4.raw", 64, 0] # VGZ: -2.2 dB at 57
   - [3, "fm_v67_C3.raw", 37, 0]   # VGZ: +2.3 dB at 54
   - [5, "fm_v7a_F3.raw", 24, 0]   # VGZ: +6.1 dB at 54
   - [8, "fm_v13_A1.raw", 35, 0]   # VGZ: -2.5 dB at 29
   - [10, "fm_v18_E0.raw", 30, 0]   # VGZ: -2.7 dB at 25
   - [11, "fm_v18_F2.raw", 49, 0]   # VGZ: -3.1 dB at 38
   - [13, "fm_v1a_F2.raw", 58, 0]   # VGZ: -3.2 dB at 45
-  - [16, "fm_v06_F3.raw", 14, 0]   # VGZ: -4.0 dB at 10
-  - [17, "fm_v40_E4.raw", 22, 0]   # VGZ: -7.9 dB at 10
-  - [21, "fm_v59_D2.raw", 39, 0]   # VGZ: +3.3 dB at 64
-  - [22, "fm_v5a_F2.raw", 37, 0]   # VGZ: +3.7 dB at 64
-  - [23, "fm_v5b_G2.raw", 38, 0]   # VGZ: +3.5 dB at 64
-  - [24, "fm_v5c_C3.raw", 24, 0]   # VGZ: +7.4 dB at 64
+  - [16, "fm_v06_F3.raw", 12, 0] # VGZ: +1.7 dB at 14
+  - [17, "fm_v40_E4.raw", 33, 0] # VGZ: -3.5 dB at 22
+  - [21, "fm_v59_D2.raw", 29, 0] # VGZ: +2.7 dB at 39
+  - [22, "fm_v5a_F2.raw", 29, 0] # VGZ: +2.2 dB at 37
+  - [23, "fm_v5b_G2.raw", 28, 0] # VGZ: +2.5 dB at 38
+  - [24, "fm_v5c_C3.raw", 27, 0] # VGZ: -1.1 dB at 24
   - [25, "fm_v5f_Bb2.raw", 24, 0]   # VGZ: -0.0 dB at 27
   - [26, "fm_v60_B4.raw", 32, 0]   # VGZ: +5.1 dB at 64
   - [27, "fm_v61_B4.raw", 44, 0]   # VGZ: +2.3 dB at 64

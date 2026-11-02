@@ -72,6 +72,7 @@ class InfoKind(StrEnum):
     DAC_SATURATED = 'dac_saturated'
     TAILS_TRIMMED = 'tails_trimmed'                 # one-shots cut to what is heard (samples.trim_tails)
     TAILS_KEPT = 'tails_kept'                       # trim_tails skipped: an effect the replay does not model
+    NORMALISED = 'normalised'                       # every volume raised (normalise_volumes)
     # merged build
     MERGE_FILL = 'merge_fill'
     MERGE_FOLDS = 'merge_folds'

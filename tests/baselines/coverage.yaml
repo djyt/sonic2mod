@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/regression/chaos_emerald.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -168,7 +168,7 @@ chaos_emerald:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/16_chaos_emerald.yaml: 702974097f19
+    configs/sonic_1/16_chaos_emerald.yaml: efafbb908d06
     input/sonic_1/Mus93 - Get Emerald.asm: 77a5b5dda397
     tests/settings.yaml: 1be2c231bd5e
 continue_screen:
@@ -179,7 +179,7 @@ continue_screen:
   - tests/settings.yaml
   - --output
   - output/regression/continue_screen.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -340,7 +340,7 @@ continue_screen:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/18_continue_screen.yaml: be90696de24c
+    configs/sonic_1/18_continue_screen.yaml: 50ec3fc758d4
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: 1be2c231bd5e
 continue_screen_lofi:
@@ -353,7 +353,7 @@ continue_screen_lofi:
   - lofi
   - --output
   - output/regression/continue_screen_lofi.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -514,7 +514,7 @@ continue_screen_lofi:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/18_continue_screen.yaml: be90696de24c
+    configs/sonic_1/18_continue_screen.yaml: 50ec3fc758d4
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: 1be2c231bd5e
 continue_screen_lofi_merged:
@@ -528,7 +528,7 @@ continue_screen_lofi_merged:
   - --merged
   - --output
   - output/regression/continue_screen_lofi_merged.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -689,7 +689,7 @@ continue_screen_lofi_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/18_continue_screen.yaml: be90696de24c
+    configs/sonic_1/18_continue_screen.yaml: 50ec3fc758d4
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: 1be2c231bd5e
 continue_screen_merged:
@@ -701,7 +701,7 @@ continue_screen_merged:
   - --merged
   - --output
   - output/regression/continue_screen_merged.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -862,7 +862,7 @@ continue_screen_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/18_continue_screen.yaml: be90696de24c
+    configs/sonic_1/18_continue_screen.yaml: 50ec3fc758d4
     input/sonic_1/Mus90 - Continue Screen.asm: cec085a906a8
     tests/settings.yaml: 1be2c231bd5e
 credits:
@@ -873,7 +873,7 @@ credits:
   - tests/settings.yaml
   - --output
   - output/regression/credits.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1034,7 +1034,7 @@ credits:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/13_credits.yaml: a5a2c99af2b0
+    configs/sonic_1/13_credits.yaml: adaba94e7f4e
     input/sonic_1/Mus91 - Credits.asm: 106cf62e8b16
     tests/settings.yaml: 1be2c231bd5e
 credits_rom:
@@ -1049,7 +1049,7 @@ credits_rom:
   - $91
   - --output
   - output/regression/credits_rom.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1210,7 +1210,7 @@ credits_rom:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/13_credits.yaml: a5a2c99af2b0
+    configs/sonic_1/13_credits.yaml: adaba94e7f4e
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: 1be2c231bd5e
 drowning:
@@ -1393,7 +1393,7 @@ ending_theme:
   - tests/settings.yaml
   - --output
   - output/regression/ending_theme.mod
-  commit: 47ca32b-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -1554,7 +1554,7 @@ ending_theme:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/12_ending_theme.yaml: f4e9e818c57a
+    configs/sonic_1/12_ending_theme.yaml: b5982edb8adc
     input/sonic_1/Mus8B - Ending.asm: 80e00bbcd0b2
     tests/settings.yaml: 1be2c231bd5e
 extra_life:
@@ -2259,7 +2259,7 @@ final_zone:
   - tests/settings.yaml
   - --output
   - output/regression/final_zone.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2420,7 +2420,7 @@ final_zone:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/10_final_zone.yaml: 1816d8c10975
+    configs/sonic_1/10_final_zone.yaml: 3bff4dcd40df
     input/sonic_1/Mus8D - FZ.asm: 8b1125b96028
     tests/settings.yaml: 1be2c231bd5e
 ga_conclusion:
@@ -3113,7 +3113,7 @@ game_over:
   - tests/settings.yaml
   - --output
   - output/regression/game_over.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3274,7 +3274,7 @@ game_over:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
+    configs/sonic_1/19_game_over.yaml: 95d6460e2eb6
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: 1be2c231bd5e
 game_over_lofi:
@@ -3287,7 +3287,7 @@ game_over_lofi:
   - lofi
   - --output
   - output/regression/game_over_lofi.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3448,7 +3448,7 @@ game_over_lofi:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
+    configs/sonic_1/19_game_over.yaml: 95d6460e2eb6
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: 1be2c231bd5e
 game_over_lofi_merged:
@@ -3462,7 +3462,7 @@ game_over_lofi_merged:
   - --merged
   - --output
   - output/regression/game_over_lofi_merged.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3623,7 +3623,7 @@ game_over_lofi_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
+    configs/sonic_1/19_game_over.yaml: 95d6460e2eb6
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: 1be2c231bd5e
 game_over_merged:
@@ -3635,7 +3635,7 @@ game_over_merged:
   - --merged
   - --output
   - output/regression/game_over_merged.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -3796,7 +3796,7 @@ game_over_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/19_game_over.yaml: 4c3ed14aecee
+    configs/sonic_1/19_game_over.yaml: 95d6460e2eb6
     input/sonic_1/Mus8F - Game Over.asm: 4d3d74724c03
     tests/settings.yaml: 1be2c231bd5e
 ghz_lofi:
@@ -4156,7 +4156,7 @@ green_hill_zone:
   - tests/settings.yaml
   - --output
   - output/regression/green_hill_zone.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4317,7 +4317,7 @@ green_hill_zone:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
+    configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: 1be2c231bd5e
 green_hill_zone_merged:
@@ -4329,7 +4329,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/regression/green_hill_zone_merged.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4490,7 +4490,7 @@ green_hill_zone_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
+    configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: 1be2c231bd5e
 green_hill_zone_rom:
@@ -4505,7 +4505,7 @@ green_hill_zone_rom:
   - $81
   - --output
   - output/regression/green_hill_zone_rom.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4666,7 +4666,7 @@ green_hill_zone_rom:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: c58f5e34e4c6
+    configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: 1be2c231bd5e
 invincibility:
@@ -4677,7 +4677,7 @@ invincibility:
   - tests/settings.yaml
   - --output
   - output/regression/invincibility.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4838,7 +4838,7 @@ invincibility:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/14_invincibility.yaml: 404fe0aa5dcd
+    configs/sonic_1/14_invincibility.yaml: e446717bae1d
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: 1be2c231bd5e
 invincibility_lofi:
@@ -4851,7 +4851,7 @@ invincibility_lofi:
   - lofi
   - --output
   - output/regression/invincibility_lofi.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5012,7 +5012,7 @@ invincibility_lofi:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/14_invincibility.yaml: 404fe0aa5dcd
+    configs/sonic_1/14_invincibility.yaml: e446717bae1d
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: 1be2c231bd5e
 invincibility_lofi_merged:
@@ -5026,7 +5026,7 @@ invincibility_lofi_merged:
   - --merged
   - --output
   - output/regression/invincibility_lofi_merged.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5187,7 +5187,7 @@ invincibility_lofi_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/14_invincibility.yaml: 404fe0aa5dcd
+    configs/sonic_1/14_invincibility.yaml: e446717bae1d
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: 1be2c231bd5e
 invincibility_merged:
@@ -5199,7 +5199,7 @@ invincibility_merged:
   - --merged
   - --output
   - output/regression/invincibility_merged.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5360,7 +5360,7 @@ invincibility_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/14_invincibility.yaml: 404fe0aa5dcd
+    configs/sonic_1/14_invincibility.yaml: e446717bae1d
     input/sonic_1/Mus87 - Invincibility.asm: c9399e4a6940
     tests/settings.yaml: 1be2c231bd5e
 lab_zone:
@@ -5543,7 +5543,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/regression/marble_zone.mod
-  commit: 47ca32b-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5704,7 +5704,7 @@ marble_zone:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
+    configs/sonic_1/03_marble_zone.yaml: d73142318eb4
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
     tests/settings.yaml: 1be2c231bd5e
 marble_zone_rom:
@@ -5719,7 +5719,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/regression/marble_zone_rom.mod
-  commit: 47ca32b-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5880,7 +5880,7 @@ marble_zone_rom:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/03_marble_zone.yaml: 2014e966d6f6
+    configs/sonic_1/03_marble_zone.yaml: d73142318eb4
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: 1be2c231bd5e
 mw_beat_it:
@@ -5891,7 +5891,7 @@ mw_beat_it:
   - tests/settings.yaml
   - --output
   - output/regression/mw_beat_it.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6052,7 +6052,7 @@ mw_beat_it:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/moonwalker/82_beat_it.yaml: eef0cfab6e0b
+    configs/moonwalker/82_beat_it.yaml: cb3fa1387340
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
     tests/settings.yaml: 1be2c231bd5e
 mw_mr_big:
@@ -6063,7 +6063,7 @@ mw_mr_big:
   - tests/settings.yaml
   - --output
   - output/regression/mw_mr_big.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6224,7 +6224,7 @@ mw_mr_big:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/moonwalker/89_mr_big.yaml: c1de13f3dd7f
+    configs/moonwalker/89_mr_big.yaml: 6678fd378934
     input/roms/Michael Jackson's Moonwalker (World) (Rev A).md: 5d262584ee80
     tests/settings.yaml: 1be2c231bd5e
 mw_title:
@@ -6926,7 +6926,7 @@ robotnik:
   - tests/settings.yaml
   - --output
   - output/regression/robotnik.mod
-  commit: 47ca32b-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7087,7 +7087,7 @@ robotnik:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: e345f5822382
+    configs/sonic_1/09_robotnik.yaml: a10771f77d6e
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: 1be2c231bd5e
 robotnik_lofi:
@@ -7100,7 +7100,7 @@ robotnik_lofi:
   - lofi
   - --output
   - output/regression/robotnik_lofi.mod
-  commit: 47ca32b-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7261,7 +7261,7 @@ robotnik_lofi:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: e345f5822382
+    configs/sonic_1/09_robotnik.yaml: a10771f77d6e
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: 1be2c231bd5e
 robotnik_lofi_merged:
@@ -7275,7 +7275,7 @@ robotnik_lofi_merged:
   - --merged
   - --output
   - output/regression/robotnik_lofi_merged.mod
-  commit: 2d09665-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7436,7 +7436,7 @@ robotnik_lofi_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: e345f5822382
+    configs/sonic_1/09_robotnik.yaml: a10771f77d6e
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: 1be2c231bd5e
 robotnik_merged:
@@ -7448,7 +7448,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/regression/robotnik_merged.mod
-  commit: 2d09665-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7609,7 +7609,7 @@ robotnik_merged:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/09_robotnik.yaml: e345f5822382
+    configs/sonic_1/09_robotnik.yaml: a10771f77d6e
     input/sonic_1/Mus8C - Boss.asm: e13e9ba9ec52
     tests/settings.yaml: 1be2c231bd5e
 scrap_brain_zone:
@@ -7620,7 +7620,7 @@ scrap_brain_zone:
   - tests/settings.yaml
   - --output
   - output/regression/scrap_brain_zone.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7781,7 +7781,7 @@ scrap_brain_zone:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/07_scrap_brain_zone.yaml: a5555800ac10
+    configs/sonic_1/07_scrap_brain_zone.yaml: 39bc51035fdc
     input/sonic_1/Mus86 - SBZ.asm: 03ba8c65f0c9
     tests/settings.yaml: 1be2c231bd5e
 sh2_an_epitaph:
@@ -7792,7 +7792,7 @@ sh2_an_epitaph:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_an_epitaph.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -7955,7 +7955,7 @@ sh2_an_epitaph:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/space_harrier_2/95_an_epitaph.yaml: 3898a657da05
+    configs/space_harrier_2/95_an_epitaph.yaml: 3d0f23dc4ef4
     input/roms/Space Harrier II (World).md: 356beab7e21e
     tests/settings.yaml: 1be2c231bd5e
 sh2_game_over:
@@ -8140,7 +8140,7 @@ sh2_harrier_saga:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_harrier_saga.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8303,7 +8303,7 @@ sh2_harrier_saga:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/space_harrier_2/81_harrier_saga.yaml: 0528804c808d
+    configs/space_harrier_2/81_harrier_saga.yaml: 07963801c17c
     input/roms/Space Harrier II (World).md: 356beab7e21e
     tests/settings.yaml: 1be2c231bd5e
 sh2_motion:
@@ -8314,7 +8314,7 @@ sh2_motion:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_motion.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8477,7 +8477,7 @@ sh2_motion:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/space_harrier_2/98_motion.yaml: 31261d44d549
+    configs/space_harrier_2/98_motion.yaml: 0b5b6724a1aa
     input/roms/Space Harrier II (World).md: 356beab7e21e
     tests/settings.yaml: 1be2c231bd5e
 sh2_winners_flight:
@@ -8488,7 +8488,7 @@ sh2_winners_flight:
   - tests/settings.yaml
   - --output
   - output/regression/sh2_winners_flight.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8651,7 +8651,7 @@ sh2_winners_flight:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/space_harrier_2/94_winners_flight.yaml: 1398082d3aca
+    configs/space_harrier_2/94_winners_flight.yaml: 7153b4e59de6
     input/roms/Space Harrier II (World).md: 356beab7e21e
     tests/settings.yaml: 1be2c231bd5e
 sor2_game_over:
@@ -8662,7 +8662,7 @@ sor2_game_over:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_game_over.mod
-  commit: d8e3bbd-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8824,7 +8824,7 @@ sor2_game_over:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/19_game_over.yaml: dd5aef6bc0f2
+    configs/streets_of_rage_2/19_game_over.yaml: cc64883067bb
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_go_straight:
@@ -9008,7 +9008,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: d172191-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9170,7 +9170,7 @@ sor2_jungle_base:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/05_jungle_base.yaml: acfd7fe7f498
+    configs/streets_of_rage_2/05_jungle_base.yaml: 1a1c4cba4c4c
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 sor2_level_complete:
@@ -9527,7 +9527,7 @@ sor2_too_deep:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_too_deep.mod
-  commit: 47ca32b-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9689,7 +9689,7 @@ sor2_too_deep:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/streets_of_rage_2/08_too_deep.yaml: 24ca98eadd77
+    configs/streets_of_rage_2/08_too_deep.yaml: a9c4f2d31bd6
     input/roms/Streets of Rage 2 (USA).md: 4a314edbfee9
     tests/settings.yaml: 1be2c231bd5e
 special_stage:
@@ -9872,7 +9872,7 @@ spring_yard_zone:
   - tests/settings.yaml
   - --output
   - output/regression/spring_yard_zone.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10033,7 +10033,7 @@ spring_yard_zone:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/04_spring_yard_zone.yaml: 3a838f2c56db
+    configs/sonic_1/04_spring_yard_zone.yaml: 605727ad7a49
     input/sonic_1/Mus85 - SYZ.asm: 77c841df85b9
     tests/settings.yaml: 1be2c231bd5e
 stage_clear:
@@ -10738,7 +10738,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/regression/star_light_zone.mod
-  commit: c6d0253-dirty
+  commit: caee39e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10899,7 +10899,7 @@ star_light_zone:
   - core/vgm/realign.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/06_star_light_zone.yaml: 04ab4d7aca07
+    configs/sonic_1/06_star_light_zone.yaml: a3730f87b5d9
     input/sonic_1/Mus84 - SLZ.asm: f63d0c08f192
     tests/settings.yaml: 1be2c231bd5e
 title_screen:

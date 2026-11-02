@@ -13,7 +13,7 @@ from core.drivers.timetrax.grammar import instruction
 from core.drivers.timetrax.memory import DriverTables, TimeTraxMemory
 from core.drivers.timetrax.walk import walk_song
 from core.rom import RomError, RomImage
-from core.smps import REST, ChannelType, Detune, Glide, Legato, OpKind, Pan, Portamento, SetVoice
+from core.smps import REST, ChannelType, Detune, Glide, Legato, OpKind, Pan, Portamento, SetVoice, VolumeEnvelope
 
 _HEADER = b"SEGA MEGA DRIVE ".rjust(0x110, b"\0").ljust(0x200, b"\0")
 _BANK = 0x8000
@@ -98,14 +98,16 @@ class Grammar(unittest.TestCase):
         cases = {bytes([0x87, 0xFF]): Pan(0x80), bytes([0x87, 0x01]): Pan(0x40), bytes([0x88, 0x07]): SetVoice(7),
                  bytes([0x8C]): Legato(1), bytes([0x8B]): Legato(0), bytes([0xA8, 0xFE]): Detune(-2),
                  bytes([0xA9]): Detune(0), bytes([0x92, 0x04, 0x01]): Glide(4, 1), bytes([0x93]): Glide(0),
-                 bytes([0x94, 0x03, 0x02]): Portamento(3, 2), bytes([0x95]): Portamento(0)}
+                 bytes([0x94, 0x03, 0x02]): Portamento(3, 2), bytes([0x95]): Portamento(0),
+                 bytes([0x9F, 0x05, 0x01]): VolumeEnvelope(5), bytes([0xA0]): VolumeEnvelope(None),
+                 bytes([0xA1]): VolumeEnvelope(None, each_note=False)}
         for code, effect in cases.items():
             with self.subTest(code=code.hex()):
                 self.assertEqual(self._read(code + b"\x80").ops[0].effect, effect)
 
     def test_a_command_not_converted_yet_is_dropped_by_name(self):
-        one = self._read(bytes([0x9F, 0x04, 0x01, 0x80]))
-        self.assertEqual((one.ops, one.length, one.dropped), ((), 3, "volume envelopes (not converted yet)"))
+        one = self._read(bytes([0x9A, 1, 2, 3, 4, 5, 6, 0x80]))
+        self.assertEqual((one.ops, one.length, one.dropped), ((), 7, "vibrato (not converted yet)"))
 
     def test_a_loop_end_names_its_body_and_passes(self):
         one = self._read(bytes([0x82, 0x04, 0x10, 0x01, 0x83, 0x80]), at=4)

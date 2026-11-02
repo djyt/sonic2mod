@@ -48,6 +48,7 @@ PAN, VOICE, TRANSPOSE, RE_KEY, LEGATO, DETUNE, DETUNE_OFF = 0x87, 0x88, 0x89, 0x
 GATE, GATE_OFF, KEY_OFF_AFTER, KEY_OFF_AFTER_OFF = 0x96, 0x97, 0x98, 0x99   # each set clears the other's
 VOLUME, MASK, MASK_CARRIERS = 0x8A, 0xAA, 0xAB
 GLIDE, GLIDE_OFF, PORTAMENTO, PORTAMENTO_OFF = 0x92, 0x93, 0x94, 0x95
+ENVELOPES, ENVELOPES_ON, ENVELOPES_OFF = 0x9F, 0xA0, 0xA1
 
 
 COMMANDS: dict[int, Command] = {
@@ -82,9 +83,9 @@ COMMANDS: dict[int, Command] = {
     0x9C: Command(0, "vibrato off", later=True),
     0x9D: Command(0, "portamento ignores transposition", Steer.REFUSED),
     0x9E: Command(0, "portamento follows transposition", Steer.REFUSED),
-    0x9F: Command(2, "volume envelopes", later=True),
-    0xA0: Command(0, "volume envelopes on", later=True),
-    0xA1: Command(0, "volume envelopes off", later=True),
+    ENVELOPES: Command(2, "volume envelopes"),
+    ENVELOPES_ON: Command(0, "volume envelopes on"),
+    ENVELOPES_OFF: Command(0, "volume envelopes off"),
     0xA2: Command(1, "release envelope before the end", Steer.REFUSED),
     0xA3: Command(0, "release envelope before the end off", Steer.REFUSED),
     0xA4: Command(1, "release envelope after the start", Steer.REFUSED),

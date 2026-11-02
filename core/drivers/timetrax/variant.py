@@ -11,9 +11,9 @@ disassembler (docs/todo/time_trax.md).
                 PAL's; played as written
 
 Its playback rules: a rest writes nothing, the note sounds on to a read's key-off (rest_holds); the
-volume scales operators (volume.py: its table of squares from the ROM); the word slides frame by
-frame (glide.py: a glide's step across a block).  The rest are Sonic 1's for now: the plan's
-Phase 2 reviews each against the code (volume envelopes).
+volume scales operators (volume.py: its table of squares from the ROM), envelopes move it frame by
+frame (envelope.py, from the ROM); the word slides frame by frame (glide.py: a glide's step across a
+block).  The rest are Sonic 1's.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from core.rom.variant import HeaderLayout, SmpsVariant, TrackSlot
 from core.smps import FM_CHANNEL_NAMES, ChannelType, KeyOffRules, PitchRules, PlaybackRules, TrackRules, VolumeRules
 
 from ..names import SmpsDriver
+from .envelope import read_envelopes
 from .glide import TimeTraxGlide
 from .grammar import FLAGS, instruction
 from .header import read_header, track_numbers
@@ -49,10 +50,12 @@ def _song_memory(memory: SoundMemory, head: RomHeader) -> SoundMemory:
 
 
 def _rules_from_rom(rom: RomImage, rules: PlaybackRules) -> PlaybackRules:
-    """Its FM table, read from the driver (note n plays entry n: $80 + n), and its volume law's table."""
+    """Its FM table, read from the driver (note n plays entry n: $80 + n), its volume law's table and
+    its volume envelopes."""
     tables = driver_tables(rom)
     fm = rules.track(ChannelType.FM)
-    law = VolumeRules(law=TimeTraxVolume(tables.squares, tables.master))
+    law = VolumeRules(law=TimeTraxVolume(tables.squares, tables.master),
+                      envelopes=read_envelopes(time_trax_memory(rom), tables.envelopes))
     return replace(rules, fm_frequencies=tables.fm_words, tracks={ChannelType.FM: replace(fm, volume=law)})
 
 

@@ -310,7 +310,20 @@ reached.  A glide is the same with another curve: D4 uses it.
   and 3's FM3, `+30` frames: not read); a write the log shows a frame late (song 2 FM5 3220); song
   3's FM1 note transposed below the table glides down to the pitch meant (the rip's reads stray
   bytes and rises).
-- [ ] 2.4 Volume envelopes; `vgm_frames` levels per frame (T2, T3).
+- [x] 2.4 Volume envelopes; `vgm_frames` levels per frame (T2, T3).  `$9F a r`: envelopes on, each
+  note read loads a ($153F: its start level); `$A0` / `$A1` each note loads it again / not (a running
+  one plays out); `$8A` stops them; r is unread (its triggers refused).  Each frame but a rest's
+  read (`$1421`): a segment's first sets the volume to where the last headed, then Bresenham steps
+  of 1 toward its level, one at most a frame where it rises less than its frames ($14E2), else
+  several ($1509); `$FF` holds, `$FE` loops.  `VolumeEnvelope` (the walk's), `VolumeRules.envelopes`
+  (`core/drivers/timetrax/envelope.py`: 28 from the ROM), `core/smps/volume_envelope.py`
+  (`EnvelopeTrack`): DriverTrack steps the volume through each read's frames, writes the level a read
+  starts at (a voice copy and `SetVol`, as 2.2) and the TLs after (`LevelPath`, a played effect;
+  `played_song`: the carriers' `level_path`).  A rest's read writes nothing: a level set in it plays
+  from the next frame (`played_song`, under `rest_holds`).  `vgm_frames` levels: song 4 575 -> 3,
+  song 1 64 -> 6; voice: song 4 250 -> 2, song 2 351 -> 1; tied levels 0; level path 0 (every note,
+  every frame).  Every attack miss left is a lift onset miss (a key-on a frame late) or the rip's first
+  frame.  For Phase 3: notes whose envelope starts quiet read at `C00` (song 1: 7).
 
 ### Phase 3: convert
 - [ ] 3.1 Writer: `modulation_slides` taking any pitch curve (frame -> word), fed the walk's

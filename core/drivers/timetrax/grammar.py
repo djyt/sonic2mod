@@ -14,13 +14,15 @@ frames).
     $8D n / $8E         the sync: the signal nothing, the wait a rest of the frames it waits
     $92 s f / $93       Glide s f: the word s fnum units every f frames toward the note's / Glide 0
     $94 s f / $95       Portamento s f: s semitones every f frames toward the note / Portamento 0
+    $9F a r / $A0 / $A1 VolumeEnvelope a: each note read starts envelope a (r, the release: unread,
+                        its triggers refused) / each note starts it again / none starts (one runs out)
     $96 n / $97         Gate n + 1 (and KeyOffAfter cleared) / Gate 0: each frame after the countdown
     $98 n / $99         KeyOffAfter n - 1 (and Gate cleared) / KeyOffAfter 0   ($1293: n against it)
     $A8 d / $A9         Detune d (signed, added to the frequency word) / 0
     $AA m / $AB         VolumeMask m (bit 3: TL $40 ... bit 0: $4C) / None: the carriers
 
 A rest writes nothing: the note sounds on to a read's key-off (TrackRules.key_off.rest_holds).
-Read and dropped for now, each named (docs/todo/time_trax.md Phase 2): vibrato, volume envelopes ($8A stops one: from 2.4).  Refused (no song plays
+Read and dropped for now, named (docs/todo/time_trax.md): vibrato.  Refused (no song plays
 them): the signalled jumps, the random jump, the portamento's transposition mode, release
 envelopes, the LFO, the DAC.
 """
@@ -48,6 +50,7 @@ from core.smps import (
     SetTransposition,
     SetVoice,
     SmpsEffect,
+    VolumeEnvelope,
     VolumeMask,
     signed_byte,
 )
@@ -56,6 +59,9 @@ from .commands import (
     COMMANDS,
     DETUNE,
     DETUNE_OFF,
+    ENVELOPES,
+    ENVELOPES_OFF,
+    ENVELOPES_ON,
     FIRST_COMMAND,
     GATE,
     GATE_OFF,
@@ -186,6 +192,10 @@ def _effect(memory: TimeTraxMemory, address: int, byte: int, operand: int) -> Sm
         return Glide(0)
     if byte == PORTAMENTO_OFF:
         return Portamento(0)
+    if byte == ENVELOPES:
+        return VolumeEnvelope(operand)
+    if byte in (ENVELOPES_ON, ENVELOPES_OFF):
+        return VolumeEnvelope(None, each_note=byte == ENVELOPES_ON)
     if byte == VOLUME:
         return ScaledVolume(operand)
     if byte in (MASK, MASK_CARRIERS):

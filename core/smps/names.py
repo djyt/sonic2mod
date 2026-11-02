@@ -260,6 +260,8 @@ _FLAG_MACROS = {
     CoordFlag.VOLUME_MASK: "smpsVolumeMask",   # likewise
     CoordFlag.GLIDE: "smpsGlide",            # likewise
     CoordFlag.PORTAMENTO: "smpsPortamento",  # likewise
+    CoordFlag.VOLUME_ENVELOPE: "smpsVolumeEnvelope",   # likewise
+    CoordFlag.LEVEL_PATH: "smpsLevelPath",   # likewise
 }
 _FLAG_ALIASES = {
     "smpsDetune": CoordFlag.DETUNE, "smpsAlterPitch": CoordFlag.CHANGE_TRANSPOSITION,

@@ -17,7 +17,8 @@ holds a driver's tables or falls back to one: whatever plays a note asks the son
     tracks     each kind of track's TrackRules: how the walk reads it where the driver differs
                from Sonic 1's (track(kind); a kind left out reads as Sonic 1's), by concern:
                    volume      the step a volume flag keeps, the level it sets, a register write over it,
-                               a law that scales operators instead (VolumeLaw)
+                               a law that scales operators instead (VolumeLaw), its envelopes
+                               (VolumeEnvelopes)
                    key_off     the gate and the rest: what they key off, a soft release instead
                    ties        what a jump and a tied read do to a tie
                    modulation  the vibrato's turns
@@ -89,6 +90,27 @@ class SlideLaw(Protocol):
         ...
 
 
+class EnvelopeRun(Protocol):
+    """One volume envelope as it plays, a frame at a time (VolumeEnvelopes.start)."""
+
+    @property
+    def done(self) -> bool:
+        """It holds: no frame moves the volume any more."""
+        ...
+
+    def frame(self, volume: int) -> int:
+        """The track's volume (0-255) after one more frame."""
+        ...
+
+
+class VolumeEnvelopes(Protocol):
+    """A driver's volume envelopes, by index (Time Trax's: core/drivers/timetrax/envelope.py); the
+    walk steps one through a track's frames (core/smps/volume_envelope.py)."""
+
+    def start(self, index: int) -> EnvelopeRun:
+        ...
+
+
 @dataclass(frozen=True)
 class VolumeRules:
     """The step a track's volume keeps and the level it sets."""
@@ -105,6 +127,8 @@ class VolumeRules:
                                             # voice (Streets of Rage 2's, $41A9A); False: a carrier's refused
     law: VolumeLaw | None = None            # the volume scales operators (ScaledVolume, VolumeMask); None: it is
                                             # a TL added to the carriers'
+    envelopes: VolumeEnvelopes | None = None   # the volume moves frame by frame under an envelope (VolumeEnvelope:
+                                            # a law's), every note's level modelled per frame; None: none (refused)
 
 
 @dataclass(frozen=True)

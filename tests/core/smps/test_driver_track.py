@@ -19,6 +19,7 @@ from core.smps import (
     Gate,
     KeyOffAfter,
     KeyOffRules,
+    LevelPath,
     NoiseRate,
     PitchRules,
     PlaybackRules,
@@ -35,6 +36,7 @@ from core.smps import (
     TrackRules,
     VoiceField,
     VoiceRegister,
+    VolumeEnvelope,
     VolumeMask,
     VolumeRules,
     VolumeStep,
@@ -247,6 +249,69 @@ class ScaledVolumes(unittest.TestCase):
         track.effect(VolumeMask(0b1111))
         track.effect(ScaledVolume(128))
         self.assertEqual(track.effect(SetVoice(0)), track.effect(ScaledVolume(128)))
+
+
+class _Quieter:
+    """A volume law: each carrier's TL up a step per 16 under full volume (the test's)."""
+
+    def levels(self, tls, carriers, volume, _mask):
+        return {r: min(127, tl + (255 - volume) // 16) if r in carriers else tl for r, tl in tls.items()}
+
+
+class _Run:
+    def __init__(self, volumes):
+        self._volumes = list(volumes)
+        self.done = False
+
+    def frame(self, volume):
+        volume = self._volumes.pop(0)
+        self.done = not self._volumes
+        return volume
+
+
+class _Envelopes:
+    def start(self, _index):
+        return _Run((255, 239, 223))
+
+
+class Envelopes(unittest.TestCase):
+    """The volume an envelope moves, frame by frame: a note's read starts it, the TLs after (LevelPath)."""
+
+    _VOICE = SmpsVoice(0, algorithm=4, operators={VoiceField.TOTAL_LEVEL: (0x20, 0x20, 0x01, 0x07)})
+
+    def _track(self) -> DriverTrack:
+        rules = TrackRules(volume=VolumeRules(law=_Quieter(), envelopes=_Envelopes()))
+        playback = PlaybackRules(driver="test", fm_frequencies=(), psg_frequencies=(), psg_read=(), psg_envelopes={},
+                                 dac_names={}, tracks={ChannelType.FM: rules})
+        track = DriverTrack(SmpsChannelHeader(ChannelType.FM, "t"), "FM1", playback, VoicePatcher([self._VOICE]))
+        track.effect(SetVoice(0))
+        track.effect(ScaledVolume(255))
+        return track
+
+    def _tls(self, volume: int) -> tuple[tuple[int, int], ...]:
+        base = {r: v for r, v in self._VOICE.chip_registers().items() if r in _TLS}
+        return tuple(sorted(_Quieter().levels(base, self._VOICE.carrier_registers, volume, None).items()))
+
+    def test_each_frame_after_the_read_its_tls(self):
+        track = self._track()
+        track.effect(VolumeEnvelope(0))
+        note = SmpsNote(0x81, 3)
+        self.assertEqual(track.cut(note, False), [LevelPath(((1, self._tls(239)), (2, self._tls(223)))), note])
+
+    def test_the_next_read_at_the_level_it_reached(self):
+        track = self._track()
+        track.effect(VolumeEnvelope(0))
+        track.cut(SmpsNote(0x81, 3), False)
+        track.effect(VolumeEnvelope(None, each_note=False))
+        played = track.cut(SmpsNote(0x81, 2), False)
+        self.assertIsInstance(played[1], SetVol)
+
+    def test_a_scaled_volume_stops_it(self):
+        track = self._track()
+        track.effect(VolumeEnvelope(0))
+        track.effect(ScaledVolume(255))
+        note = SmpsNote(0x81, 3)
+        self.assertEqual(track.cut(note, False), [note])
 
 
 class Transpositions(unittest.TestCase):

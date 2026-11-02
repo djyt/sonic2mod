@@ -13,7 +13,8 @@ bytes; whatever a driver does to them beyond SMPS 68k Type 1's reading is answer
                          keys), and what the driver writes (the level back after a soft release)
     cut(note, tied_next) the note as the driver keys it off, in time order: itself, or the part it
                          holds and a rest (a soft release: the part it holds, its softer level, the
-                         rest held); an effect plays where the note before it ends, or the rest's start
+                         rest held); an effect plays where the note before it ends, or the rest's start;
+                         under a volume envelope, the level it reads at and the TLs after (LevelPath)
     opening()            what the track plays from its start: the level its driver starts it at
     jump_clears_tie      a jump drops a pending tie; exit_clears_tie: a loop's exit
     ties(direct)         a tie byte (`direct`: straight after its note) ties the next read
@@ -44,6 +45,7 @@ from .effects import (
     Glide,
     KeyOffAfter,
     Legato,
+    LevelPath,
     NoiseRate,
     PlayedEffect,
     Portamento,
@@ -56,6 +58,7 @@ from .effects import (
     SmpsEffect,
     SoftRelease,
     VoiceRegister,
+    VolumeEnvelope,
     VolumeMask,
     VolumeStep,
 )
@@ -63,6 +66,7 @@ from .names import FM_CHANNEL_NAMES
 from .rules import PlaybackRules
 from .song import FIRST_NOTE, MAX_PSG, REST, SELECTED_SAMPLE, ChannelType, SmpsChannelHeader, SmpsNote
 from .voice_patch import NO_CHANGES, VoicePatcher
+from .volume_envelope import EnvelopeTrack
 
 _BYTE_VALUES = 0x100
 
@@ -96,7 +100,10 @@ class DriverTrack:
         self._after = 0                            # ... after a read starts (KeyOffAfter), a gate first
         self._sounding = False                     # a note sounds (TrackRules.key_off.rest_holds)
         self._scaled = 0                           # ScaledVolume's level: the track RAM starts cleared
+        self._written: int | None = None           # ... as the levels last played write it
         self._mask: int | None = None              # VolumeMask's operators; None: the carriers
+        envelopes = self._rules.volume.envelopes
+        self._level_envelope = None if envelopes is None else EnvelopeTrack(envelopes)
         self._legato = False                       # every read ties (Legato)
         self._noise_form: int | None = None        # the PSG_FORM that holds: notes are noise
         self._tone_note: int | None = None         # the last tone note: what tone 3 still holds
@@ -146,7 +153,12 @@ class DriverTrack:
                 return ()
             case ScaledVolume(level=level):
                 self._scaled = level
+                if self._level_envelope is not None:
+                    self._level_envelope.stop()
                 return self._scaled_levels()
+            case VolumeEnvelope() if self._level_envelope is not None:
+                self._level_envelope.set(effect)
+                return ()
             case VolumeMask(operators=operators):
                 self._mask = operators
                 return self._scaled_levels()
@@ -279,21 +291,29 @@ class DriverTrack:
 
             TLs (carriers C) 10C 40C 20, volume 200:  scaled 36 59 20  ->  SetVol 26, TL $44 59 fixed
         """
-        law = self._rules.volume.law
-        if law is None:
-            raise ValueError(f"{self._header.label}: a scaled volume, which its driver has no law for")
         if self._voice is None:
             return ()
+        self._written = self._scaled
         voice = self._voices.voice(self._voice)
         tls = {r: v for r, v in voice.chip_registers().items() if r in _TL_REGISTERS}
         carriers = voice.carrier_registers
-        scaled = law.levels(tls, carriers, self._scaled, self._mask)
+        scaled = self._law_levels(self._scaled)
         loudest = min(carriers, key=lambda r: scaled[r])
         offset = scaled[loudest] - tls[loudest]
         added = {r: (v + offset) & TL_MASK if r in carriers else v for r, v in tls.items()}
         missed = tuple((r, scaled[r]) for r in sorted(tls) if scaled[r] != added[r])
         self._changes = dataclasses.replace(self._changes, levels=missed)
         return SetVoice(self._voices.copy(self._voice, self._changes)), SetVol(offset)
+
+    def _law_levels(self, volume: int) -> dict[int, int]:
+        """Each TL the law writes for the voice set at `volume` (TrackRules.volume.law)."""
+        law = self._rules.volume.law
+        if law is None:
+            raise ValueError(f"{self._header.label}: a scaled volume, which its driver has no law for")
+        assert self._voice is not None
+        voice = self._voices.voice(self._voice)
+        tls = {r: v for r, v in voice.chip_registers().items() if r in _TL_REGISTERS}
+        return law.levels(tls, voice.carrier_registers, volume, self._mask)
 
     def _special_mode(self, offsets: tuple[int, ...] | None) -> SetVoice | None:
         """The voice set, its operators at `offsets` from the next note on (None: before any
@@ -388,6 +408,10 @@ class DriverTrack:
         or the rest after a note, the note drops to its softer level (a SetVol) and rings on, a
         rest held.  An effect plays where the note before it ends, or a rest's first where it starts."""
         self._read_levels = {}                     # the read is over: its writes are the chip's
+        played = self._keyed_off(note, tied_next)
+        return played if self._level_envelope is None else self._enveloped(note, played)
+
+    def _keyed_off(self, note: SmpsNote, tied_next: bool) -> Sequence[KeyedOff]:
         if self._rules.key_off.rest_holds:
             return self._holding(note, tied_next)
         if not note.is_rest:
@@ -413,6 +437,34 @@ class DriverTrack:
         if note.is_no_attack and holds is not None and holds < note.duration:
             return _split(note, holds)
         return [note]
+
+    def _enveloped(self, read: SmpsNote, played: Sequence[KeyedOff]) -> list[KeyedOff]:
+        """`played` under a volume envelope: the level its first note reads at (the voice and SetVol
+        where it changed), and the TLs on its frames after (LevelPath).  A read's duration counts
+        frames (a driver with no tempo: Time Trax's)."""
+        assert self._level_envelope is not None
+        volumes = self._level_envelope.volumes(self._scaled, read.duration, note=not read.is_rest)
+        first = next(p for p in played if isinstance(p, SmpsNote))
+        lead: tuple[PlayedEffect, ...] = ()
+        if self._voice is not None and (not first.is_rest or first.is_no_attack):
+            self._scaled = volumes[0]
+            path = self._level_path(volumes[:first.duration])
+            lead = (*(self._scaled_levels() if self._scaled != self._written else ()),
+                    *((LevelPath(path),) if path else ()))
+        self._scaled = volumes[-1]
+        return [*lead, *played]
+
+    def _level_path(self, volumes: tuple[int, ...]) -> tuple[tuple[int, tuple[tuple[int, int], ...]], ...]:
+        """The TLs at each change after the first frame, by the law."""
+        at: dict[int, tuple[tuple[int, int], ...]] = {}
+        path, last = [], None
+        for frame, volume in enumerate(volumes):
+            if volume not in at:
+                at[volume] = tuple(sorted(self._law_levels(volume).items()))
+            if frame and at[volume] != last:
+                path.append((frame, at[volume]))
+            last = at[volume]
+        return tuple(path)
 
     def _holding(self, note: SmpsNote, tied_next: bool) -> list[SmpsNote]:
         """`note` where a rest writes nothing (TrackRules.key_off.rest_holds): a rest, a tie or a

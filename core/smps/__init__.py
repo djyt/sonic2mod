@@ -15,6 +15,7 @@ whatever driver or file the song came from.
     names.py          note labels, config pitch names, DAC names, SFX channel ids, source channel names
     track.py          TrackState: one track's driver state as its coordination flags leave it
     tempo.py          TempoSegment, tempo_schedule: the frame each tick is read on
+    volume_envelope.py  EnvelopeTrack: a track's volume envelope through its reads
     slide.py          PitchSlide: a track's word frame by frame under a glide and a portamento
     playback.py       played_song: what a song plays note by note, its spelling gone
     compare.py        compare_songs: where two songs play differently, aspect by aspect;
@@ -72,6 +73,7 @@ from .effects import (
     Glide,
     KeyOffAfter,
     Legato,
+    LevelPath,
     Lfo,
     ModOff,
     ModOn,
@@ -96,6 +98,7 @@ from .effects import (
     SmpsEffect,
     SoftRelease,
     VoiceRegister,
+    VolumeEnvelope,
     VolumeMask,
     VolumeStep,
     effect_of,
@@ -133,6 +136,7 @@ from .rules import (
     SoftReleaseLaw,
     TieRules,
     TrackRules,
+    VolumeEnvelopes,
     VolumeLaw,
     VolumeRules,
 )
@@ -209,6 +213,7 @@ __all__ = [
     "KeyOffAfter",
     "KeyOffRules",
     "Legato",
+    "LevelPath",
     "Lfo",
     "ModOff",
     "ModOn",
@@ -269,6 +274,8 @@ __all__ = [
     "VInt",
     "VoiceField",
     "VoiceRegister",
+    "VolumeEnvelope",
+    "VolumeEnvelopes",
     "VolumeLaw",
     "VolumeMask",
     "VolumeRules",

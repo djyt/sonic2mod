@@ -29,6 +29,7 @@ from enum import StrEnum
 
 from ..chips import FREQ_WORD_MAX, PSG_DIVIDER_MASK, noise_follows_tone3
 from .driver_tables import FM_TABLE_NC0, fm_note_index, fm_render_word, psg_note_index
+from .effects import LevelPath
 from .names import NOISE_CHANNEL_NAME, source_names
 from .rules import PitchRules, PlaybackRules
 from .slide import PitchSlide
@@ -156,6 +157,8 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
                     end: int) -> list[PlayedNote]:
     st = TrackState.for_channel(channel)
     slide = PitchSlide.for_channel(channel)
+    enveloped = channel.rules.track(channel.header.channel_type).volume.envelopes is not None
+    levels: tuple = ()                 # the next note's TLs after its read (LevelPath)
     played: list[PlayedNote] = []
     base: int | None = None            # the table word of the last note: a retrigger re-keys it
     resting = True                     # the last read was a rest (the driver cleared Freq)
@@ -168,10 +171,13 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
             st.apply(ev.effect)
             if slide is not None:
                 slide.apply(ev.effect, st.transpose)
+            if isinstance(ev.effect, LevelPath):
+                levels = ev.effect.steps
             continue
         note = ev.note
         if note.duration <= 0:
             continue
+        path, levels = levels, ()
 
         # The word on each frame, where the driver slides it: through rests too
         words = None
@@ -180,6 +186,7 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
             words = slide.frames(note, frames, st.transpose, st.detune)
 
         # A held duration re-keys the last note (a rest when there is none: TrackSetRest cleared it)
+        rest_read = note.is_rest
         if note.is_rest and note.is_no_attack and not resting and base is not None:
             note = dataclasses.replace(note, is_rest=False, is_retrigger=True)
         if note.is_dac:
@@ -213,6 +220,11 @@ def _played_channel(channel, voices: dict[int, SmpsVoice], schedule: tuple[Tempo
             base = _table_word(note, st, channel.rules.fm_frequencies)
         sounded = _note(ev.tick_position, note, st, base, voices, attack, _first_step(st, channel.rules),
                         channel.rules.track(channel.header.channel_type).pitch, words)
+        if enveloped:
+            voice = voices.get(st.voice) if st.voice is not None else None
+            sounded = dataclasses.replace(sounded, level_path=_carrier_path(path, voice))
+            if rest_read and played and not played[-1].rest:
+                sounded = _unwritten(sounded, played[-1])
 
         # FMNoteOff does nothing while smpsNoAttack holds: a fill running out under an FM note
         # read that way leaves it sounding (NoteTimeout is spent)
@@ -312,6 +324,35 @@ def _pitch(base: int, st: TrackState, fm: SmpsVoice | None, envelope_offset: int
     if st.is_psg and rules.divider_clamp:
         word = min(max(word, 1), PSG_DIVIDER_MASK)
     return word & (PSG_DIVIDER_MASK if st.is_psg else FREQ_WORD_MAX), None
+
+
+def _unwritten(tie: PlayedNote, before: PlayedNote) -> PlayedNote:
+    """A tie a rest's read makes, where the read writes nothing (Time Trax's $0D18): its first frame
+    keeps the carriers' level the note before ended at; what the read set plays from the next frame.
+
+        before C level 14, rest read setting level 2   ->   tie level 14, path ((1, 2), ...)
+    """
+    level = before.level_path[-1][1] if before.level_path else before.level
+    path = {1: tie.level, **dict(tie.level_path or ())}
+    steps, last = [], level
+    for frame in sorted(path):
+        if path[frame] != last:
+            steps.append((frame, path[frame]))
+        last = path[frame]
+    return dataclasses.replace(tie, level=level, level_path=tuple(steps))
+
+
+def _carrier_path(path: tuple, voice: SmpsVoice | None) -> tuple[tuple[int, object], ...]:
+    """A LevelPath's steps as the carriers' TLs (PlayedNote.level's order), each change."""
+    if voice is None:
+        return ()
+    out, last = [], None
+    for frame, tls in path:
+        carriers = tuple(dict(tls)[r] for r in voice.carrier_registers)
+        if carriers != last:
+            out.append((frame, carriers))
+        last = carriers
+    return tuple(out)
 
 
 def _slid(words: tuple[int, ...]) -> tuple[int, tuple[tuple[int, int], ...]]:

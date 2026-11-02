@@ -13,11 +13,15 @@ from core.smps import (
     NOISE_CHANNEL_NAME,
     ChannelType,
     CoordFlag,
+    KeyOffRules,
+    LevelPath,
     PitchRules,
     PlaybackRules,
     Portamento,
     PsgForm,
     SetTransposition,
+    SetVoice,
+    SetVol,
     SmpsChannel,
     SmpsChannelHeader,
     SmpsEvent,
@@ -28,6 +32,7 @@ from core.smps import (
     TieRules,
     TrackRules,
     VoiceField,
+    VolumeRules,
     compare_songs,
     effect_of,
     played_song,
@@ -252,6 +257,27 @@ class Slides(unittest.TestCase):
         set_one = SmpsEvent(effect=SetTransposition(1))
         played = self._played(set_one, _note(duration=1), SmpsEvent(effect=SetTransposition(1)), _note(duration=1))
         self.assertEqual(played[0].pitch, played[1].pitch)
+
+
+class Levels(unittest.TestCase):
+    """A driver whose envelopes move the volume (VolumeRules.envelopes): each note's level per frame."""
+
+    @staticmethod
+    def _played(*events: SmpsEvent) -> list:
+        song = _song(SmpsEvent(effect=SetVoice(0)), *events)
+        fm = TrackRules(volume=VolumeRules(envelopes=object()), key_off=KeyOffRules(rest_holds=True))  # type: ignore[arg-type]
+        song.rules = song.channels[0].rules = dataclasses.replace(SONIC1_RULES, tracks={ChannelType.FM: fm})
+        return [n for n in played_song(song).channels["FM1"] if not n.rest]
+
+    def test_a_level_path_as_the_carriers_tls(self):
+        tls = ((0x40, 1), (0x44, 2), (0x48, 3), (0x4C, 4))
+        played = self._played(SmpsEvent(effect=LevelPath(((2, tls),))), _note(duration=4))
+        self.assertEqual(played[0].level_path, ((2, (3, 4)),))
+
+    def test_a_rest_read_writes_its_level_a_frame_late(self):
+        played = self._played(_note(duration=2), SmpsEvent(effect=SetVol(4)), _held(4))
+        self.assertEqual(played[1].level, played[0].level)
+        self.assertEqual(played[1].level_path, ((1, tuple(tl + 4 for tl in played[0].level)),))
 
 
 class _Linear:

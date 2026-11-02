@@ -73,6 +73,8 @@ class CoordFlag(StrEnum):
     VOLUME_MASK = auto()          # its $AA / $AB
     GLIDE = auto()                # its $92 / $93
     PORTAMENTO = auto()           # its $94 / $95
+    VOLUME_ENVELOPE = auto()      # its $9F / $A0 / $A1
+    LEVEL_PATH = auto()           # its volume envelopes, as the walk plays them
 
 
 @dataclass(frozen=True)
@@ -244,6 +246,14 @@ class Portamento(PlayedEffect):
 
 
 @dataclass(frozen=True)
+class LevelPath(PlayedEffect):
+    """The TLs the driver writes on the next note's frames after its read (a volume envelope):
+    (frame, ((register, TL) ...)) at each change, channel 0's TL registers."""
+    flag = CoordFlag.LEVEL_PATH
+    steps: tuple[tuple[int, tuple[tuple[int, int], ...]], ...]
+
+
+@dataclass(frozen=True)
 class SelectSample(PlayedEffect):
     flag = CoordFlag.DAC_SAMPLE
     sound: int                    # the DAC byte the drum track's notes play
@@ -304,6 +314,15 @@ class VolumeMask(DriverEffect):
     """The operators the track's volume scales, until the next voice set."""
     flag = CoordFlag.VOLUME_MASK
     operators: int | None         # bit 3: TL $40 ... bit 0: $4C; None: the algorithm's carriers
+
+
+@dataclass(frozen=True)
+class VolumeEnvelope(DriverEffect):
+    """Each note read from here starts envelope `attack` (TrackRules.volume.envelopes), while
+    `each_note`; else none starts and a running one plays out.  A ScaledVolume stops it."""
+    flag = CoordFlag.VOLUME_ENVELOPE
+    attack: int | None            # None: the one set last (none yet: off)
+    each_note: bool = True
 
 
 @dataclass(frozen=True)

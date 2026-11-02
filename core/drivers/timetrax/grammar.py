@@ -22,7 +22,7 @@ frames).
     $AA m / $AB         VolumeMask m (bit 3: TL $40 ... bit 0: $4C) / None: the carriers
 
 A rest writes nothing: the note sounds on to a read's key-off (TrackRules.key_off.rest_holds).
-Read and dropped for now, named (docs/todo/time_trax.md): vibrato.  Refused (no song plays
+Read and dropped for now, named (docs/todo/done/time_trax.md): vibrato.  Refused (no song plays
 them): the signalled jumps, the random jump, the portamento's transposition mode, release
 envelopes, the LFO, the DAC.
 """

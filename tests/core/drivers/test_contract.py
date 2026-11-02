@@ -63,7 +63,7 @@ _REVIEWED: dict[SmpsDriver, dict] = {
     },
     # A rest writes nothing ($0D18): the note sounds on to a read's key-off ($1293); the word slides
     # ($1739).  Its volume law ($1343) comes from the ROM (rules_from_rom).  The rest Sonic 1's for now:
-    # docs/todo/time_trax.md Phase 2 reviews each switch against its code
+    # docs/todo/done/time_trax.md Phase 2 reviews each switch against its code
     SmpsDriver.TIMETRAX: {"FM": {"key_off.rest_holds": True, "pitch.slide": TimeTraxGlide()}},
 }
 _PLAYBACK_SWITCHES = ("tempo_phase", "key_run_out", "update_clock")

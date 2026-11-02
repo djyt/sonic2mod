@@ -197,6 +197,14 @@ class RestsHold(unittest.TestCase):
         held, rest = track.cut(_note(6, rest=True), tied_next=False)
         self.assertEqual((held.is_no_attack, held.duration, rest.duration), (True, 3, 3))
 
+    def test_a_legato_read_after_a_held_rest_ties_the_note(self):
+        """Song 0's FM4: a note, a rest it rings through, then legato reads re-pitch it unkeyed."""
+        track = self._track()
+        track.cut(_note(4), tied_next=False)
+        track.cut(_note(6, rest=True), tied_next=False)
+        (tie,) = track.cut(SmpsNote(note_value=_NOTE, duration=4, is_no_attack=True), tied_next=False)
+        self.assertEqual((tie.is_rest, tie.is_no_attack), (False, True))
+
     def test_a_legato_read_after_a_key_off_stays_silent(self):
         track = self._track()
         track.effect(KeyOffAfter(1))

@@ -272,6 +272,18 @@ class ChannelWriter:
         # Another channel's notes take this column here (mod_channel): its note-on ends this ring
         if self._router.borrowed(self._col, tick) and self._cells.note_at(pattern, row, self._col):
             return
+
+        # The note keyed off on its own attack row (a note shorter than a row, rounded onto the
+        # row its rest starts in: Time Trax's 1-frame notes): the key-off waits a row, else the
+        # note sounds nothing.  A note-on there ends it anyway
+        if (pattern, row) == self._ring.cell:
+            tick = int((Cells.row_total(pattern, row) + 1) * self._timeline.ticks_per_row)
+            pattern, row = self._timeline.pattern_row(tick)
+            if not self._cells.in_song(pattern):
+                return
+            self._cells.ensure(pattern)
+            if self._cells.note_at(pattern, row, self._col):
+                return
         self._key_off(pattern, row, tick)
 
     def _key_off(self, pattern: int, row: int, tick: int) -> None:
@@ -296,7 +308,8 @@ class ChannelWriter:
 
         if self._is_dac and res is None:
             return self._on_dac(event)
-        assert res is not None
+        if res is None:
+            return self._on_carried(event)
         return self._on_melodic(event, res)
 
     def _open_cell(self, pattern: int, row: int, tick: int) -> None:
@@ -665,6 +678,15 @@ class ChannelWriter:
                                                            self._next_note_row(tick))
 
     # --- ties -----------------------------------------------------------------------------------
+    def _on_carried(self, event) -> bool:
+        """A legato read baked into the sounding sample (core.plan.baked: a sweep no slide follows):
+        no key-on, its level by Cxx where the sample carries none."""
+        baked = self._ctx.conv.baked
+        assert baked is not None and baked.carries(self._cfg.source, event.tick_position)
+        tick = event.tick_position
+        self._level_tie(tick, tick + event.note.duration)
+        return True
+
     def _baked(self, inst: int) -> tuple[bool, bool]:
         """Whether `inst`'s sample carries its notes' pitch curve, and their level (core.plan.baked)."""
         baked, detune = self._ctx.conv.baked, self._ctx.detune

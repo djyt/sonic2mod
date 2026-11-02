@@ -49,7 +49,16 @@ ROOT = _HERE.parents[1]
 sys.path.insert(0, str(ROOT))
 
 from core.audio import pitch_name
-from core.audit import PairStep, audit_pitches, mod_pitch_timeline, named, note_start_offset, rip_on_song_clock, workers
+from core.audit import (
+    PairStep,
+    RipFaults,
+    audit_pitches,
+    mod_pitch_timeline,
+    named,
+    note_start_offset,
+    rip_on_song_clock,
+    workers,
+)
 from core.config import ConversionConfig
 from core.convert import prepare_conversion
 from core.mod import read_mod
@@ -86,8 +95,8 @@ class _Audit:
     error: str = ""
 
 
-def audit(config: Path, rip: Path, opt: _Options) -> _Audit:
-    """One config's MOD against `rip` (a worker's job)."""
+def audit(config: Path, rip: Path, opt: _Options, faults: RipFaults | None = None) -> _Audit:
+    """One config's MOD against `rip` (a worker's job), the rip's `faults` (rips.yaml) undone."""
     out = _Audit(config.stem)
     if opt.convert:
         done = _convert(config, opt)
@@ -107,7 +116,9 @@ def audit(config: Path, rip: Path, opt: _Options) -> _Audit:
         return out
 
     # Both timelines; a rip whose timer ran off its driver's retimed onto it
-    played, scale = rip_on_song_clock(str(rip), song, cfg.region)
+    played, scale = rip_on_song_clock(str(rip), song, cfg.region, faults)
+    if faults is not None and faults.glitches:
+        out.header.append(f"glitches undone: {len(faults.glitches)} (rips.yaml)")
     if scale != 1.0:
         out.header.append(f"VGM retimed x{scale:.5f} onto the driver's clock (its frames {scale - 1:+.2%} off)")
     chip, vgm_end = pitch_segments(decode_vgm(played))
@@ -222,7 +233,8 @@ def main() -> None:
         if not pairs:
             raise SystemExit("no rip pairs with a config")
         with ProcessPoolExecutor(workers(len(pairs))) as pool:
-            audits = list(pool.map(audit, [c for c, _ in pairs], [r for _, r in pairs], [opt] * len(pairs)))
+            audits = list(pool.map(audit, [c for c, _ in pairs], [r for _, r in pairs], [opt] * len(pairs),
+                                   [shelf.faults_for(c) for c, _ in pairs]))
         for a in audits:
             print(_line(a))
         clean = sum(a.res is not None and not a.res["bad"] for a in audits)
@@ -231,10 +243,11 @@ def main() -> None:
 
     # One config: its rip named, or the shelf's
     config = Path(args.config)
-    rip = Path(args.vgz) if args.vgz else rip_shelf(args, configs=config.parent).rip_for(config)
+    shelf = rip_shelf(args, configs=config.parent)
+    rip = Path(args.vgz) if args.vgz else shelf.rip_for(config)
     if rip is None:
         raise SystemExit(f"{config}: no rip pairs with it (name one)")
-    a = audit(config, rip, opt)
+    a = audit(config, rip, opt, None if args.vgz else shelf.faults_for(config))
     if a.res is None:
         raise SystemExit(f"ERROR: {a.error}")
     for line in a.header:

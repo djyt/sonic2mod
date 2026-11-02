@@ -12,7 +12,7 @@ from ..config import SynthesisSettings
 from ..diagnostics import Diagnostics, InfoKind, WarningKind
 from ..merge import merge_plan_of
 from ..mod import PERIOD_TABLE, clamp_note, finetune_ratio, max_sustain_secs, shift_ratio, shifted_rate
-from ..plan import ConversionPlan, Timeline, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
+from ..plan import ConversionPlan, Timeline, channel_reads, enabled_channels, fm_catalogue, psg_catalogue, walk_channel
 from ..smps import ChannelType, SmpsSong
 
 _AUTO_SUSTAIN_CAP_SECS = 10.0
@@ -190,6 +190,12 @@ class SustainPlanner:
                     refs[inst_i] = max(refs.get(inst_i, 0.0), wall_ref * scale)
         return needs
 
+    def _gliding(self, channel) -> set[int]:
+        """The legato reads whose word moves (a glide, a portamento: Time Trax's): the writer slides
+        the sounding sample on through them, whatever `legato` says (channel_writer._glides_on)."""
+        walked = channel_reads(channel, self._timeline, {v.index: v for v in self._song.voices})
+        return {id(r.event) for r in walked or () if r.event.note and r.event.note.is_no_attack and len(set(r.words)) > 1}
+
     def _rings(self, chan_cfg, channel, kind: str) -> _Rings:
         """One channel's rings, as core.convert.channel_writer plays its notes in the `kind` pass:
         a rest's C00 (or release slide) ends one, a smpsNoAttack rest or legato note carries it on."""
@@ -200,6 +206,7 @@ class SustainPlanner:
         # writes it as a note-on: Drowning's FM3 trill, 240 legato notes, measured one 10 s
         # ring for notes of a second
         portamento = (self._synth.legato if self._synth else "strict") != "retrigger"
+        gliding = self._gliding(channel)
         for event, _st, res in walk_channel(channel, self._conv, chan_cfg):
             if not event.is_note:
                 continue
@@ -228,9 +235,13 @@ class SustainPlanner:
                 rings.append(None)                          # C00 (or a slide) ends the ring
                 continue
 
+            baked = self._conv.baked
+            if res is None and sounding is not None and baked is not None and baked.carries(chan_cfg.source, event.tick_position):
+                sounding.ticks += note.duration             # baked into the sounding sample: rings on
+                continue
             if res is None:
                 continue
-            if note.is_no_attack and portamento and sounding is not None:
+            if note.is_no_attack and (portamento or id(event) in gliding) and sounding is not None:
                 sounding.ticks += note.duration             # legato: a portamento, the sample rings on
                 continue
             _cut_ring(rings, event.tick_position)

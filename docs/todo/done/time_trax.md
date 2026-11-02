@@ -1,7 +1,7 @@
 # Time Trax (prototype): Tim Follin's Z80 driver
 
-Probed 2026-11-01.  Goal: `convert.py` reads Time Trax's six songs from the ROM.  Read since
-2026-11-02 (Phase 1 done); this is the probe and the plan.
+Probed 2026-11-01, closed 2026-11-02 (listening open: 3.4).  Goal: `convert.py` reads Time Trax's six
+songs from the ROM.  The driver as built: `docs/timetrax_driver.md`; this is the probe and the plan.
 
 **Verdict.**  Not SMPS: Tim Follin's own Z80 driver, a new family.  *Reading* it is small: a 100-line
 scratch walker decodes all six songs, and their key-ons land on the rips' frames with the rips'
@@ -330,7 +330,7 @@ reached.  A glide is the same with another curve: D4 uses it.
   frame.  For Phase 3: notes whose envelope starts quiet read at `C00` (song 1: 7).
 
 ### Phase 3: convert
-- [ ] 3.1 Writer: `modulation_slides` taking any pitch curve (frame -> word), fed the walk's
+- [x] 3.1 Writer: `modulation_slides` taking any pitch curve (frame -> word), fed the walk's
   glide / portamento word (D4); envelopes baked (D5).  Done so far (2026-11-02):
   - Pitch: `curve_slides` (vibrato.py; `modulation_slides` one case of it).  `core/plan/glides.py`:
     each read's word and TLs frame by frame (`channel_reads`), whether a sample at a MOD note
@@ -357,14 +357,29 @@ reached.  A glide is the same with another curve: D4 uses it.
   - Derive skips a legato read the driver glides: its note is where the glide heads, not what
     sounds (song 3's `A#-1`, under the table, broke its window names).
   - The pitch audit models a baked sweep (`mod_pitch_timeline`).
-  Left: measure levels (`measure_volumes`).
-- [ ] 3.2 `vgm_pitch_audit` clean, slides too (T4); `measure_volumes --configs configs/time_trax`, one pass.
-- [ ] 3.3 Regression cases by coverage; tool cases `read_`, `frames_`, `glitches_`.
+- [x] 3.2 `vgm_pitch_audit` clean, slides too (T4); `measure_volumes --configs configs/time_trax`, one pass.
+  Wrong notes 910 / 469 / 233 / 169 / 324 / 84 -> 0 / 0 / 1 / 0 / 6 / 4, found on the way:
+  - The audits: the rips' lost V-ints undone in the VGM's waits (`core.vgm.unshifted`, `RipFaults.unglitched`;
+    `rip_on_song_clock` takes them: the pitch audit, `vgm_compare`); the lag searched both ways (the
+    rips start 0.3-0.8 s before their song; it stopped at -0.5 s).
+  - The walk: a held rest left the note unsounding (`DriverTrack._holding`), so a legato read after it
+    read as a rest (song 0's FM4 credits bass, song 1's FM4 / FM5).
+  - Sweeps: the drum is a keyed note, then a legato read gliding to its target (E0, four octaves down);
+    the shape was keyed on the legato read, from its target's word, which broke the render (offsets
+    past block 7).  Now a legato read the sample cannot slide to is carried in the keyed read's shape
+    (`BakedPlan.carried`, `walk_channel`: no note), and once a sample sweeps it slides no further
+    (song 5's FM6 glide chain).
+  Left: grace notes the audit pairs with the note before (song 4: 6, CLAUDE.md's todo item 3), a
+  sweep's last cents (song 5: 4), song 2's one.  Slides 85-98 % within 50 cents; song 4's 78 %: its
+  semitone-a-frame portamento a frame behind (`1xx` moves from a row's second tick).  Volumes: 79
+  written, residuals on 1- and 2-note instruments or at the 64 ceiling.
+- [x] 3.3 Regression cases by coverage (`tt_mission_briefing`, `tt_title_screen`, `tt_game_over`,
+  `tt_stages_2_5_7`); tool cases `read_time_trax`, `frames_time_trax`, `glitches_time_trax`.
 - [ ] 3.4 Listen in the FT2 clone (the user).
 
 ### Phase 4: close
-- [ ] 4.1 A section in `docs/smps_variants.md` (or a new `docs/timetrax_driver.md`: it is no SMPS);
-  `docs/architecture.md`; CLAUDE.md's index; this plan to `done/`.
+- [x] 4.1 `docs/timetrax_driver.md`; `docs/architecture.md`; CLAUDE.md's index; this plan to `done/`.
+  Open beyond it: the vibrato (`$9A`, two uses).
 
 ---
 
@@ -374,7 +389,7 @@ reached.  A glide is the same with another curve: D4 uses it.
    Follin games.
 2. **Region:** `pal` in the configs: the rips are 50 Hz.  An `ntsc` variant only if wanted later.
 3. **Volume law:** hybrid.  `SetVol` from the loudest carrier's TL change; a patched voice per
-   (voice, vol, mask) only where some operator misses by ≥ a threshold (settings.yaml; 3 TL steps =
+   (voice, vol, mask) only where some operator misses by ≥ a threshold (song key `level_patch_min`; 3 TL steps =
    2.25 dB).  Measured (FM notes, one pass, envelope notes apart):
 
    | Song | Voices | Exact (voice, vol, mask) | Hybrid, ≥ 3 | Notes ≥ 3 off under `SetVol` |

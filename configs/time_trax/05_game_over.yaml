@@ -1,8 +1,12 @@
 # Time Trax (prototype) - Game Over.  A minimal config: everything else is derived from the ROM
-# (docs/todo/time_trax.md); python convert.py <this> --show-config prints it.
+# (docs/todo/done/time_trax.md); python convert.py <this> --show-config prints it.
 name: "Game Over"
 input_file: "input/roms/Time Trax (USA) (Proto).md"
 rom_song: "$05"
-region: pal               # the rips run at 50 Hz (docs/todo/time_trax.md D2)
+region: pal               # the rips run at 50 Hz (docs/todo/done/time_trax.md D2)
 level_patch_min: 3        # a voice copy within 3 TL steps (2.25 dB) of its voice plays as it
 baked_slots: 4            # slots kept for baked drum sweeps and envelopes (core/plan/baked.py)
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "fm_v01_E4.raw", 46, 0]   # VGZ: +2.9 dB at 64
+  - [3, "fm_v0a_Cs2.raw", 33, 0]   # VGZ: +2.1 dB at 42

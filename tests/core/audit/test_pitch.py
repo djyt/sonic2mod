@@ -115,3 +115,17 @@ class Slides(unittest.TestCase):
                             {0: [(0.0, 440.0, 1, True)]}, 99.0, {"FM1": 0}, 0.0)
         st = res["channels"]["FM1"]
         self.assertEqual((st["short"], "slide_ok" in st), (2, False))
+
+
+class StartOffset(unittest.TestCase):
+    def test_a_rip_that_starts_before_its_song(self):
+        """Time Trax's rips run 0.8 s ahead of their song's first note: the lag is found below -0.5 s."""
+        from core.audit.pitch import note_start_offset
+
+        rng = random.Random(3)
+        t, mod = 1.0, []
+        for _ in range(80):
+            t += rng.choice((0.12, 0.24, 0.36))
+            mod.append((t, 110.0 * 2 ** (rng.randint(0, 24) / 12), 1, True))
+        chip = {"FM1": [(n[0] + 0.8, n[1]) for n in mod]}
+        self.assertAlmostEqual(note_start_offset(chip, {0: mod}, {"FM1": 0}), -0.8, places=2)

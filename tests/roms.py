@@ -43,8 +43,7 @@ GAMES = (
     GameFiles("space_harrier_2", _ROMS / "Space Harrier II (World).md", _RIPS / "space_harrier_2"),
     GameFiles("outrun", _ROMS / "OutRun (USA, Europe).md", _RIPS / "outrun"),
     GameFiles("streets_of_rage_2", _ROMS / "Streets of Rage 2 (USA).md", _RIPS / "streets_of_rage_2"),
-    # Its rips' frames checked once the walk plays what they hold (docs/todo/time_trax.md Phase 3.3)
-    GameFiles("time_trax", _ROMS / "Time Trax (USA) (Proto).md", _RIPS / "time_trax", frames=False),
+    GameFiles("time_trax", _ROMS / "Time Trax (USA) (Proto).md", _RIPS / "time_trax"),
 )
 _BY_NAME = {g.name: g for g in GAMES}
 

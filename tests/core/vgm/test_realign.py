@@ -7,15 +7,19 @@ from __future__ import annotations
 
 import unittest
 
-from core.vgm import decode_vgm, frame_log, realigned
+from core.vgm import decode_vgm, frame_log, realigned, unshifted
 from tests.vgm_build import FRAME, bursts, fm_freq, key
 
 _A4, _C5 = (1083, 4), (644, 5)
 
 
-def _log(notes: dict[int, tuple[int, int]], frames: int = 10):
+def _vgm(notes: dict[int, tuple[int, int]], frames: int = 10) -> bytes:
     """FM1 keyed at each frame of `notes`, at its (fnum, block)."""
-    return frame_log(decode_vgm(bursts({f: key(0, False) + fm_freq(0, *fb) + key(0, True) for f, fb in notes.items()}, frames)))
+    return bursts({f: key(0, False) + fm_freq(0, *fb) + key(0, True) for f, fb in notes.items()}, frames)
+
+
+def _log(notes: dict[int, tuple[int, int]], frames: int = 10):
+    return frame_log(decode_vgm(_vgm(notes, frames)))
 
 
 def _keyed(log) -> list[int]:
@@ -52,3 +56,25 @@ class Realigned(unittest.TestCase):
         self.assertEqual((held.fm[0].fnum, held.fm[0].block), _A4)           # the frame before's state
         self.assertEqual(_keyed(fixed), [a, a + 2])
         self.assertEqual(fixed.end_sample, log.end_sample + FRAME)
+
+
+class Unshifted(unittest.TestCase):
+    """The same shifts undone in the VGM's waits: its frame log keys as the realigned log does."""
+
+    def _both(self, shift: int) -> tuple[list[int], list[int]]:
+        raw = _vgm({4: _A4, 5: _C5, 7: _A4})
+        log = frame_log(decode_vgm(raw))
+        a = _keyed(log)[0]
+        return _keyed(frame_log(decode_vgm(unshifted(raw, log, {a + 1: shift})))), _keyed(realigned(log, {a + 1: shift}))
+
+    def test_a_lost_v_int(self):
+        got, want = self._both(-1)
+        self.assertEqual(got, want)
+
+    def test_a_gained_v_int(self):
+        got, want = self._both(1)
+        self.assertEqual(got, want)
+
+    def test_no_shift_is_the_vgm_itself(self):
+        raw = _vgm({4: _A4})
+        self.assertIs(unshifted(raw, frame_log(decode_vgm(raw)), {}), raw)

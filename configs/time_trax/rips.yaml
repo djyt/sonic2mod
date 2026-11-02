@@ -1,5 +1,5 @@
 # Which rip in reference/vgz/time_trax/ each config converts (VGMRips 1.02, recorded at 50 Hz:
-# docs/todo/time_trax.md § 1).  Song 0 plays the title and the credits.
+# docs/todo/done/time_trax.md § 1).  Song 0 plays the title and the credits.
 # Glitches: V-ints the driver loses (Z80 $06F4 takes its count after an update: one falling in a
 # long update is missed).  Found by vgm_analyze.py --updates and vgm_frames.py --glitches; each set
 # checked whole: the rip then loops its song's frames, and the lift's onsets fall (song 3: 2877 -> 282).

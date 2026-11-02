@@ -7,7 +7,8 @@
     spans.py      the bursts gathered into the driver's updates, however long each runs
     frames.py     the log cut into V-int frames: each channel's state and writes per frame (FrameLog)
     updates.py    the driver's updates, timed by their bursts: where a V-int was lost
-    realign.py    a frame log with the V-ints its driver lost or gained undone (realigned)
+    realign.py    a frame log with the V-ints its driver lost or gained undone (realigned); the VGM's
+                  waits likewise (unshifted)
     notes.py      where notes start (NoteStart), each channel's pitch timeline (pitch_segments)
     cache.py      a rip's frame log kept on disk (load_frames)
     lift/         the frame log lifted back into the SmpsSong the driver played (lift_song)
@@ -50,10 +51,11 @@ from .reader import (
     decode_vgm,
     is_vgm_path,
     read_vgm,
+    remapped,
     retimed,
     vgm_bytes,
 )
-from .realign import realigned
+from .realign import realigned, unshifted
 from .updates import DriverUpdate, driver_updates
 from .writes import DecodedWrite, decoded_writes
 
@@ -105,6 +107,8 @@ __all__ = [
     "pitch_segments",
     "read_vgm",
     "realigned",
+    "remapped",
     "retimed",
+    "unshifted",
     "vgm_bytes"
 ]

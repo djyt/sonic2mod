@@ -77,3 +77,9 @@ streets_of_rage_2:  # Mucom-MD 0.85, minimal configs; chosen by line coverage ov
   - {name: sor2_song_12, config: streets_of_rage_2/12_song_12, why: "19 more (detune variants, loops)"}
   - {name: sor2_go_straight, config: streets_of_rage_2/00_go_straight, why: "12 more (sustain plan, cells)"}
   - {name: sor2_game_over, config: streets_of_rage_2/19_game_over, why: "9 more (a one-shot: no loop)"}
+
+time_trax:  # Tim Follin's Z80 driver, minimal configs; chosen by line coverage over its 6 songs (2026-11-02)
+  - {name: tt_mission_briefing, config: time_trax/04_mission_briefing, why: "the driver's common path (glides, portamento, the volume law, envelopes, baked sweeps)"}
+  - {name: tt_title_screen, config: time_trax/00_title_screen, why: "85 lines no other Time Trax song runs (FM5's wait for FM3's signal, FM6)"}
+  - {name: tt_game_over, config: time_trax/05_game_over, why: "31 more (a song that stops, a glide chain carried in one sweep)"}
+  - {name: tt_stages_2_5_7, config: time_trax/01_stages_2_5_7, why: "11 more (envelope loops, level render)"}

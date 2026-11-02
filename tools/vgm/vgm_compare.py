@@ -67,6 +67,8 @@ from core.audit import (
     VGM_CHANNELS,
     VIB_MIN_NOTE,
     OnsetMatch,
+    RipFaults,
+    RipShelf,
     audio_onsets,
     audit_pitches,
     band_profile,
@@ -128,6 +130,16 @@ class _Reference:
 def _chip_channel(source: str, noise_used: bool) -> str:
     """The chip channel a source renders as: PSG3 in noise mode is the chip's NOISE channel."""
     return "NOISE" if (source == "PSG3" and noise_used) else source
+
+
+def _rip_faults(config: Path, vgz: Path) -> RipFaults:
+    """The faults the rips.yaml beside `config` lists for its rip, where `vgz` is that rip."""
+    try:
+        shelf = RipShelf.around(config.parent, None)
+    except ValueError:
+        return RipFaults()
+    rip = shelf.rip_for(config)
+    return shelf.faults_for(config) if rip is not None and rip.resolve() == vgz.resolve() else RipFaults()
 
 
 def _say_alignment(offset: float, how: str) -> None:
@@ -886,13 +898,17 @@ def main() -> None:
                                                                 + ("_merged" if args.merged else "")))
 
     # A rip whose timer ran off its driver's (OutRun's: 0.30 % slow) is compared retimed onto the
-    # driver's clock (T6): rendered and read from the retimed copy
-    rip, scale = rip_on_song_clock(vgz, song, cfg.region)
-    if scale != 1.0:
+    # driver's clock (T6), one with V-ints lost (rips.yaml) with them undone: rendered and read from the copy
+    faults = _rip_faults(Path(args.config), vgz)
+    rip, scale = rip_on_song_clock(vgz, song, cfg.region, faults)
+    if scale != 1.0 or faults.glitches:
         workdir.mkdir(parents=True, exist_ok=True)
-        vgz = workdir / f"{vgz.stem}.retimed.vgm"
+        vgz = workdir / f"{vgz.stem}.{'retimed' if scale != 1.0 else 'realigned'}.vgm"
         vgz.write_bytes(rip)
-        print(f"VGM retimed x{scale:.5f} onto the driver's clock: {vgz}")
+        if scale != 1.0:
+            print(f"VGM retimed x{scale:.5f} onto the driver's clock: {vgz}")
+        if faults.glitches:
+            print(f"VGM with its {len(faults.glitches)} lost V-ints undone (rips.yaml): {vgz}")
     reference = _Reference.read(vgz)
     notes = reference.notes
     noise_used = any(n.channel == "NOISE" for n in notes)

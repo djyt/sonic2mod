@@ -170,7 +170,7 @@ def note_start_offset(chip: dict[str, list[Segment]], mod: dict[int, list[tuple]
     if starts:
         opening = min(t for _, t, _ in starts) + _OPENING_SECS
         starts = [s for s in starts if s[1] < opening]
-    ks = range(int(-0.5 / step), int(max_lag / step) + 1)
+    ks = range(int(-max_lag / step), int(max_lag / step) + 1)       # either way: a rip may start before its song (Time Trax's: 0.8 s)
     lags = [k * step for k in ks]
     scorer = _StartScorer(starts, {c: sorted(n for n in notes if n[_ATTACK]) for c, notes in mod.items()},
                           lags, step, drift)

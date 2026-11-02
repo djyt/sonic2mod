@@ -40,7 +40,7 @@ class Command:
     operands: int
     what: str
     steer: Steer = Steer.NONE
-    later: bool = False           # read and dropped until the walk plays it (docs/todo/time_trax.md Phase 2)
+    later: bool = False           # read and dropped until the walk plays it (docs/todo/done/time_trax.md Phase 2)
 
 
 # The commands the song keeps as effects (grammar.py)

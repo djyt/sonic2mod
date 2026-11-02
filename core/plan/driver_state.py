@@ -295,6 +295,8 @@ def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None
                 else:
                     res.instrument = plan.instrument_at(chan_cfg.source, event.tick_position, res.instrument)
                     res.gain_db = plan.gain_at(chan_cfg.source, event.tick_position)
+            if conv.baked is not None and conv.baked.carries(chan_cfg.source, event.tick_position):
+                res = None              # baked into the sounding sample (core.plan.baked): keys nothing
         yield event, st, res
 
 

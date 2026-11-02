@@ -480,7 +480,7 @@ class DriverTrack:
             note = dataclasses.replace(note, is_no_attack=True)
         held = self._held(note, tied_next)
         played = [note] if held is None else _split(note, held)
-        self._sounding = not played[-1].is_rest
+        self._sounding = not played[-1].is_rest or played[-1].is_no_attack     # a held rest sounds on
         return played
 
     def _softened_level(self) -> tuple[PlayedEffect, ...]:

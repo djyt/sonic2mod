@@ -1,5 +1,5 @@
 """A channel's frequency word frame by frame where its driver slides it (core.plan.glides: Time Trax's
-glides and portamento), and the row slides that follow it (D4, docs/todo/time_trax.md): each row
+glides and portamento), and the row slides that follow it (D4, docs/todo/done/time_trax.md): each row
 slides the sounding sample to the word on the row's last frame (curve_slides).
 
     frame   0    1    2  | 3    4    5  | 6 ...       (three frames a row: song 0's grid)

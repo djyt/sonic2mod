@@ -1,5 +1,5 @@
 """A note's level frame by frame under its driver's volume envelope (core.smps.LevelPath: Time Trax's),
-as the MOD's volume row by row (D5, docs/todo/time_trax.md): each row a Cxx to the level on its last
+as the MOD's volume row by row (D5, docs/todo/done/time_trax.md): each row a Cxx to the level on its last
 frame, where that moved.  Cxx comes before a slide (pipeline.md's effect priority): a glide under an
 envelope slides on the rows left.
 

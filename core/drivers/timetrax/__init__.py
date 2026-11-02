@@ -1,4 +1,4 @@
-"""Time Trax (prototype): Tim Follin's Z80 driver, a family of its own (docs/todo/time_trax.md).
+"""Time Trax (prototype): Tim Follin's Z80 driver, a family of its own (docs/todo/done/time_trax.md).
 
     variant.py    the description: rules, tables read from the ROM, the song's walk
     locate.py     the bank, the song and voice tables, the FM and pan tables, by the code that reads each

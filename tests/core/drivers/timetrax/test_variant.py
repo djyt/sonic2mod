@@ -14,7 +14,7 @@ from core.drivers.timetrax.locate import driver_tables
 from core.rom import RomImage
 from tests.roms import TIME_TRAX_ROM, needs_time_trax
 
-# Each song's pass in frames (docs/todo/time_trax.md § 2.2); song 5 ends
+# Each song's pass in frames (docs/todo/done/time_trax.md § 2.2); song 5 ends
 _PASSES = {0: 6144, 1: 7440, 2: 7040, 3: 5376, 4: 11008}
 _A4 = 58                          # the FM table's index of A4 (index 1: C0)
 

@@ -1,8 +1,26 @@
 # Time Trax (prototype) - Stages 4, 6.  A minimal config: everything else is derived from the ROM
-# (docs/todo/time_trax.md); python convert.py <this> --show-config prints it.
+# (docs/todo/done/time_trax.md); python convert.py <this> --show-config prints it.
 name: "Stages 4, 6"
 input_file: "input/roms/Time Trax (USA) (Proto).md"
 rom_song: "$02"
-region: pal               # the rips run at 50 Hz (docs/todo/time_trax.md D2)
+region: pal               # the rips run at 50 Hz (docs/todo/done/time_trax.md D2)
 level_patch_min: 3        # a voice copy within 3 TL steps (2.25 dB) of its voice plays as it
 baked_slots: 4            # slots kept for baked drum sweeps and envelopes (core/plan/baked.py)
+
+sample_list:   # volumes set from the VGZ; the rest is derived
+  - [1, "fm_v01_E4.raw", 57, 0]   # VGZ: +0.0 dB at 64
+  - [3, "fm_v67_C3.raw", 37, 0]   # VGZ: +2.3 dB at 54
+  - [5, "fm_v7a_F3.raw", 24, 0]   # VGZ: +6.1 dB at 54
+  - [8, "fm_v13_A1.raw", 35, 0]   # VGZ: -2.5 dB at 29
+  - [10, "fm_v18_E0.raw", 30, 0]   # VGZ: -2.7 dB at 25
+  - [11, "fm_v18_F2.raw", 49, 0]   # VGZ: -3.1 dB at 38
+  - [13, "fm_v1a_F2.raw", 58, 0]   # VGZ: -3.2 dB at 45
+  - [16, "fm_v06_F3.raw", 14, 0]   # VGZ: -4.0 dB at 10
+  - [17, "fm_v40_E4.raw", 22, 0]   # VGZ: -7.9 dB at 10
+  - [21, "fm_v59_D2.raw", 39, 0]   # VGZ: +3.3 dB at 64
+  - [22, "fm_v5a_F2.raw", 37, 0]   # VGZ: +3.7 dB at 64
+  - [23, "fm_v5b_G2.raw", 38, 0]   # VGZ: +3.5 dB at 64
+  - [24, "fm_v5c_C3.raw", 24, 0]   # VGZ: +7.4 dB at 64
+  - [25, "fm_v5f_Bb2.raw", 24, 0]   # VGZ: -0.0 dB at 27
+  - [26, "fm_v60_B4.raw", 32, 0]   # VGZ: +5.1 dB at 64
+  - [27, "fm_v61_B4.raw", 44, 0]   # VGZ: +2.3 dB at 64

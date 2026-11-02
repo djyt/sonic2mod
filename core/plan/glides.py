@@ -1,4 +1,4 @@
-"""Glides, portamento and volume envelopes on the MOD (docs/todo/time_trax.md D4, D5): what a channel's
+"""Glides, portamento and volume envelopes on the MOD (docs/todo/done/time_trax.md D4, D5): what a channel's
 driver writes frame by frame after each read, and whether a sample can follow it.  A pitch curve the
 MOD can follow slides row by row, a level moves by Cxx (core.convert's PitchCurve, LevelCurve); a
 sweep it cannot follow, and an envelope's level, are baked into a sample of their own where a slot

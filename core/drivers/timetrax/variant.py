@@ -1,5 +1,5 @@
 """Time Trax (prototype): Tim Follin's own Z80 driver, no SMPS.  No disassembly: its code read with a
-disassembler (docs/todo/time_trax.md).
+disassembler (docs/todo/done/time_trax.md).
 
     songs       a list of tracks each (header.py); the bank, its tables and the FM table by the code
                 that reads each (locate.py)

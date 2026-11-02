@@ -361,7 +361,7 @@ functions:
   core/config/song.py::ConversionConfig._read_source: 1ffffffffffffffffc000000000000000000000000
   core/config/song.py::ConversionConfig.from_data: 1ffffffffffffffffc000000000000000000000000
   core/config/song.py::ConversionConfig.from_yaml: 1ffffffffffffffffc000000000000000000000000
-  core/config/song.py::ConversionConfig.is_derived: '80000000000000000000000000000000000000000'
+  core/config/song.py::ConversionConfig.is_derived: '80080000000000000000000000000000000000000'
   core/config/song.py::ConversionConfig.is_minimal: 1ffffffffffffc0000000000000000000000000000
   core/config/song.py::ConversionConfig.lift_options: 1ffffffffffffc0000000000000000000000000000
   core/config/song.py::ConversionConfig.read_dac: 1f03ff1f8078000000000000000000000000000000
@@ -662,14 +662,15 @@ functions:
   core/plan/derive.py::_Deriver._sharing: 1e00c0000000000000000000000000000000000000
   core/plan/derive.py::_Deriver._sources: 1f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._take: 1f03ff1f8078000000000000000000000000000000
-  core/plan/derive.py::_Deriver._timing: 1703ff1f8078000000000000000000000000000000
-  core/plan/derive.py::_Deriver._timing.on_rows: 1703ff1f8078000000000000000000000000000000
+  core/plan/derive.py::_Deriver._timing: 17037f1f8078000000000000000000000000000000
+  core/plan/derive.py::_Deriver._timing.on_rows: 17037f1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._tone_slots: 1f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._tpr_options: 1f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._widest: 1f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver._windows: 1f03ff1f8078000000000000000000000000000000
   core/plan/derive.py::_Deriver.run: 1f03ff1f8078000000000000000000000000000000
-  core/plan/derive.py::_Deriver.timing: '80000000000000000000000000000000000000000'
+  core/plan/derive.py::_Deriver.timing: '80080000000000000000000000000000000000000'
+  core/plan/derive.py::_Deriver.timing.on_rows: '80000000000000000000000000000000000000'
   core/plan/derive.py::_drum_level: 1d000078000000000000000000000000000000
   core/plan/derive.py::_drum_level.loudest: 1d000078000000000000000000000000000000
   core/plan/derive.py::_lfo_voice: e0080000000000000000000000000000000000000

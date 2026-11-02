@@ -22203,7 +22203,7 @@ pitch_sor2_jungle_base:
   - --settings
   - tests\settings.yaml
   - --list
-  commit: 6d5b10b-dirty
+  commit: 766ea97-dirty
   files:
   - core/__init__.py
   - core/audio/__init__.py
@@ -22306,6 +22306,7 @@ pitch_sor2_jungle_base:
   - core/plan/glides.py
   - core/plan/instrument_plan.py
   - core/plan/instruments.py
+  - core/plan/meter.py
   - core/plan/noise_derive.py
   - core/plan/slot_fit.py
   - core/plan/synth_roots.py
@@ -22384,9 +22385,9 @@ pitch_sor2_jungle_base:
   - core/vgm/writes.py
   - tools/vgm/vgm_pitch_audit.py
   inputs:
-    configs/streets_of_rage_2/05_jungle_base.yaml: eef1715a1906
+    configs/streets_of_rage_2/05_jungle_base.yaml: ea14c7053969
     reference/vgz/streets_of_rage_2/13 - Jungle Base.vgz: ae9db06d6e9c
-    tests/baselines/sor2_jungle_base_baseline.mod: a9ce53659d7d
+    tests/baselines/sor2_jungle_base_baseline.mod: f868494d8742
     tests/settings.yaml: 1be2c231bd5e
 pitch_sor2_level_complete:
   argv:

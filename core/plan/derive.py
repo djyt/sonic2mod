@@ -20,7 +20,7 @@ Instruments, in slot order:  DAC samples · FM voices · PSG tones · PSG noise
                     on the first MOD note keeping samples.root_harmonics harmonics (never under
                     E1, the 5 kHz line), its top at most samples.top_note (A3), its span at most
                     samples.max_window.  The converter picks the rendering pitch
-    FM drum         one per drum the drum track hits (Type 0 FM: core.smps.percussion), rendered
+    FM drum         one per drum the drum track hits (Golden Axe, Space Harrier II: core.smps.percussion), rendered
                     whole at samples.drum_root; nothing written
     DAC             one per sample; a pitched copy plays its sample's slot at the note nearest
                     its rate

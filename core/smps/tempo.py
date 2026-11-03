@@ -1,4 +1,4 @@
-"""When the driver plays each tick: TempoWait's hold frames (docs/smps_driver.md, timing).
+"""When the driver plays each tick: TempoWait's hold frames (docs/drivers/sonic_1.md § TempoWait).
 
 The driver reads notes once per V-int frame, except every m-th frame (m the tempo modifier):
 TempoWait holds it.  The schedule starts with the song and again at every smpsSetTempoMod

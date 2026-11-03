@@ -1,5 +1,5 @@
 """Streets of Rage's driver (SMPS 68k with MUCOM-style track code): the grammar on hand-built
-bytes, the hardware LFO and FM3's special mode (docs/smps_variants.md).
+bytes, the hardware LFO and FM3's special mode (docs/drivers/streets_of_rage.md).
 
     python -m pytest tests/core/drivers/smps68k/streets_of_rage/test_grammar.py -q
 """

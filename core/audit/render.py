@@ -55,7 +55,7 @@ def find_vgmplay(arg: str | None) -> Path:
     raise SystemExit(
         f"ERROR: VGMPlay not found in {_VGMPLAY_DEFAULT}\n"
         "       Unzip a VGMPlay 0.51.x build there (the directory is untracked), or pass\n"
-        "       --vgmplay DIR / set VGMPLAY_DIR.  See 'VGM comparison setup' in docs/pipeline.md.")
+        "       --vgmplay DIR / set VGMPLAY_DIR.  See docs/guide/verifying.md § Setup.")
 
 
 def _patch_ini(src: str, ym_mask: int, sn_mask: int, core: str) -> str:

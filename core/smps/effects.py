@@ -3,7 +3,7 @@
     SetVoice(index=3)    ModSet(wait=1, speed=1, delta=4, steps=2)    PsgVoice(envelope="fTone_01")
 
 Each driver maps its own bytes to these (core/drivers: Sonic 1's are s1.sounddriver.asm
-coordflagLookup, docs/smps_driver.md; the Sonic 1 byte noted below); the SMPS2ASM macro names are
+coordflagLookup, docs/drivers/sonic_1.md; the Sonic 1 byte noted below); the SMPS2ASM macro names are
 core/smps/names.py's, for reading and printing assembly.  Read an effect by matching its class:
 
     match effect:

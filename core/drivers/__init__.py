@@ -22,7 +22,7 @@ Grouped by family, one folder per driver:
 
 A family folder holds what its drivers share; a driver folder its description (variant.py) and
 what only it has.  Drivers import the framework by absolute path (core.rom...), their family
-relatively.  A new driver: docs/smps_variants.md § Adding a variant.
+relatively.  A new driver: docs/drivers/README.md § Adding a driver.
 """
 
 from .detect import detect_variant, first_failure, trial_reads

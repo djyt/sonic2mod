@@ -47,7 +47,7 @@ PARTIAL_EFFECTS = {
 # Z80 loop's cycle count (core/rom/pcm/, exact from the ROM's code) less the 68k's once-a-frame
 # stopZ80 (~5 %; each song's own share is measured in its VGZ, which the configs' finetunes
 # follow).  The VGZ rips' emulator runs the loop 2-3 % fast: their rates are not the yardstick.
-# docs/yaml_config.md § DAC Sample Rates.
+# docs/drivers/sonic_1.md § Playback rates.
 DAC_NATIVE_INFO: dict[str, tuple[str, int]] = {
     'dKick':        ('B1',  7_790),
     'dSnare':       ('F3',  22_590),

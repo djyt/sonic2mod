@@ -70,7 +70,7 @@ instrument catalogue (`core.plan.instruments`).
 `walk_channel` reads the plan from the conversion's (core.plan.ConversionPlan.merge), so every
 pass (levels, sustain, conversion) sees the composite instruments the same way.
 
-Per-pattern folds, sample banks, unison chords and same-shape twins: docs/pipeline.md
+Per-pattern folds, sample banks, unison chords and same-shape twins: docs/guide/amiga_builds.md
 § Channel merging.  The parts, in the order a merged build runs them:
 
     prepare_merged_config   the config's channels → the merged build's columns

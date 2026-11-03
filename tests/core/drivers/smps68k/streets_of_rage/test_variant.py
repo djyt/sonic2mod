@@ -1,4 +1,4 @@
-"""Streets of Rage's driver on the ROM, when it is present (docs/smps_variants.md).
+"""Streets of Rage's driver on the ROM, when it is present (docs/drivers/streets_of_rage.md).
 
     python -m pytest tests/core/drivers/smps68k/streets_of_rage/test_variant.py -q
 """

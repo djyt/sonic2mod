@@ -1,6 +1,6 @@
 """A note's level frame by frame under its driver's volume envelope (core.smps.LevelPath: Time Trax's),
 as the MOD's volume row by row (D5, docs/todo/done/time_trax.md): each row a Cxx to the level on its last
-frame, where that moved.  Cxx comes before a slide (pipeline.md's effect priority): a glide under an
+frame, where that moved.  Cxx comes before a slide (docs/conversion/effects.md § Effect priority): a glide under an
 envelope slides on the rows left.
 
     frame    0     1     2   | 3     4     5          the loudest carrier's TL: 20 21 22 | 23 24 25

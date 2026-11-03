@@ -34,7 +34,7 @@ class Placement(unittest.TestCase):
         self.assertEqual(_moves(_SONIC, "core/chips/ym2612/ym3438_batch.c"), ("", False))
 
     def test_what_moves_nothing(self):
-        for path in ("docs/pipeline.md", "core/new_module.py", "configs/moonwalker/81_smooth_criminal.yaml",
+        for path in ("docs/conversion/timing.md", "core/new_module.py", "configs/moonwalker/81_smooth_criminal.yaml",
                      "tests/baselines/ghz_baseline.mod", "tests/core/rom/test_image.py", "README.md"):
             self.assertEqual(_moves(_SONIC, path), ("", False), path)
 

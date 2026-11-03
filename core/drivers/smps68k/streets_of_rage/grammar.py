@@ -1,5 +1,5 @@
 """Streets of Rage's track grammar: MUCOM's language (core/rom/grammar/mucom.py) as SMPS 68k's
-engine reads it (docs/smps_variants.md § Streets of Rage).  Its dialect and its own PSG flags:
+engine reads it (docs/drivers/streets_of_rage.md).  Its dialect and its own PSG flags:
 
     PSG notes   row r plays octave r + 1 from row 2 (C3, Sonic 1's PSG table entry 0); rows 0-1
                 read row 2, rows 6-9 row 6, past row 9 the table ends

@@ -74,7 +74,7 @@ def note_to_fnum_block(mod_note_index: int, clock_rate: int = MD_FM_CLOCK, *,
     table (PlaybackRules.fm_frequencies, the song's).
 
     The table's index 1 = nC0, so MOD index i, C1 = 0, is table index i + 13; Sonic 1's runs
-    fnum 644–1216 with the block from the octave.
+    fnum 606–1148 with the block from the octave.
     Using the same registers as the hardware matters beyond pitch: rate scaling and detune
     read the key code (block and the fnum's top bits), so a note written as fnum 1148 in one
     block and as 574 in the next sounds the same pitch with a different envelope and detune.

@@ -22,7 +22,7 @@ Requirements: numpy, ffmpeg with the libopenmpt demuxer on PATH, and a VGMPlay
 libvgm-based line, whose VGMPlay.ini selects cores with ``Core = NUKE``).  It is
 looked up in this order: --vgmplay DIR, the VGMPLAY_DIR environment variable,
 then reference/vgz/vgmplay/ (untracked, like the rest of reference/vgz/ -- unzip
-a VGMPlay build there on a fresh checkout; see docs/pipeline.md).
+a VGMPlay build there on a fresh checkout; see docs/guide/verifying.md).
 
 Usage::
 

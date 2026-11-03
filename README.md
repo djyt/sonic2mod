@@ -4,6 +4,16 @@ Convert Sonic The Hedgehog 1 SMPS assembly music files from the Sega Megadrive t
 
 > reassembler 2026 | https://youtube.com/@reassembler68k | https://reassembler.blogspot.com
 
+## Features
+
+- Input: SMPS assembly (for Sonic only) or the game's ROM
+- Instruments rendered on cycle-accurate YM2612 (Nuked-OPN2) and SN76489 emulators
+- Driver-accurate playback: tempo, note fill, modulation, detune, transposition, loops
+- Effects mapped to ProTracker: vibrato, slides, volume, note delays, pattern breaks
+- 4-Channel Amiga builds: channels reduced to 4, with composite instruments and lofi variants
+- Verification against VGZ rips: per-note pitch, level, timing and balance audits
+- Sound effects rendered to WAV, or 8-bit samples with a manifest for the Amiga
+
 ## Requirements
 
 - Python 3.11+
@@ -52,6 +62,20 @@ Output `.mod` files are written to `output/sonic_1/` (each game its own folder) 
 That's it - nice and easy. The complexity comes if you want to extend the tool further really. 
 
 
+## Games Supported
+
+| Game | Driver | Configs |
+|------|--------|---------|
+| Sonic The Hedgehog | SMPS 68k | `configs/sonic_1/` |
+| Michael Jackson's Moonwalker | SMPS 68k (Type 1a) | `configs/moonwalker/` |
+| Golden Axe | SMPS Z80 (Type 0 FM) | `configs/golden_axe/` |
+| Space Harrier II | SMPS Z80 (early) | `configs/space_harrier_2/` |
+| OutRun | SMPS Z80 (Timer A) | `configs/outrun/` |
+| Streets of Rage | SMPS 68k (MUCOM-style) | `configs/streets_of_rage/` |
+| Streets of Rage 2 | Mucom-MD | `configs/streets_of_rage_2/` |
+| Time Trax | Tim Follin's Z80 driver | `configs/time_trax/` |
+
+
 ## Sonic Music
 
 Pre-configured conversions are in `configs/sonic_1/`
@@ -84,13 +108,11 @@ Pre-configured conversions are in `configs/sonic_1/`
 The test harness can check the final MOD against a VGM.VGZ recording of the Mega Drive output.
 Notes, timing, chip frequency register writes and perform a pitch and volume audit. 
 
-As of the current configs that's **7775 of 7800 notes correct** (>= 60 ms, within 35 cents), none
-missing. The 25 that differ are in Spring Yard, Scrap Brain, the Ending and Credits, and are
-explained per song in `docs/audits/`.
+As of the current configs Sonic has **7793 of 7802 notes correct**, none missing. 
+The 9 notes that differ are in Spring Yard and the Credits, and are explained in `docs/audits/`.
 
 The VGZ rips are not in the repo, and `vgm_compare.py` additionally needs VGMPlay and an ffmpeg
-build with libopenmpt — setup is in `docs/pipeline.md`. The per-song findings, and what each song
-still needs, are written up in `docs/audits/`.
+build with libopenmpt — setup is in `docs/pipeline.md`.
 
 
 ## Analyze an SMPS file (create a new config that doesn't already exist)
@@ -199,22 +221,12 @@ I'm not particularly looking for a load of chaotic AI driven push requests at th
   resamples it for the rest, so anything time-based in the patch scales with playback rate: the
   envelope runs faster on high notes, and detuned-carrier beating changes speed with pitch. Voice
   $04 in Green Hill beats at 6.5 Hz on C6 where the hardware beats at 4.46 Hz. The fix is to split
-  ranges wider than about nine semitones into two entries with their own `root` / `synth_root`,
-  which is a config change today and could be automated.
-- **`smpsDetune` is approximated by finetune**, where it is handled at all. `$03` is +5 to +8 cents
-  on hardware and MOD's finest step is +12.5. Title Screen uses finetune variants for its FM5
-  chorus; elsewhere the detune is dropped.
+  ranges wider than about nine semitones into two entries with their own `root` / `synth_root`.
 - **Noise samples have one LFSR rate.** Pitched noise (Marble Zone) follows the melody by MOD
   playback speed rather than by re-clocking the LFSR.
 - **A MOD BPM is a whole number**, so a song's tempo can land slightly off. `convert.py` prints the
   rounding error and the `target_speed` that would reduce it.
-- 25 notes across four songs still sound at the wrong pitch — see the section above.
-
-
-## Future Improvements
-
-- VGM/VGZ as an input format
-- A wider range of drivers from Mega Drive games. 
+- 9 notes across two songs still sound at the wrong pitch — see the section above.
 
 
 ## History

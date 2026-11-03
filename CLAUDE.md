@@ -13,19 +13,19 @@ Each topic has one home; the others link to it.
 
 | Document | Contents |
 |----------|----------|
-| `docs/architecture.md` | **Code structure** — data flow, layering, every package and module, `convert()` step order, MOD binary layout |
-| `docs/pipeline.md` | **Conversion rules** — timing / BPM, note range and `voice_map` routing, `range_space`, effect mapping and priority, `EDx`, legato, levels, loop / end, detune variants, sustain loops and release slides, pattern breaks, the merged build (groups, fill pool, composites, per-pattern folds, banks, slots), **verifying against a VGZ** |
-| `docs/yaml_config.md` | **Every config key** — song config (minimal configs, channels, the instrument maps, sample shaping, merge keys, variants) and `settings.yaml` (code default vs shipped value) |
-| `docs/smps_driver.md` | **Sonic 1 driver and hardware** — coord flags, detune vs transposition, TempoWait, modulation / note fill in frames, voice layout and operator order, DAC sample rates, PSG |
-| `docs/smps_format.md` | Assembly syntax and how the parser reads it |
-| `docs/mucom_drivers.md` | **MUCOM drivers** — Mucom-MD 0.85 (Streets of Rage 2): MUCOM88's song images on the 68k, its track code, how it plays (soft release, ADSR envelopes, noise on any track), DAC, against the rips |
-| `docs/timetrax_driver.md` | **Time Trax** — Tim Follin's Z80 driver (not SMPS): where its tables are, its track code, rests that hold, glides and portamento as row slides, sweeps and volume envelopes baked (`baked_slots`), against the rips |
-| `docs/smps_variants.md` | **Other SMPS drivers** — Moonwalker (68k Type 1a), Golden Axe (Z80 Type 0 FM), Streets of Rage (68k, MUCOM-style track code), Space Harrier II (early Z80), OutRun (Z80 on Timer A): what each differs from Sonic 1 by, how it was found, how to add a variant |
-| `docs/fm_synthesis.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, `sustain_duration: auto`, render level and clipping, quantisation, OPN2, the device and core/synth API |
-| `docs/psg_synthesis.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, the device and core/synth API |
-| `docs/sfx_rendering.md` | SFX → WAV offline driver (`sonic2wav.py`), `configs/sfx.yaml`'s keys, 8-bit Amiga export |
-| `docs/mod_effects.txt` | ProTracker MOD effect reference |
-| `docs/cheat_sheets/merge_patterns.txt` | Terse list of every merge key |
+| `docs/README.md` | **Start here** — the docs index: which page answers what |
+| `docs/glossary.md` | Every project term (fold, composite, synth_root, range_space, lift ...) in plain words |
+| `docs/guide/song_configs.md` | **Every song-config key** — running a config, minimal configs, the instrument maps, sample shaping, merge keys (cheat sheet), variants |
+| `docs/guide/settings.md` | Every `settings.yaml` key: code default vs shipped value |
+| `docs/guide/amiga_builds.md` | **The merged build** — how-to, groups, fill pool, composites, per-pattern folds, banks, slots |
+| `docs/guide/verifying.md` | **Verifying against a VGZ** — setup, which tool answers what, `rips.yaml` glitches |
+| `docs/guide/sound_effects.md` | SFX → WAV offline driver (`sonic2wav.py`), `configs/sfx.yaml`'s keys, 8-bit Amiga export |
+| `docs/conversion/` | **Conversion rules**, a page each: `overview` (flow, MOD limits), `timing` (BPM, frames vs ticks), `notes` (range, `voice_map`, `root`, `range_space`), `effects` (mapping, priority, `EDx`, fill, vibrato, legato), `levels`, `song_structure` (loop / end, pattern breaks), `detune`, `samples` (sustain loops, release slides) |
+| `docs/synthesis/fm.md` | **YM2612 rendering** — catalogue, synth_root / synth_shift / target_rate, length, render level and clipping, quantisation, OPN2, the device and core/synth API |
+| `docs/synthesis/psg.md` | **SN76489 rendering** — tone divider, envelopes, rate-3 noise divider, oversampling, the device and core/synth API |
+| `docs/drivers/` | **Sound drivers** — `README.md` (supported games, adding a driver), `sonic_1.md` (coord flags, TempoWait, voice layout, DAC rates, PSG), `smps_asm.md` (assembly syntax), a page per other game: `moonwalker`, `golden_axe`, `streets_of_rage`, `space_harrier_2`, `outrun`, `streets_of_rage_2` (Mucom-MD), `time_trax` (Tim Follin's driver) |
+| `docs/developer/architecture.md` | **Code structure** — data flow, layering, every package and module, `convert()` step order, MOD binary layout, where to change what |
+| `docs/reference/mod_effects.md` | ProTracker MOD effect reference, and which effects the converter writes |
 | `docs/todo/` | Plans: `vgz_conversion.md` (VGM lift), `space_harrier_2.md` (early SMPS Z80), `revenge_of_shinobi.md` (Streets of Rage's driver, an earlier version: probe and plan, not started); closed, in `done/`: `time_trax.md` (Tim Follin's driver; listening open), `binary_import.md` (ROM input), `streets_of_rage.md` (SoR), `streets_of_rage_2.md` (Mucom-MD; listening open), `outrun.md` (SMPS Z80 on Timer A), `scaling.md` (many drivers: review, test selection), `user_improvements.md` |
 | `docs/audits/` | Per-song accuracy audits vs VGZ (2026-09): `00_soundtrack_survey.md` overview, `01`–`09` per song |
 | `reference/smps_drivers/` | SMPS driver sources (gitignored): `sonic_1/` (driver asm, music, SFX, DAC samples), `sonic_2/` |
@@ -34,7 +34,7 @@ Each topic has one home; the others link to it.
 
 ## Project Structure
 
-Full module map: `docs/architecture.md`.
+Full module map: `docs/developer/architecture.md`.
 
 ```
 sonic2mod/
@@ -149,7 +149,7 @@ python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/
 # A minimal config (name, input_file, rom_song; no channels:) - everything else derived from the song
 python convert.py configs/moonwalker/81_smooth_criminal.yaml --show-config
 python tools/vgm/vgm_compare.py configs/moonwalker/81_smooth_criminal.yaml "reference/vgz/moonwalker/03 - Smooth Criminal.vgz" --write-volumes
-# Golden Axe (SMPS Z80 Type 0 FM; docs/smps_variants.md): minimal configs, FM drums rendered from the ROM
+# Golden Axe (SMPS Z80 Type 0 FM; docs/drivers/golden_axe.md): minimal configs, FM drums rendered from the ROM
 python convert.py configs/golden_axe/81_wilderness.yaml
 # Convert straight from the ROM's bytecode (input/roms/, not in git): config rom_song:, or override
 python convert.py configs/sonic_1/02_green_hill_zone.yaml --input input/roms/sonic_rev01.bin --rom-song '$81'
@@ -247,7 +247,7 @@ python tools/vgm/vgm_frames.py --all --glitches --configs configs/space_harrier_
 # Audit a conversion against its VGZ: per-note pitch/level, pitch verdict, channel balance, onset timing,
 # vibrato rate/depth on long FM and PSG notes, noise spectrum, DAC rate.  Needs VGMPlay 0.51.x unzipped into
 # reference/vgz/vgmplay/ (untracked, like the VGZ rips; or --vgmplay DIR / VGMPLAY_DIR) and an
-# ffmpeg build with libopenmpt — setup in docs/pipeline.md § Verifying against a VGZ.
+# ffmpeg build with libopenmpt — setup in docs/guide/verifying.md.
 # Renders go to output/compare/<config>/; --skip-render reuses them.  Reference renders run in parallel and are
 # kept in samples.render_cache (output/cache/vgmplay/), keyed on the VGZ + VGMPlay.ini: a song is rendered once
 python tools/vgm/vgm_compare.py configs/sonic_1/01_title_screen.yaml "reference/vgz/sonic_1/01 - Title Theme.vgz"
@@ -335,7 +335,7 @@ empty.  `tools/mod/mod_compare.py` diffs any two MODs (`compare_mods(a, b, ignor
 
 One line each; the linked section has the cause and the detail.
 
-**Reading the song** (`docs/smps_format.md`, `docs/smps_driver.md`)
+**Reading the song** (`docs/drivers/smps_asm.md`, `docs/drivers/sonic_1.md`)
 - **Don't simulate bugs.**  Where a song's data or its driver misbehaves (a note past a frequency
   table reads stray code bytes, an overflow, a data error), convert what was meant, not the
   glitch: data fixes on, a past-table PSG note on the plausible continuation.  A rip that shows the
@@ -360,7 +360,7 @@ One line each; the linked section has the cause and the detail.
 - A song carries its driver's `PlaybackRules` (tables, envelopes, drum names, timing): read
   `song.rules`, never a driver's table directly; nothing below `core/drivers` falls back to Sonic 1's.
 
-**Converting** (`docs/pipeline.md`)
+**Converting** (`docs/conversion/`)
 - One state machine decides what a note plays: `DriverState` + `resolve_note` via `walk_channel`
   (`core/plan/driver_state.py`).  Every pass walks this way; never re-implement it.
 - `smpsDetune` / `smpsAlterNote` ($E1) is a raw FNUM offset, **not semitones**: no range lookup;
@@ -379,7 +379,7 @@ One line each; the linked section has the cause and the detail.
 - Noise mode holds from `smpsPSGform` until a driver turns it off (`PsgForm(None)`, Streets of Rage 2's);
   meanwhile `psg_voice_map` is never consulted.  Fixed-rate noise plays on a `NOISE` channel of its own.
 
-**Configs and settings** (`docs/yaml_config.md`)
+**Configs and settings** (`docs/guide/song_configs.md`)
 - settings.yaml values are used everywhere; code constants are only the fallback.
 - A config with no `channels:` is minimal: the rest is derived from the song.
 - A build that differs in a few keys is a `variants:` block, not a copied config.

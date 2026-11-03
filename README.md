@@ -2,7 +2,7 @@
 
 Convert Sega Mega Drive game music (Sonic 1, Streets of Rage, OutRun and more) to ProTracker MOD format.
 
-> reassembler 2026 | https://youtube.com/@reassembler68k | https://reassembler.blogspot.com
+> reassembler 2026 | https://youtube.com/@reassembler68k | https://www.patreon.com/cw/REASSEMBLER68K
 
 ## Features
 
@@ -243,7 +243,7 @@ Where to read next depends on what you want to do:
 | **Adding a game** | `docs/drivers/README.md` |
 | **Changing the code** | `docs/developer/architecture.md` |
 
-Overview: `docs/README.md`.  An unfamiliar term: `docs/glossary.md`.
+Main Entry Point: `docs/README.md`.  Terminology: `docs/glossary.md`.
 
 There is also a CLAUDE.md file, so you can experiment with adding functionality (or simply breaking everything) with an AI coding agent. I've found Claude Code to struggle with low-level assembly, but AI is evolving so fast that may have all changed by the time you read this! It's very good at some of the boring Python maintenance, and I used it for the above documentation. It's me writing right now though! :-)
 

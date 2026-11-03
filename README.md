@@ -81,34 +81,16 @@ Pre-configured conversions are in `configs/sonic_1/`
 
 ## How close is it?
 
-Every note of every song is checked against a VGM/VGZ recording of the real Mega Drive: the chip's
-own frequency register writes on one side, the pitch each MOD note actually sounds at on the other.
+The test harness can check the final MOD against a VGM.VGZ recording of the Mega Drive output.
+Notes, timing, chip frequency register writes and perform a pitch and volume audit. 
 
 As of the current configs that's **7775 of 7800 notes correct** (>= 60 ms, within 35 cents), none
 missing. The 25 that differ are in Spring Yard, Scrap Brain, the Ending and Credits, and are
 explained per song in `docs/audits/`.
 
-```bash
-# Symbolic, no rendering, exits 1 on a wrong or missing note. Run this first.
-python tools/vgm/vgm_pitch_audit.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
-
-# Rendered audit: per-note pitch and level, channel balance, onset timing, vibrato rate and
-# depth, noise spectrum, DAC rate.  --write-volumes applies its volume suggestions to the config.
-python tools/vgm/vgm_compare.py configs/sonic_1/02_green_hill_zone.yaml "reference/vgz/sonic_1/02 - Green Hill Zone.vgz"
-```
-
 The VGZ rips are not in the repo, and `vgm_compare.py` additionally needs VGMPlay and an ffmpeg
 build with libopenmpt — setup is in `docs/pipeline.md`. The per-song findings, and what each song
 still needs, are written up in `docs/audits/`.
-
-There is also a regression suite. It converts every song (`tests/cases.yaml`) and diffs every channel of every
-pattern against a saved baseline, so any change to the converter has to prove it altered only
-what it meant to:
-
-```bash
-python tests/regression.py --generate-baselines   # before a change, while output is known-good
-python tests/regression.py                        # after — PASS means nothing else moved
-```
 
 
 ## Analyze an SMPS file (create a new config that doesn't already exist)
@@ -231,9 +213,8 @@ I'm not particularly looking for a load of chaotic AI driven push requests at th
 
 ## Future Improvements
 
-- Support other versions and forks of SMPS
-- Binary input option
-- Tools and helpers to combine samples and channels to target 4 channel MODs
+- VGM/VGZ as an input format
+- A wider range of drivers from Mega Drive games. 
 
 
 ## History

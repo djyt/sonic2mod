@@ -1,6 +1,6 @@
 # The conversion at a glance
 
-How a song read from assembly, a ROM or a VGZ rip becomes a ProTracker MOD: what the converter does in
+How a song read from a ROM or assembly becomes a ProTracker MOD: what the converter does in
 what order, and the limits of the MOD format every rule works within.  For anyone tuning a song config
 who wants to know why the MOD looks the way it does, or anyone changing the converter.  Each rule has
 its own page ([The conversion pages](#the-conversion-pages)).

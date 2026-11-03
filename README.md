@@ -1,12 +1,12 @@
 # SONIC2MOD
 
-Convert Sonic The Hedgehog 1 SMPS assembly music files from the Sega Megadrive to MOD format.
+Convert Sega Mega Drive game music (Sonic 1, Streets of Rage, OutRun and more) to ProTracker MOD format.
 
 > reassembler 2026 | https://youtube.com/@reassembler68k | https://reassembler.blogspot.com
 
 ## Features
 
-- Input: SMPS assembly (for Sonic only) or the game's ROM
+- Input: the game's ROM, or SMPS assembly (Sonic only)
 - Instruments rendered on cycle-accurate YM2612 (Nuked-OPN2) and SN76489 emulators
 - Driver-accurate playback: tempo, note fill, modulation, detune, transposition, loops
 - Effects mapped to ProTracker: vibrato, slides, volume, note delays, pattern breaks
@@ -14,10 +14,39 @@ Convert Sonic The Hedgehog 1 SMPS assembly music files from the Sega Megadrive t
 - Verification against VGZ rips: per-note pitch, level, timing and balance audits
 - Sound effects rendered to WAV, or 8-bit samples with a manifest for the Amiga
 
+
+## Games Supported
+
+| Game | Driver | Configs |
+|------|--------|---------|
+| Sonic The Hedgehog | SMPS 68k | `configs/sonic_1/` |
+| Michael Jackson's Moonwalker | SMPS 68k (Type 1a) | `configs/moonwalker/` |
+| Golden Axe | SMPS Z80 (Type 0 FM) | `configs/golden_axe/` |
+| Space Harrier II | SMPS Z80 (early) | `configs/space_harrier_2/` |
+| OutRun | SMPS Z80 (Timer A) | `configs/outrun/` |
+| Streets of Rage | SMPS 68k (MUCOM-style) | `configs/streets_of_rage/` |
+| Streets of Rage 2 | Mucom-MD | `configs/streets_of_rage_2/` |
+| Time Trax | Tim Follin's Z80 driver | `configs/time_trax/` |
+
+
 ## Requirements
 
 - Python 3.11+
-- GCC or MSVC on PATH *(only on Linux / Mac, or to recompile the synthesis libraries: pre-compiled Windows DLLs are included in `prebuilt/`)*
+- GCC or MSVC on PATH *(if on Linux or Mac to build the third-party libraries)*
+
+### Optional
+
+Aside from the ROMs, most of the following are only required for development work.
+
+| Requirement | Where | Used for |
+|-------------|-------|----------|
+| Game ROMs | `input/roms/` | Every supported game aside from Sonic's asm song data |
+| Sonic 1 driver disassembly | `reference/smps_drivers/sonic_1/` | `sonic2wav --all` (its SFX asm), or use `sonic2wav --rom` |
+| VGZ rips | `reference/vgz/<game>/` | The `tools/vgm/` audits against the Mega Drive |
+| VGMPlay 0.51.x | `reference/vgz/vgmplay/` | `vgm_compare.py`: renders the rips |
+| ffmpeg with libopenmpt | PATH | `vgm_compare.py`: renders the MODs |
+| `pip install -e .[dev]` | — | Lint, type checks, tests |
+| `capstone`, `z80dis` (in `[dev]`) | — | `tools/rom/disasm.py`: a driver's 68k / Z80 code |
 
 
 ## Installation
@@ -27,9 +56,6 @@ git clone https://github.com/djyt/sonic2mod
 cd sonic2mod
 pip install -e .
 ```
-
-An editable install: the code reads `configs/`, `3rdparty/` and `prebuilt/` from the clone, so a plain
-`pip install .` into site-packages cannot find them.
 
 This registers three CLI commands: `sonic2mod` (convert), `sonic2mod-analyze` (analyse) and
 `sonic2wav` (render the sound effects). All three take `--version`.
@@ -57,69 +83,98 @@ Or using Python directly:
 python convert.py configs/sonic_1/02_green_hill_zone.yaml
 ```
 
-Output `.mod` files are written to `output/sonic_1/` (each game its own folder) and can be opened in [Fast Tracker 2 Clone](https://16-bits.org/ft2.php).
+Output `.mod` files are written to `output/sonic_1/` (or whichever game you converted) and can be opened in [Fast Tracker 2 Clone](https://16-bits.org/ft2.php).
 
 That's it - nice and easy. The complexity comes if you want to extend the tool further really. 
 
 
-## Games Supported
+## How It Works
 
-| Game | Driver | Configs |
-|------|--------|---------|
-| Sonic The Hedgehog | SMPS 68k | `configs/sonic_1/` |
-| Michael Jackson's Moonwalker | SMPS 68k (Type 1a) | `configs/moonwalker/` |
-| Golden Axe | SMPS Z80 (Type 0 FM) | `configs/golden_axe/` |
-| Space Harrier II | SMPS Z80 (early) | `configs/space_harrier_2/` |
-| OutRun | SMPS Z80 (Timer A) | `configs/outrun/` |
-| Streets of Rage | SMPS 68k (MUCOM-style) | `configs/streets_of_rage/` |
-| Streets of Rage 2 | Mucom-MD | `configs/streets_of_rage_2/` |
-| Time Trax | Tim Follin's Z80 driver | `configs/time_trax/` |
+```
+  song (asm or ROM)
+        │
+        ▼
+  ┌───────────┐   one per sound driver: reads the song, plays it as the game does
+  │  driver   │   core/drivers/
+  └─────┬─────┘
+        │
+        ▼
+  ┌───────────┐   configs/settings.yaml   global: synthesis, sample rates, sizes
+  │ converter │ ◄
+  └─────┬─────┘   configs/<game>/*.yaml   per song: instruments, ranges, levels
+        │
+        ├──► song.mod           every channel of the original
+        ├──► song_merged.mod    channels folded to 4 for the Amiga (merge groups)
+        └──► song_<variant>     a version differing in a few ways (e.g. lofi: smaller samples)
+```
+
+- **Driver:** each game's sound driver is read as data: its song format, tables and timing.
+- **Settings:** `settings.yaml` holds what applies to every song.
+- **Song config:** names the song and maps its voices to instruments. A minimal config names only
+  the song; the rest is derived.
+- **Merged build:** folds channels into composite instruments so the song fits four channels.
+- **Variants:** a `variants:` block in a config overrides a few keys for an alternative build.
 
 
 ## Sonic Music
 
 Pre-configured conversions are in `configs/sonic_1/`
 
-| Config | Song |
-|--------|------|
-| `01_title_screen.yaml` | Title Screen |
-| `02_green_hill_zone.yaml` | Green Hill Zone |
-| `03_marble_zone.yaml` | Marble Zone |
-| `04_spring_yard_zone.yaml` | Spring Yard Zone |
-| `05_lab_zone.yaml` | Labyrinth Zone |
-| `06_star_light_zone.yaml` | Star Light Zone |
-| `07_scrap_brain_zone.yaml` | Scrap Brain Zone |
-| `08_special_stage.yaml` | Special Stage |
-| `09_robotnik.yaml` | Boss (Robotnik) |
-| `10_final_zone.yaml` | Final Zone |
-| `11_stage_clear.yaml` | Stage Clear |
-| `12_ending_theme.yaml` | Ending Theme |
-| `13_credits.yaml` | Credits |
-| `14_invincibility.yaml` | Invincibility |
-| `15_1up.yaml` | 1-Up / Extra Life |
-| `16_chaos_emerald.yaml` | Chaos Emerald |
-| `17_drowning.yaml` | Drowning |
-| `18_continue_screen.yaml` | Continue Screen |
-| `19_game_over.yaml` | Game Over |
+| Config | Song | 4-channel |
+|--------|------|-----------|
+| `01_title_screen.yaml` | Title Screen | Yes |
+| `02_green_hill_zone.yaml` | Green Hill Zone | Yes |
+| `03_marble_zone.yaml` | Marble Zone |  |
+| `04_spring_yard_zone.yaml` | Spring Yard Zone |  |
+| `05_lab_zone.yaml` | Labyrinth Zone |  |
+| `06_star_light_zone.yaml` | Star Light Zone |  |
+| `07_scrap_brain_zone.yaml` | Scrap Brain Zone |  |
+| `08_special_stage.yaml` | Special Stage |  |
+| `09_robotnik.yaml` | Boss (Robotnik) | Yes |
+| `10_final_zone.yaml` | Final Zone |  |
+| `11_stage_clear.yaml` | Stage Clear | Yes |
+| `12_ending_theme.yaml` | Ending Theme |  |
+| `13_credits.yaml` | Credits |  |
+| `14_invincibility.yaml` | Invincibility | Yes |
+| `15_1up.yaml` | 1-Up / Extra Life | Yes |
+| `16_chaos_emerald.yaml` | Chaos Emerald |  |
+| `17_drowning.yaml` | Drowning |  |
+| `18_continue_screen.yaml` | Continue Screen | Yes |
+| `19_game_over.yaml` | Game Over | Yes |
 
 
-## How close is it?
+## Render sound effects to WAV
 
-The test harness can check the final MOD against a VGM.VGZ recording of the Mega Drive output.
-Notes, timing, chip frequency register writes and perform a pitch and volume audit. 
+Sonic 1's 49 sound effects skip the MOD pipeline. `sonic2wav` runs a frame-accurate copy of the Sonic 1 sound driver on the same chip emulators,
+as `configs/sfx.yaml` says: output folder, format, bit depth, rate, level and more.
 
-As of the current configs Sonic has **7793 of 7802 notes correct**, none missing. 
-The 9 notes that differ are in Spring Yard and the Credits, and are explained in `docs/audits/`.
+```bash
+sonic2wav --all                    # 16-bit stereo 44.1 kHz WAV → output/sonic_1/sfx/
+sonic2wav --all --dry-run          # render and report, write nothing
+sonic2wav "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"   # one effect
+```
 
-The VGZ rips are not in the repo, and `vgm_compare.py` additionally needs VGMPlay and an ffmpeg
-build with libopenmpt — setup is in `docs/pipeline.md`.
+A variant in `sfx.yaml` lays its keys over the defaults. `amiga` writes signed 8-bit mono `.raw` files
+on ProTracker's period table, with a `manifest.yaml` giving each sample's note, volume and repeat:
+
+```bash
+sonic2wav --all --variant amiga    # → output/sonic_1/sfx/amiga/
+```
+
+Details, the 8-bit chain and the deviations from stock hardware: `docs/guide/sound_effects.md`.
 
 
-## Analyze an SMPS file (create a new config that doesn't already exist)
+## Make a config for a new song
 
 Example: Create a config file from the Green Hill Zone assembly:
 ```bash
 sonic2mod-analyze "input/sonic_1/Mus81 - GHZ.asm"
+```
+
+Save the generated config to a file:
+
+```bash
+sonic2mod-analyze "input/sonic_1/Mus81 - GHZ.asm" --write configs/sonic_1/my_ghz.yaml
 ```
 
 With an existing config to show coverage:
@@ -131,46 +186,26 @@ sonic2mod-analyze "input/sonic_1/Mus81 - GHZ.asm" --config configs/sonic_1/02_gr
 The analyzer isn't perfect, makes mistakes and bad decisions. Like us all. Expect to hand-tweak its output in certain cases to get the best possible results. 
 
 
-## Render sound effects to WAV
+## How close is it?
 
-Sonic 1's 49 sound effects are a different problem to its music: they're 60 Hz tick-driven, mostly under a second, and built almost entirely from per-tick pitch sweeps and volume ramps that a tracker row grid would flatten. So they don't go through the MOD pipeline at all.
+The test harness can check the final MOD against a VGM/VGZ recording of the Mega Drive output.
+Notes, timing, chip frequency register writes and perform a pitch and volume audit. 
 
-`sonic2wav` instead runs a tick-accurate reimplementation of the Sonic 1 sound driver against the same YM2612 and SN76489 emulators, producing a continuous timeline:
+As of the current configs Sonic has **7793 of 7802 notes correct**, none missing. 
+The 9 notes that differ are in Spring Yard and the Credits, and are explained in `docs/audits/`.
 
-```bash
-sonic2wav --all
-```
 
-Or using Python directly:
+## Limitations
 
-```bash
-python sonic2wav.py --all
-```
-
-Output `.wav` files are written to `output/sonic_1/sfx/` as 16-bit stereo 44.1 kHz — stereo because hard panning is real design intent in Sonic 1 (`B5_Ring.wav` is right-only, and `CE_Ring_Left_Speaker.wav` is its left-channel twin).
-
-Render a single effect, or check what would be produced without writing anything:
-
-```bash
-python sonic2wav.py "reference/smps_drivers/sonic_1/sfx/SndB5 - Ring.asm"
-python sonic2wav.py --all --dry-run
-```
-
-What is written is set in `configs/sfx.yaml`: `rate` (`native` writes at the chip's own 53267 Hz and skips resampling), `psg_gain` (the PSG against the FM), `level` and more; `--config` reads another file. By default a single global gain is applied across all 49 files, which keeps the relative loudness the composers intended rather than making everything equally loud.
-
-### 8-bit samples for the Amiga
-
-```bash
-python sonic2wav.py --all --variant amiga
-```
-
-Writes signed 8-bit mono `.raw` files to `output/sonic_1/sfx/amiga/` alongside a `manifest.yaml` giving each sample's rate, the note to trigger it at, the suggested MOD volume and its repeat points.
-
-Eight bits needs roughly the opposite treatment to the 16-bit set. Each sample is DC-corrected, resampled once straight from the chip rate, peak-normalised, and dithered with noise shaping — then the volume column restores the composed balance. Normalising per sample rather than globally is worth a median 1.5 bits, and 3.1 bits on the quietest effect.
-
-Rates sit on ProTracker's own period table (`paula: true`), so each sample plays at true pitch with finetune 0. The `amiga` variant writes every effect at one rate (`rate: 8287`, C-2); `rate: auto` picks one per effect, up to `max_rate` (16574 targets an A500, whose fixed ~4.4 kHz filter makes more largely academic, and roughly halves the total).
-
-See `docs/sfx_rendering.md` for the driver details, the 8-bit chain, and the handful of documented deviations from stock hardware.
+- **One sample per range.** A range is synthesised at a single pitch (`synth_root`) and the Amiga
+  resamples it for the rest, so anything time-based in the patch scales with playback rate: the
+  envelope runs faster on high notes, and detuned-carrier beating changes speed with pitch. A
+  minimal config caps each range at nine semitones (`samples.max_window`); in a full config, split
+  wider ranges into two entries with their own `root`.
+- **Noise samples have one LFSR rate.** Pitched noise (Marble Zone) follows the melody by MOD
+  playback speed rather than by re-clocking the LFSR.
+- **A MOD BPM is a whole number**, so a song's tempo can land slightly off. `convert.py` prints the
+  rounding error and the `target_speed` that would reduce it.
 
 
 ## FM/PSG Synthesis
@@ -198,35 +233,21 @@ python tools/chips/validate_sn76489.py
 
 ## Documentation
 
-| Document | Contents |
-|----------|----------|
-| `docs/yaml_config.md` | Full YAML config schema |
-| `docs/pipeline.md` | Conversion pipeline — SMPS→MOD effect mapping, BPM derivation, verifying against a VGZ |
-| `docs/smps_driver.md` | Megadrive Sonic 1 driver reference — all coord flag bytes, timing |
-| `docs/smps_format.md` | SMPS assembly syntax — header macros, `dc.b` tokens, effect macros |
-| `docs/fm_synthesis.md` | YM2612 synthesis pipeline |
-| `docs/psg_synthesis.md` | SN76489 PSG synthesis pipeline |
-| `docs/sfx_rendering.md` | The offline SFX driver, the 8-bit chain, deviations from stock hardware |
-| `docs/architecture.md` | Module layout and layering — start here to change the code |
-| `docs/audits/` | Per-song accuracy audits against the VGZ recordings |
+Where to read next depends on what you want to do:
+
+| You are… | Read |
+|----------|------|
+| **A listener**: you want the MODs | Quick Start above; `docs/guide/amiga_builds.md` for 4-channel versions |
+| **An arranger**: you are tuning a song's sound | `docs/guide/song_configs.md`, then `docs/conversion/overview.md` |
+| **Checking accuracy** against the hardware | `docs/guide/verifying.md` |
+| **Adding a game** | `docs/drivers/README.md` |
+| **Changing the code** | `docs/developer/architecture.md` |
+
+Overview: `docs/README.md`.  An unfamiliar term: `docs/glossary.md`.
 
 There is also a CLAUDE.md file, so you can experiment with adding functionality (or simply breaking everything) with an AI coding agent. I've found Claude Code to struggle with low-level assembly, but AI is evolving so fast that may have all changed by the time you read this! It's very good at some of the boring Python maintenance, and I used it for the above documentation. It's me writing right now though! :-)
 
 I'm not particularly looking for a load of chaotic AI driven push requests at this moment in time, but I'm happy to get robust and meaningful changes merged in. Or feel free to fork the codebase and do it your own way. Don't let me slow down your dreams!
-
-
-## Limitations
-
-- **One sample per range.** A range is synthesised at a single pitch (`synth_root`) and the Amiga
-  resamples it for the rest, so anything time-based in the patch scales with playback rate: the
-  envelope runs faster on high notes, and detuned-carrier beating changes speed with pitch. Voice
-  $04 in Green Hill beats at 6.5 Hz on C6 where the hardware beats at 4.46 Hz. The fix is to split
-  ranges wider than about nine semitones into two entries with their own `root` / `synth_root`.
-- **Noise samples have one LFSR rate.** Pitched noise (Marble Zone) follows the melody by MOD
-  playback speed rather than by re-clocking the LFSR.
-- **A MOD BPM is a whole number**, so a song's tempo can land slightly off. `convert.py` prints the
-  rounding error and the `target_speed` that would reduce it.
-- 9 notes across two songs still sound at the wrong pitch — see the section above.
 
 
 ## History

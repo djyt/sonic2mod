@@ -268,7 +268,7 @@ Then measure the volumes against the rip and verify the notes: [verifying.md](ve
 | Key | Default | What it does |
 |---|---|---|
 | `name` | `"Untitled"` (minimal: file stem) | MOD title (20 characters kept) |
-| `input_file` | required | `.asm`; a `.vgm` / `.vgz` rip (lifted back into a song, [glossary](../glossary.md#lift)); or a ROM (`.bin` / `.md` / `.gen`) with `rom_song`.  Relative to the working directory |
+| `input_file` | required | `.asm`; a `.vgm` / `.vgz` rip (lifted back into a song, [glossary](../glossary.md#lift): Sonic 1's driver only, FM notes and lengths only, for checking the reader, not a usable MOD); or a ROM (`.bin` / `.md` / `.gen`) with `rom_song`.  Relative to the working directory |
 | `rom_song` | — | ROM input only: the sound ID (`"$81"`, `"0x81"` or `129`).  Known data fixes for that exact ROM apply (`core/rom/fixes.py`) |
 | `driver` | detected (ROM); `sonic1` (asm, rip) | `sonic1`, `smps68k_type1a` (Moonwalker), `smpsz80_type0fm` (Golden Axe), `smps68k_streets_of_rage`, `smpsz80_sh2` (Space Harrier II), `smpsz80_outrun`, `mucom_md` (Streets of Rage 2), `timetrax` |
 | `tempo_modifier`, `tempo_divider` | inferred | `.vgm` / `.vgz` input only: override the lift's tempo (each ≥ 1) |

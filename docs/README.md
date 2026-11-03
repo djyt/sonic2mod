@@ -5,7 +5,7 @@ plays it, renders each instrument on emulated Mega Drive sound chips, and writes
 MOD patterns.  These pages explain how to use it, how it works, and how to change it.
 
 ```
-  song (asm, ROM or VGZ rip)
+  song (ROM or asm)
         │
         ▼
   ┌───────────┐  drivers/       reads the song as the game's driver plays it

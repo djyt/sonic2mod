@@ -44,8 +44,8 @@ def prepare_merged_config(config, song=None) -> None:
                          "channels in the config — nothing to fold")
     sources = {c.source for c in config.channels}
     seen: set[str] = set()
-    # A vacated channel keeps its column and moves each note as itself: it may carry no fold,
-    # follow none, and not be dropped or pooled
+    # A vacated channel keeps its column and moves each note as itself (a fold's primary: with its
+    # composite): it may follow none, and not be dropped or pooled
     for key, lst in (("merge_drop", config.merge_drop), ("merge_fill", config.merge_fill),
                      ("merge_vacate", config.merge_vacate)):
         for src in lst:
@@ -54,6 +54,10 @@ def prepare_merged_config(config, song=None) -> None:
             if src in seen:
                 raise ValueError(f"{key}: channel {src} is listed twice (or in merge_drop / merge_fill too)")
             seen.add(src)
+    for src, into in config.merge_vacate_into.items():
+        for dest in into:
+            if dest not in sources or dest == src:
+                raise ValueError(f"merge_vacate {src}: {dest} is not another channel of the channels section")
     for src in config.merge_pattern_drop:
         if src not in sources:
             raise ValueError(f"merge_patterns drop: channel {src} is not in the channels section")
@@ -74,7 +78,7 @@ def prepare_merged_config(config, song=None) -> None:
         for src in (g.primary, *g.followers):
             if src not in sources:
                 raise ValueError(f"{ctx}: channel {src} is not in the channels section")
-            if src in seen:
+            if src in seen and not (src == g.primary and src in config.merge_vacate):
                 raise ValueError(f"{ctx}: channel {src} is in merge_drop / merge_fill / merge_vacate as well")
             if (g.primary, *g.followers).count(src) > 1:
                 raise ValueError(f"{ctx}: channel {src} is listed twice")

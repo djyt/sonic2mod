@@ -691,8 +691,11 @@ def print_merge(console: Console, rep: Report) -> None:
             d['lost'] += w.get('orphans', 0)
             d['cut'] += w.get('held', 0) + w.get('truncated', 0) + w.get('solo_cut', 0)
     rows = []
+    routed = {}                                   # a group's primary on another column (mod_channel)
     for g in _infos(rep, InfoKind.MERGE_GROUP):
         _name, pats = _where(g['label'])
+        if g.get('route') is not None:
+            routed[g['primary']] = g['route'] + 1
         col = g['route'] + 1 if g.get('route') is not None else home.get(g['primary'])
         if not g.get('followers'):
             rows.append((pats, col, f"[bold]{g['primary']}[/bold] [dim]moved[/dim]", "", "", "", "", ""))
@@ -709,7 +712,7 @@ def print_merge(console: Console, rep: Report) -> None:
         where = ", ".join(f"{n}→{ch}" for ch, n in sorted(f['targets'].items(), key=lambda kv: -kv[1]))
         col, kind = "", "fill"
         if f.get('vacate'):                           # the rest stay on its own column
-            col, kind, where = home.get(f['source'], ""), "vacate", f"{where} · {f['kept']} stay"
+            col, kind, where = routed.get(f['source'], home.get(f['source'], "")), "vacate", f"{where} · {f['kept']} stay"
         rows.append(("", col, f"[bold]{f['source']}[/bold] [dim]{kind}: {where}[/dim]", "", str(f['placed']), "",
                      f"[red]{f['lost']}[/red]" if f['lost'] else "[dim]—[/dim]",
                      f"[yellow]{f['cut']}[/yellow]" if f['cut'] else "[dim]—[/dim]"))

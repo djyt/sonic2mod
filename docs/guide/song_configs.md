@@ -522,7 +522,7 @@ merge_patterns:                   # groups per block of patterns
 | `merge_output_file` | song | `<output stem>_merged.mod` | Where `--merged` writes (not suffixed by a variant) |
 | `merge_drop` | song | `[]` | Channels left out of the merged build everywhere |
 | `merge_fill` | song | `[]` | The fill pool: each note on whichever column is silent when it starts |
-| `merge_vacate` | song | `[]` | Channels that keep their column but move each note to one silent for all of it (nothing cut but a release slide); frees a column for a game's sound effects |
+| `merge_vacate` | song | `[]` | Channels that keep their column but move each note to one silent for all of it (nothing cut but a release slide); frees a column for a game's sound effects.  A mapping names the columns each may take, in the order tried (`{FM4: [PSG1, FM1]}`); a fold's primary moves its composites |
 | `merge_fill_cut_after` | song | `{}` | `{channel: ticks}` (at least 1): a pool note may cut that column's notes once this old; song-wide `cut_after` |
 | `merge_tolerance` | song | `1` | Ticks a follower note-on may be off the primary's and still fold |
 | `merge_bank_slots` | song | `auto` | Slots held back for banks; `auto` rebuilds once with what the banks need, a number pins it |

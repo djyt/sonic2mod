@@ -171,14 +171,17 @@ def pool_notes(plan: MergePlan, song, conv: ConversionPlan, pan_law_db: float, s
 
 def vacate_notes(plan: MergePlan, song, conv: ConversionPlan, pan_law_db: float, sample_secs, tick_secs, grace: int,
                  targets: list, spans: dict[str, list[tuple[int, int]]], pattern_of=None) -> None:
-    """Each note of a `merge_vacate` channel onto the first column silent for all of it, cutting
-    nothing (`spans` count every note whole, cut_after or not); a note with none, or one of a
+    """Each note of a `merge_vacate` channel onto the first column silent for all of it (in column
+    order, or in the order `merge_vacate_into` names them), cutting nothing (`spans` count every note whole, cut_after or
+    not); a note with none, or one of a
     legato run (an smpsNoAttack note and the note it bends out of: a split run would slide on a
     silent column), stays on its own.  Runs after every other pool note: vacating is optional,
     so it takes no column a note would otherwise be lost without.  Appends per-source counts to
     plan.fill ('vacate': True, 'kept': the notes left home)."""
     smap = source_map(song)
     for src in conv.config.merge_vacate:
+        into = conv.config.merge_vacate_into.get(src)
+        allowed = targets if into is None else [c for name in into for c in targets if c.source == name]
         notes, _ = channel_notes(song, conv, src, pan_law_db, sample_secs, tick_secs, grace)
         tied = _legato_ticks(smap[src].events, notes)
         st = {'source': src, 'vacate': True, 'notes': len(notes), 'placed': 0, 'cut': 0, 'lost': 0,
@@ -186,7 +189,7 @@ def vacate_notes(plan: MergePlan, song, conv: ConversionPlan, pan_law_db: float,
         for t, n in sorted(notes.items()):
             here = pattern_of(t) if pattern_of is not None else None
             target = None if t in tied else next(
-                (c.source for c in targets
+                (c.source for c in allowed
                  if (here is None or here not in plan.away_patterns(c.source))
                  and _free_span(spans[c.source], t) >= n.sounding), None)
             if target is None:

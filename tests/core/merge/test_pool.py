@@ -26,10 +26,12 @@ def _event(tick: int, no_attack: bool = False) -> SimpleNamespace:
 
 
 def _pool(notes: dict[str, dict[int, NoteOn]], fill=(), cut_after=None,
-          events: dict[str, list] | None = None) -> tuple[MergePlan, dict]:
-    """pool_notes over the given channels (FM5 vacated, `fill` pooled), each with the given notes."""
+          events: dict[str, list] | None = None, into=None) -> tuple[MergePlan, dict]:
+    """pool_notes over the given channels (FM5 vacated, onto `into`'s columns only when given;
+    `fill` pooled), each with the given notes."""
     channels = [SimpleNamespace(source=s, enabled=s not in fill, mod_channel=i) for i, s in enumerate(notes)]
     config = SimpleNamespace(channels=channels, merge_fill=list(fill), merge_vacate=["FM5"],
+                             merge_vacate_into={} if into is None else {"FM5": into},
                              merge_fill_cut_after=cut_after or {})
     plan = MergePlan([])
     smap = {s: SimpleNamespace(events=list((events or {}).get(s, []))) for s in notes}
@@ -86,6 +88,18 @@ class Vacate(unittest.TestCase):
         self.assertEqual(plan.solo, {})
         self.assertEqual(_vacated(plan)['kept'], 1)
 
+    def test_only_the_columns_it_names(self):
+        # DAC comes first in column order and is silent too: FM5 may only take FM1's column
+        moved = _note(0, 6, 3)
+        plan, _ = _pool({"DAC": {}, "FM1": {}, "FM5": {0: moved}}, into=["FM1"])
+        self.assertEqual(plan.solo, {("FM1", 0): ("FM5", moved)})
+
+    def test_the_columns_it_names_in_that_order(self):
+        # Both silent: FM1 is named first, so FM1's column takes it, though DAC's comes first
+        moved = _note(0, 6, 3)
+        plan, _ = _pool({"DAC": {}, "FM1": {}, "FM5": {0: moved}}, into=["FM1", "DAC"])
+        self.assertEqual(plan.solo, {("FM1", 0): ("FM5", moved)})
+
     def test_a_legato_run_stays_home(self):
         plan, _ = _pool({
             "DAC": {},
@@ -96,7 +110,7 @@ class Vacate(unittest.TestCase):
 
 
 def _config(**merge) -> SimpleNamespace:
-    keys = dict(merge=[], merge_drop=[], merge_fill=[], merge_vacate=[], merge_pattern_drop={})
+    keys = dict(merge=[], merge_drop=[], merge_fill=[], merge_vacate=[], merge_vacate_into={}, merge_pattern_drop={})
     keys.update(merge)
     return SimpleNamespace(channels=[SimpleNamespace(source=s, enabled=True, mod_channel=i)
                                      for i, s in enumerate(("FM1", "FM2", "FM5"))], **keys)
@@ -109,7 +123,16 @@ class VacateChecks(unittest.TestCase):
             "listed twice": _config(merge_vacate=["FM5", "FM5"]),
             "merge_drop / merge_fill too": _config(merge_fill=["FM5"], merge_vacate=["FM5"]),
             "as well": _config(merge=[MergeGroup("FM1", ["FM5"])], merge_vacate=["FM5"]),
+            "not another channel": _config(merge_vacate=["FM5"], merge_vacate_into={"FM5": ["PSG1"]}),
         }
         for why, config in cases.items():
             with self.subTest(why), self.assertRaisesRegex(ValueError, why):
                 prepare_merged_config(config)
+
+    def test_a_folds_primary_may_vacate(self):
+        # Marble Zone's FM4 + FM5 chords: FM4 moves each chord, composite and all
+        config = _config(merge=[MergeGroup("FM1", ["FM5"])], merge_vacate=["FM1"], merge_vacate_into={"FM1": ["FM2"]},
+                         merge_patterns_named=set(), num_mod_channels=None, merge_output_file=None,
+                         output_file="song.mod", validate_mod_channels=lambda: None)
+        prepare_merged_config(config)
+        self.assertEqual([c.source for c in config.channels if c.enabled], ["FM1", "FM2"])

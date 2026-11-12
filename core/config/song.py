@@ -102,6 +102,16 @@ def _channel_list(data: dict, key: str) -> list[str]:
     return [str(d) for d in ([value] if isinstance(value, str) else value)]
 
 
+def _vacate(data: dict) -> tuple[list[str], dict[str, list[str]]]:
+    """merge_vacate's channels and where each may go: a list (any column), or a mapping of
+    channel to the channels whose columns it may take (`{FM4: [PSG1]}`, `{FM4: PSG1}`)."""
+    value = data.get('merge_vacate', []) or []
+    if not isinstance(value, dict):
+        return _channel_list(data, 'merge_vacate'), {}
+    into = {str(src): _channel_list(value, src) for src in value}
+    return list(into), into
+
+
 @dataclass
 class ConversionConfig:
     name: str = "Untitled"
@@ -162,8 +172,12 @@ class ConversionConfig:
     merge_fill_cut_after: dict = field(default_factory=dict)
     # Channels that keep their column but give each note to another channel silent for all of it,
     # cutting nothing (core/merge/ pool_notes); a note with nowhere to go stays.  Frees the column
-    # for a game's sound effects as far as that loses nothing
+    # for a game's sound effects as far as that loses nothing.  A fold's primary moves its notes
+    # with their composites
     merge_vacate: list = field(default_factory=list)
+    # merge_vacate's mapping form ({FM4: [PSG1]}): the only channels whose columns a vacated
+    # channel's notes may take; a channel absent here takes any
+    merge_vacate_into: dict = field(default_factory=dict)
     # Ticks a follower's note-on may be from the primary's and still fold (Green Hill's FM3 starts
     # its chord one tick after FM4/FM5); a note that short before a legato note is a grace note,
     # folded to the note it bends into.
@@ -342,7 +356,7 @@ class ConversionConfig:
         if not isinstance(cut_after, dict):
             raise ValueError("merge_fill_cut_after must be a mapping of channel to ticks")
         self.merge_fill_cut_after = {str(k): max(1, int(v)) for k, v in cut_after.items()}
-        self.merge_vacate = _channel_list(data, 'merge_vacate')
+        self.merge_vacate, self.merge_vacate_into = _vacate(data)
         self.merge_output_file = data.get('merge_output_file')
         self.merge_max_synth_shift = int(data.get('merge_max_synth_shift', self.merge_max_synth_shift))
         self.merge_loop_timbre = bool(data.get('merge_loop_timbre', self.merge_loop_timbre))

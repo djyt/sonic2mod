@@ -298,6 +298,8 @@ def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None
             if not event.note.is_rest:
                 res = ResolvedNote(solo.instrument, solo.index, solo.index, "merged", None,
                                    solo.note_value - 0x81, solo.index, solo.chip or 0, 0, solo.detune)
+                if plan is not None:
+                    _as_vacated(plan, conv.config, chan_cfg.source, event.tick_position, res)
             yield event, (solo.state or st), res
             continue
         if event.is_effect:
@@ -315,6 +317,18 @@ def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None
             if conv.baked is not None and conv.baked.carries(chan_cfg.source, event.tick_position):
                 res = None              # baked into the sounding sample (core.plan.baked): keys nothing
         yield event, st, res
+
+
+def _as_vacated(plan, config, target: str, tick: int, res: ResolvedNote) -> None:
+    """A `merge_vacate` note spliced onto `target` plays as it would at home: a fold primary's
+    its composite, at the composite's trigger note and gain (Marble Zone's FM4 + FM5 chords on
+    PSG1's column)."""
+    source, _note = plan.solo[(target, tick)]
+    if source not in config.merge_vacate:
+        return
+    res.instrument = plan.instrument_at(source, tick, res.instrument)
+    res.index = plan.note_at(source, tick, res.index)
+    res.gain_db = plan.gain_at(source, tick)
 
 
 def enabled_channels(song, config, kinds=(ChannelType.FM, ChannelType.PSG)):

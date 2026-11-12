@@ -277,6 +277,15 @@ channel 4: 28 of FM5's 84 notes move, the rest stay home.
 The channel stays live; after the rest of the pool, each of its notes moves to the first column (in
 column order) silent for all of it, else stays on its own column.
 
+```yaml
+merge_vacate:
+  FM4: [PSG1, FM1]     # onto PSG1's column, else the lead's
+```
+
+The mapping form names the channels whose columns a vacated channel's notes may take, in the order
+tried.  Sonic 1's Marble Zone has its chords (FM4 + FM5) on column 4: 38 of their 77 notes move onto
+PSG1's column wherever it is silent, 21 onto the lead's in its long rests, 18 stay.
+
 - A column's notes count whole, `merge_fill_cut_after` or not: a vacated note cuts nothing.
 - No pool note lands on a vacated column, and vacating takes no column another pool note needed.
 - A legato run (an `smpsNoAttack` note and the note it bends out of) stays home whole.
@@ -285,7 +294,8 @@ column order) silent for all of it, else stays on its own column.
   release slowly.
 - A moved note plays from its new column's side of the Amiga's L R R L panning.
 
-A vacated channel may be in no group, drop or pool.  A note moved off pattern 0 row 0 leaves a `C00`
+A vacated channel may follow no group, nor be dropped or pooled.  A fold's primary may vacate: each
+moved note plays its composite, at the composite's note and gain, as it would at home.  A note moved off pattern 0 row 0 leaves a `C00`
 there, so the loop does not come back with the column's last note ringing.
 
 ---

@@ -54,6 +54,13 @@ class Values(unittest.TestCase):
             _config(region="secam")
         self.assertEqual((_config(region="PAL").region, _config(range_space="Chip").range_space), ("pal", "chip"))
 
+    def test_merge_vacate_a_list_or_where_each_may_go(self):
+        listed = _config(merge_vacate=["FM5"])
+        self.assertEqual((listed.merge_vacate, listed.merge_vacate_into), (["FM5"], {}))
+        mapped = _config(merge_vacate={"FM4": ["PSG1"], "FM5": "DAC"})
+        self.assertEqual((mapped.merge_vacate, mapped.merge_vacate_into),
+                         (["FM4", "FM5"], {"FM4": ["PSG1"], "FM5": ["DAC"]}))
+
     def test_dac_stall_is_a_share_of_the_time(self):
         self.assertEqual(_config(dac_stall=0.35).dac_stall, 0.35)
         with self.assertRaisesRegex(ValueError, "dac_stall"):

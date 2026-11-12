@@ -138,8 +138,13 @@ class SN76489:
         latch = 0x80 | ((ch & 0x03) << 5) | (n & 0x0F)
         # Data byte:  0 0 NNNNNN   (high 6 bits of N = bits 9:4)
         data  = (n >> 4) & 0x3F
+
+        # The core turns a tone register of 0 into 1 after each byte.  From high bits 0 (a reset
+        # chip) N = 160's latch leaves 0 -> 1, and the data byte makes it 161; latching again
+        # restores the low bits
         self.write(latch)
         self.write(data)
+        self.write(latch)
 
     def write_volume(self, ch: int, vol: int) -> None:
         """Set volume for channel ch (0-3). vol: 0=max, 15=silent."""

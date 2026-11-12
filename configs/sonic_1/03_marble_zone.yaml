@@ -6,6 +6,19 @@ input_file: "input/sonic_1/Mus83 - MZ.asm"
 output_file: output/sonic_1/03_marble_zone.mod
 samples_dir: "input/sonic_1/samples/"
 
+# Variant lofi (convert.py --variant lofi --merged -> output/sonic_1/03_marble_zone_lofi_merged.mod): the
+# Amiga port's build.  Each change sits in a `variants: lofi:` block beside the keys it replaces.
+variants:
+  lofi:
+    name: "Marble Zone lofi"
+    # Half the rows (-8 KB of patterns): same tick, notes exact (EDx), but a rest landing mid-row
+    # snaps to the row - 63 key-offs move 37.5 ms, 3 lead gaps before a note close
+    ticks_per_row: 2
+    target_speed: 6
+    mod_pattern_breaks:
+      - pattern: 0
+        row: 29            # the intro is 30 rows here
+
 auto_bpm: true
 target_speed: 3
 ticks_per_row: 1
@@ -73,6 +86,11 @@ voice_map:
       mod_instrument: 3
       root: A2
       loop_drift_db: 1.5   # at 1 its timbre never settles in the 1.84 s that fit: no loop, its 2.89 s notes cut; 2 loops in the attack
+      variants:
+        lofi:
+          root: A1            # MOD B-3 is past Paula's limit; an octave down keeps 16 harmonics (-13.8 dB above), half the bytes
+          loop_drift_db: 6    # the lead loops 0.67 s in, not 1.81 (-17 KB); with no start it looped 24 ms in, a buzz
+          loop_start_ms: 700
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   1:
     - low:  E3
@@ -110,6 +128,9 @@ psg_voice_map:
       high: B6
       mod_instrument: 8
       root: F2
+      variants:
+        lofi: {high: F7, root: A1}   # one sample for F5-F7 (A-1..A-3, none past Paula's A-3): 10 harmonics
+                                     # each, the high notes had 4 (-10 KB); the entry below plays nothing
     - low:  C7
       high: F7
       mod_instrument: 9
@@ -128,6 +149,8 @@ channel_instrument_map:
       high: B6
       mod_instrument: 12
       root: A2
+      variants:
+        lofi: {root: A1}   # as FM1's
 
 
 # -------------------------------------------------------------------------------------------------
@@ -150,6 +173,8 @@ merge_patterns:
       - primary: PSG3
         followers: [FM2, DAC]
         mod_channel: FM1
+        variants:
+          lofi: {mix_note: A2}   # mixes at 14 kHz, not up to 31: treble to 7 kHz, as Green Hill's drums (-36 KB)
       # 2 - Lead: FM3 doubles FM1 at +2 FNUM (smpsAlterNote $02): one chip composite
       - primary: FM1
         followers: [FM3]

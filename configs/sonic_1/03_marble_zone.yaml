@@ -72,6 +72,7 @@ voice_map:
       high: B6
       mod_instrument: 3
       root: A2
+      loop_drift_db: 1.5   # at 1 its timbre never settles in the 1.84 s that fit: no loop, its 2.89 s notes cut; 2 loops in the attack
   # $01 — alg 2: (1+(2→3))→4, fb 7 — used by FM2
   1:
     - low:  E3

@@ -184,7 +184,7 @@ functions:
   core/config/entries.py::_mod_note: 3ffffffffffffffffff
   core/config/entries.py::_opt: 3ffffffffffffffffff
   core/config/entries.py::_parse_instrument_range: 3ffffffffffffffffff
-  core/config/entries.py::_parse_merge_group: 1de000780e7ffc1e1e
+  core/config/entries.py::_parse_merge_group: 1de000781f7ffc1e1e
   core/config/entries.py::_parse_psg_voice_entry: 3ffc0fc7f87c01f61
   core/config/entries.py::_parse_tone2_n: 1fffe0fe7fffc01f61
   core/config/entries.py::_require: 3ffffffffffffffffff
@@ -194,7 +194,7 @@ functions:
   core/config/entries.py::parse_dac_samples: 3ffffffffffffffffff
   core/config/entries.py::parse_merge_groups: 3ffffffffffffffffff
   core/config/entries.py::parse_pattern_breaks: 3ffffffffffffffffff
-  core/config/entries.py::parse_patterns: e07c00000
+  core/config/entries.py::parse_patterns: 1f07c00000
   core/config/entries.py::parse_psg_map: 3ffffffffffffffffff
   core/config/entries.py::parse_psg_voice_map: 3ffffffffffffffffff
   core/config/entries.py::parse_voice_maps: 3ffffffffffffffffff
@@ -257,21 +257,22 @@ functions:
   core/config/song.py::_count: 3ffffffffffffffffff
   core/config/song.py::_range_space: 3ffffffffffffffffff
   core/config/song.py::_region: 3ffffffffffffffffff
-  core/config/song.py::_vacate: e00000000
+  core/config/song.py::_vacate: 23ffffd9fffffffc1ff
   core/config/song.py::variant_output_file: 100c000300630d90c0c
   core/convert/channel_writer/cells.py::Cells.__init__: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.cell: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.clear_stale_cut: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.cut: 317fd80803fffc01fe0
   core/convert/channel_writer/cells.py::Cells.cut_after: '2800000'
-  core/convert/channel_writer/cells.py::Cells.effect_at: 18080c
+  core/convert/channel_writer/cells.py::Cells.effect_at: 23ffffd9f7fffffc97f
   core/convert/channel_writer/cells.py::Cells.end: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.ensure: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.fine_slide: 3e20fc0875f07c2007e
   core/convert/channel_writer/cells.py::Cells.free: 3e21fff06a207d988ed
   core/convert/channel_writer/cells.py::Cells.grid_ticks: 3ffffe0f8e087fc2160
   core/convert/channel_writer/cells.py::Cells.in_song: 3ffffffffffffffffff
-  core/convert/channel_writer/cells.py::Cells.note_at: 3fde3e2208c02bc1fff
+  core/convert/channel_writer/cells.py::Cells.made: 23ffffd9f7fffffc17f
+  core/convert/channel_writer/cells.py::Cells.note_at: 3fde3e2208002bc1fff
   core/convert/channel_writer/cells.py::Cells.note_cell: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.put: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.put_note: 3ffffffffffffffffff
@@ -340,7 +341,9 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._cut_banked: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._cut_in_attack_row: 34007c0000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._cut_tick: 3ffffffffffffffffff
+  core/convert/channel_writer/writer.py::ChannelWriter._drop_loop_cut: 23ffffd9fffffffc1ff
   core/convert/channel_writer/writer.py::ChannelWriter._emit_volume: 3ffffffffffffffffff
+  core/convert/channel_writer/writer.py::ChannelWriter._ended: 23ffffd9f7fffffc17f
   core/convert/channel_writer/writer.py::ChannelWriter._fill_abs: 17f800803fffc01fe0
   core/convert/channel_writer/writer.py::ChannelWriter._glides_on: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._key_off: 3ffffffffffffffffff
@@ -369,8 +372,10 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._retune_attack: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._retune_tie: 3e20fc0875f07c2007e
   core/convert/channel_writer/writer.py::ChannelWriter._ring_note: 3ffffffffffffffffff
+  core/convert/channel_writer/writer.py::ChannelWriter._silent: 23ffffd9f7fffffc17f
   core/convert/channel_writer/writer.py::ChannelWriter._slide_tie: 3e00000000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._sliding: 3e3ffe087ff07c3c0fe
+  core/convert/channel_writer/writer.py::ChannelWriter._sounds_foreign: 23ffffd9f7fffffc17f
   core/convert/channel_writer/writer.py::ChannelWriter._stop_ringing: 3fffffdffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._write_decay: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._write_pan_steps: 3ffffffffffffffffff
@@ -978,7 +983,7 @@ functions:
   core/plan/driver_state.py::DriverState.for_channel: 3ffffffffffffffffff
   core/plan/driver_state.py::DriverState.range_key: 3ffffffffffffffffff
   core/plan/driver_state.py::ResolvedNote.clamped: 3ffffffffffffffffff
-  core/plan/driver_state.py::_as_vacated: c00000000
+  core/plan/driver_state.py::_as_vacated: c62800000
   core/plan/driver_state.py::enabled_channels: 3ffffffffffffffffff
   core/plan/driver_state.py::psg_range_entry: 1fffe0fe7fffc01f61
   core/plan/driver_state.py::resolve_note: 3ffffffffffffffffff

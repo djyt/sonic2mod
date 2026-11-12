@@ -506,8 +506,10 @@ def _render_drum(drum: FmDrum, frames, psg, frame_hz: float, tail: float, rate: 
 
 
 def _psg_salt() -> str:
-    """What a drum's PSG part depends on besides its inputs: the PSG emulator and its renderer."""
-    return code_salt([Path(get_psg_lib_path()), Path(psg_render.__file__)])
+    """What a drum's PSG part depends on besides its inputs: the PSG emulator, its device and its
+    renderer (the device's divider writes moved Space Harrier II's drums)."""
+    psg_device = Path(__file__).resolve().parent.parent / "chips" / "sn76489"
+    return code_salt([Path(get_psg_lib_path()), *psg_device.glob("*.py"), Path(psg_render.__file__)])
 
 
 # ---------------------------------------------------------------------------

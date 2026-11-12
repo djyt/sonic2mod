@@ -7,7 +7,7 @@ chaos_emerald:
   - tests/settings.yaml
   - --output
   - output/regression/chaos_emerald.mod
-  commit: 38e7866-dirty
+  commit: 8a0cd62-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -5927,7 +5927,7 @@ marble_zone:
   - tests/settings.yaml
   - --output
   - output/regression/marble_zone.mod
-  commit: 38e7866-dirty
+  commit: 8a0cd62-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6100,7 +6100,7 @@ marble_zone:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/03_marble_zone.yaml: d73142318eb4
+    configs/sonic_1/03_marble_zone.yaml: ee4fbe289b2f
     input/sonic_1/Mus83 - MZ.asm: 49873b8fd7f3
     tests/settings.yaml: cbe7c5cb200c
 marble_zone_rom:
@@ -6115,7 +6115,7 @@ marble_zone_rom:
   - $83
   - --output
   - output/regression/marble_zone_rom.mod
-  commit: 38e7866-dirty
+  commit: 8a0cd62-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6288,7 +6288,7 @@ marble_zone_rom:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/03_marble_zone.yaml: d73142318eb4
+    configs/sonic_1/03_marble_zone.yaml: ee4fbe289b2f
     input/roms/sonic_rev01.bin: c30832bccae0
     tests/settings.yaml: cbe7c5cb200c
 mw_beat_it:
@@ -9632,7 +9632,7 @@ sor2_jungle_base:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_jungle_base.mod
-  commit: 38e7866-dirty
+  commit: 8a0cd62-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -9817,7 +9817,7 @@ sor2_level_complete:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_level_complete.mod
-  commit: 38e7866-dirty
+  commit: 8a0cd62-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -10372,7 +10372,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/regression/special_stage.mod
-  commit: 38e7866-dirty
+  commit: 8a0cd62-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11482,7 +11482,7 @@ star_light_zone:
   - tests/settings.yaml
   - --output
   - output/regression/star_light_zone.mod
-  commit: 38e7866-dirty
+  commit: 8a0cd62-dirty
   files:
   - convert.py
   - core/__init__.py

@@ -1,8 +1,8 @@
 # Written by tests/regression.py --generate-baselines: what each baseline was made with.
 chaos_emerald:
-  commit: 38e7866-dirty
+  commit: 8a0cd62
   config: 27c0f7a4c8b5
-  date: '2026-11-02'
+  date: '2026-11-12'
   settings: 9190ec12f30b
 continue_screen:
   commit: 38e7866-dirty
@@ -150,9 +150,9 @@ lab_zone:
   date: '2026-11-02'
   settings: 9190ec12f30b
 marble_zone:
-  commit: 38e7866-dirty
-  config: 6d107d66c6a3
-  date: '2026-11-02'
+  commit: 8a0cd62
+  config: 8c9cad42fdab
+  date: '2026-11-12'
   settings: 9190ec12f30b
 mw_beat_it:
   commit: 38e7866-dirty
@@ -245,14 +245,14 @@ sor2_go_straight:
   date: '2026-11-02'
   settings: 9190ec12f30b
 sor2_jungle_base:
-  commit: 38e7866-dirty
+  commit: 8a0cd62
   config: 184dc9daeb46
-  date: '2026-11-02'
+  date: '2026-11-12'
   settings: 9190ec12f30b
 sor2_level_complete:
-  commit: 38e7866-dirty
+  commit: 8a0cd62
   config: a481b6631662
-  date: '2026-11-02'
+  date: '2026-11-12'
   settings: 9190ec12f30b
 sor2_song_12:
   commit: 38e7866-dirty
@@ -265,9 +265,9 @@ sor2_too_deep:
   date: '2026-11-02'
   settings: 9190ec12f30b
 special_stage:
-  commit: 38e7866-dirty
+  commit: 8a0cd62
   config: 2fdf36b4501f
-  date: '2026-11-02'
+  date: '2026-11-12'
   settings: 9190ec12f30b
 spring_yard_zone:
   commit: 38e7866-dirty
@@ -295,9 +295,9 @@ stage_clear_merged:
   date: '2026-11-02'
   settings: 9190ec12f30b
 star_light_zone:
-  commit: 38e7866-dirty
+  commit: 8a0cd62
   config: b6e8804d03ab
-  date: '2026-11-02'
+  date: '2026-11-12'
   settings: 9190ec12f30b
 title_screen:
   commit: 38e7866-dirty

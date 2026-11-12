@@ -51,6 +51,10 @@ class Cells:
         """The pattern exists (empty) from here on: one nothing has written yet can be read."""
         self._mod.ensure_pattern(pattern)
 
+    def made(self, pattern: int) -> bool:
+        """Something has written (or ensured) the pattern: one past it is empty."""
+        return pattern < len(self._mod.patterns)
+
     def note_at(self, pattern: int, row: int, col: int) -> int:
         return self._mod.note_at(pattern, row, col)
 

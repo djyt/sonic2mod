@@ -173,8 +173,11 @@ class ChannelWriter:
         """The loop's first rest wrote a C00 for the jump back (_silent); nothing of this channel's
         rings at the song's end, so the jump back needs none either."""
         ring = self._ring
-        if self._loop_cut is None or (ring.inst is not None and ring.foreign_end is None
-                                      and not self._ended(*Cells.cell(self._cells.end))):
+        if self._loop_cut is None:
+            return
+        end = max((ev.tick_position + ev.note.duration for ev in self._channel.events if ev.note is not None),
+                  default=0)
+        if ring.inst is not None and ring.foreign_end is None and not self._ended(*self._timeline.pattern_row(end)):
             return
         self._cells.clear_stale_cut(*self._loop_cut)
 
@@ -344,7 +347,10 @@ class ChannelWriter:
         if ring.cell is None:
             return False
         for r in range(Cells.row_total(*ring.cell), Cells.row_total(pattern, row)):
-            eff, par = self._cells.effect_at(*Cells.cell(r), self._col)
+            at = Cells.cell(r)
+            if not self._cells.made(at[0]):
+                break                       # nothing written that far yet
+            eff, par = self._cells.effect_at(*at, self._col)
             if (eff, par) == (0xC, 0) or (eff == 0xE and par >> 4 == 0xC):
                 return True
         return False

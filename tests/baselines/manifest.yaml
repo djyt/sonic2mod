@@ -154,6 +154,21 @@ marble_zone:
   config: 8c9cad42fdab
   date: '2026-11-12'
   settings: 9190ec12f30b
+marble_zone_lofi:
+  commit: 9f0e46a-dirty
+  config: e3803e7d559e
+  date: '2026-11-12'
+  settings: 9190ec12f30b
+marble_zone_lofi_merged:
+  commit: 9f0e46a-dirty
+  config: e3803e7d559e
+  date: '2026-11-12'
+  settings: 9190ec12f30b
+marble_zone_merged:
+  commit: 9f0e46a-dirty
+  config: 6e6f8819960d
+  date: '2026-11-12'
+  settings: 9190ec12f30b
 mw_beat_it:
   commit: 38e7866-dirty
   config: c9958005a29d

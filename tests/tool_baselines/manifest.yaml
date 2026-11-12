@@ -1554,6 +1554,14 @@ pitch_marble_zone:
     reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
     tests/baselines/marble_zone_baseline.mod: 24d6e748f5b8
     tests/settings.yaml: 1be2c231bd5e
+pitch_marble_zone_lofi:
+  commit: 9f0e46a-dirty
+  date: '2026-11-12'
+  inputs:
+    configs/sonic_1/03_marble_zone.yaml: bce996daa1c6
+    reference/vgz/sonic_1/03 - Marble Zone.vgz: f5de0f09459f
+    tests/baselines/marble_zone_lofi_baseline.mod: 1de04b74d925
+    tests/settings.yaml: cbe7c5cb200c
 pitch_mw_beat_it:
   commit: c6d0253-dirty
   date: '2026-11-01'

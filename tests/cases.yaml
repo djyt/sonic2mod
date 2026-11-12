@@ -17,6 +17,8 @@ sonic1:     # every song: the reference driver
   - {name: ghz_lofi, config: sonic_1/02_green_hill_zone, variant: lofi,
      why: "Green Hill Zone lofi - mix_at: primary, A2 banks, loop_drift_db 20, root-pitch samples, merge_twins: always"}
   - {name: marble_zone, config: sonic_1/03_marble_zone, why: Marble Zone - pitched rate-3 noise}
+  - {name: marble_zone_lofi, config: sonic_1/03_marble_zone, variant: lofi,
+     why: "Marble Zone lofi - 2 ticks a row with EDx, a fold's primary vacating onto named columns"}
   - {name: spring_yard_zone, config: sonic_1/04_spring_yard_zone, why: Spring Yard Zone - notes below the PSG table}
   - {name: lab_zone, config: sonic_1/05_lab_zone, why: Labyrinth Zone - rootless PSG entry + channel transpose}
   - {name: star_light_zone, config: sonic_1/06_star_light_zone, why: "Star Light Zone - range_space: chip"}

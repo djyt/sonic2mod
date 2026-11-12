@@ -141,16 +141,29 @@ mod_pattern_breaks:
 # -------------------------------------------------------------------------------------------------
 # Amiga build (convert.py --merged): 9 channels → 4.  merge_survey: FM1/FM3, FM4/FM5 clean
 # -------------------------------------------------------------------------------------------------
-merge:
-  # Drums + bass: PSG3's pitched noise follows FM2 note for note (149 paired); the kicks on 77 of them
-  - primary: PSG3
-    followers: [FM2, DAC]
-  # Lead: FM3 doubles FM1 at +2 FNUM (smpsAlterNote $02): one chip composite
-  - primary: FM1
-    followers: [FM3]
-  # Chords: FM5 a third under FM4 (77 of 77 paired)
-  - primary: FM4
-    followers: [FM5]
+# Every pattern; columns as Green Hill's: 1 drums + bass, 4 the Amiga port's sound effects' (the
+# chords).  A group's mod_channel names the column it takes over
+merge_patterns:
+  - patterns: "0-10"
+    groups:
+      # 1 - Drums + bass: PSG3's pitched noise follows FM2 note for note (149 paired); kicks on 77
+      - primary: PSG3
+        followers: [FM2, DAC]
+        mod_channel: FM1
+      # 2 - Lead: FM3 doubles FM1 at +2 FNUM (smpsAlterNote $02): one chip composite
+      - primary: FM1
+        followers: [FM3]
+        mod_channel: FM4
+      # 3 - PSG1, its own column
+      # 4 - Chords: FM5 a third under FM4 (77 of 77 paired)
+      - primary: FM4
+        followers: [FM5]
+        mod_channel: PSG3
 
 # PSG2 is PSG1 two ticks later at +1 divider: an echo, every note an orphan
 merge_drop: [PSG2]
+
+# A chord moves to column 3 wherever PSG1 is silent for all of it, else to the lead's column 2 in
+# its rests (patterns $D-$F): column 4 interrupted less
+merge_vacate:
+  FM4: [PSG1, FM1]

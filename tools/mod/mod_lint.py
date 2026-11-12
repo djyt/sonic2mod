@@ -4,7 +4,8 @@
 The regression suite compares pattern cells, which says whether a conversion changed, not
 whether what it wrote can be heard.  This walks each channel of a MOD the way a ProTracker
 player does — which sample is playing, whether it has data left, what the volume is — and
-reports every cell that is written as a sound but plays silence:
+reports every cell that is written as a sound but plays silence, and every cut that silences
+nothing:
 
     portamento_silent   a `3xx` (tone portamento: no re-trigger) on a channel whose sample has
                         played out or was never started — the note never sounds
@@ -12,6 +13,8 @@ reports every cell that is written as a sound but plays silence:
     no_sample           a note-on whose instrument has no sample data (an empty slot)
     empty_instrument    an instrument number on a cell whose slot is empty
     note_muted          a note-on written with `C00` in its own cell: it triggers at volume 0
+    redundant_cut       a `C00` on a channel already silent (cut, or nothing played) every time
+                        the walk reaches it: it silences nothing (a rest after a rest)
 
 A one-shot sample is silent once its data has played (its length in seconds at the note's
 period, PAL Amiga clock); a looped one plays until stopped.  These are ProTracker's rules and
@@ -42,7 +45,7 @@ from core.config import find_settings, load_settings
 from core.mod import PAL_AMIGA_CLOCK, period_rate, read_mod
 
 
-def lint_mod(path: str, amiga_clock: float = PAL_AMIGA_CLOCK) -> list[dict]:
+def lint_mod(path: str | bytes, amiga_clock: float = PAL_AMIGA_CLOCK) -> list[dict]:
     mod = read_mod(path)
     headers = mod.samples
     pats = mod.patterns
@@ -63,6 +66,8 @@ def lint_mod(path: str, amiga_clock: float = PAL_AMIGA_CLOCK) -> list[dict]:
     remaining = [0.0] * nch     # seconds of one-shot sample left (inf = looping)
     volume = [0] * nch
     period = [0] * nch
+    # Every C00 the walk meets: (pattern, row, channel) -> whether it silenced nothing each time
+    cuts: dict[tuple[int, int, int], bool] = {}
 
     def walk_position(pos_index: int) -> tuple[int, int] | None:
         """Play one position; returns (target position, row) of a Bxx/Dxx, or None."""
@@ -110,6 +115,9 @@ def lint_mod(path: str, amiga_clock: float = PAL_AMIGA_CLOCK) -> list[dict]:
                         remaining[ch] = float("inf") if secs is None else secs
                 elif ins:
                     volume[ch] = 64
+                if eff == 0xC and par == 0 and not per:
+                    key = (order[pos_index], r, ch)
+                    cuts[key] = cuts.get(key, True) and (inst[ch] == 0 or volume[ch] == 0)
                 if eff == 0xC:
                     volume[ch] = par
                 elif eff == 0xE and (par >> 4) == 0xC:
@@ -142,6 +150,10 @@ def lint_mod(path: str, amiga_clock: float = PAL_AMIGA_CLOCK) -> list[dict]:
     if loop_to is not None and loop_to < len(order):
         # The loop's first position once more, with the state the song's end leaves
         walk_position(loop_to)
+    for (pattern, row, ch), silent in sorted(cuts.items()):
+        if silent:
+            issues.append({"type": "redundant_cut", "pattern": pattern, "row": row, "channel": ch,
+                           "instrument": 0, "detail": "C00 on a channel already silent"})
     return issues
 
 

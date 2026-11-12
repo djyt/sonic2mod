@@ -35,10 +35,11 @@ short loop's body until the song's last tick (`prepare_song`, `core/smps/song_pr
 ## Leading rests
 
 A [leading rest](../glossary.md#leading-rest) is silence at a channel's start, before its first note.  A
-MOD that loops back to position 0 would otherwise ring the column's last note on through it.  So a
-channel whose first event is a rest gets `C00` at pattern 0 row 0 (`ModLayout.leading_rests`, after
-every channel is converted).  An effect already in that cell moves to a free row-0 cell; with none free
-the `C00` is dropped, warned (`rest_no_slot`) only when the loop does return to row 0.  The row-0 `Fxx`
+MOD that loops back to position 0 would otherwise ring the column's last note on through it.  So in a
+song that loops to position 0, a channel whose first event is a rest gets `C00` at pattern 0 row 0
+(`ModLayout.leading_rests`, after every channel is converted); a song that loops elsewhere, or ends,
+gets none.  An effect already in that cell moves to a free row-0 cell; with none free the `C00` is
+dropped, warned (`rest_no_slot`).  The row-0 `Fxx`
 are placed after this ([timing.md § Tempo commands on row 0](timing.md#tempo-commands-on-row-0)).
 
 > **Note:** Rests on the drum track write nothing anywhere in the song: the sample plays out, as on the

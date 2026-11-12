@@ -161,6 +161,23 @@ Rage 2's 1-tick hits) cannot take a `C00` there: the note would sound nothing.
 Evidence: Streets of Rage 2's Jungle Base FM3 `$1B` hits read 7.4 dB quiet against the rip when muted by
 an attack-row `C00`, and 15 dB loud when heard a whole row each.
 
+### A rest with nothing to end
+
+A rest keys off only what still rings (`ChannelWriter._silent`); otherwise it writes nothing, as a second
+key-off changes nothing on the chip:
+
+- the note already ended: a rest's `C00` or release slide, or a cut left in the column's cells since its
+  attack row (its fill, its PSG duration; read from the cells, as the attack row's `Cxx` can take an
+  `ECx`'s slot).  `nRst $3C, nRst $60` writes one `C00`, and a release keeps one slope instead of a
+  second one from full volume;
+- nothing of the channel sounds there: its note moved to another column (merge).  Another channel's
+  note spliced onto the column keeps sounding until its own end (Marble Zone's PSG1 rest cut a chord
+  vacated onto its column two rows early);
+- except the first rest from the loop's start, which ends what the song's last note leaves ringing on
+  the jump back; it is removed again where nothing rings at the song's end.
+
+`tools/mod/mod_lint.py` reports a `C00` on a channel already silent as `redundant_cut`.
+
 ## Sliding loops (`loop_decay: slide`)
 
 A [**sliding loop**](../glossary.md#sliding-loop) loops a voice that keeps falling and writes the fall as volume slides.

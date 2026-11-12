@@ -33,15 +33,13 @@ class ModLayout:
         Nothing plays there on the first pass, but a song that loops to position 0 (Robotnik,
         Special Stage) comes back with the last note before the Bxx still ringing, and this
         C00 is what ends it: without one the note rang through the leading rest until the
-        channel's next event.  The Fxx speed and BPM commands are placed after this
-        (tempo_commands) in the cells left free.  A note delayed into row 0 (EDx)
-        restarts the sample itself.  When no cell is free the C00 is dropped, with a warning
-        if the loop does return to row 0 (Star Light rests on all nine channels but loops to
-        position 1: no warning).
+        channel's next event.  A song that loops elsewhere, or ends, never comes back here: no
+        C00 (Marble Zone loops to position 1).  The Fxx speed and BPM commands are placed after
+        this (tempo_commands) in the cells left free.  A note delayed into row 0 (EDx) restarts
+        the sample itself.  When no cell is free the C00 is dropped, with a warning.
         """
-        if not rests:
+        if not rests or self._song.loop_target_tick() != 0:
             return
-        loops_to_row0 = self._song.loop_target_tick() == 0
         used = {c.mod_channel for c in self._config.channels if c.enabled}
         order = ([c for c in range(self._mod.CHANNELS) if c not in used]
                  + [c for c in sorted(used) if c not in rests])
@@ -52,8 +50,7 @@ class ModLayout:
             if (eff, par) != (0, 0):
                 slot = self._mod.free_effect_channel(0, 0, order)
                 if slot is None:
-                    if loops_to_row0:
-                        self._diag.warn(WarningKind.REST_NO_SLOT, channel=rests[ch], mod_channel=ch)
+                    self._diag.warn(WarningKind.REST_NO_SLOT, channel=rests[ch], mod_channel=ch)
                     continue
                 self._mod.put_effect(0, 0, slot, eff, par)
             self._mod.put_effect(0, 0, ch, 0xC, 0)

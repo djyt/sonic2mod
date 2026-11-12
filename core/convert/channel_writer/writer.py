@@ -47,6 +47,10 @@ class _Ring:
                                             # under its own id, released at its primary's rate
     swept: bool = False                     # its sample carries its pitch curve (a sweep: core.plan.baked)
     leveled: bool = False                   # ... its level (a volume envelope)
+    silent: bool = False                    # keyed off by a rest since (its C00 or release slide);
+                                            # a cut in the cells counts too (_ended)
+    foreign_end: int | None = None          # another channel's note spliced onto this column (merge):
+                                            # the tick it ends; this channel's rests keep off it till then
 
 
 class ChannelWriter:
@@ -87,6 +91,12 @@ class ChannelWriter:
         self._pending_path: tuple = ()             # the next note's TLs after its read (LevelPath)
         self._path: tuple = ()                     # ... the note being written's
         self._ring = _Ring()
+        # The loop's start: the first rest from there ends what the song's last note leaves ringing
+        # on the jump back, whatever rings on the first pass (a loop to row 0: the leading rests'
+        # C00, ModLayout)
+        self._loop_rest = ctx.song.loop_target_tick() or None
+        self._loop_cut: tuple[int, int, int] | None = None     # the C00 it wrote, for nothing on the
+        self._loop_cut_due = False                              # first pass (_drop_loop_cut)
         self._dac_map = {dac_cfg.name: dac_cfg for dac_cfg in ctx.config.dac_samples}
 
         self._ring_ticks = self._collect_ring_ticks()
@@ -156,7 +166,17 @@ class ChannelWriter:
                 self._write_pan_steps()
                 return
         self._on_stop()
+        self._drop_loop_cut()
         self._write_pan_steps()
+
+    def _drop_loop_cut(self) -> None:
+        """The loop's first rest wrote a C00 for the jump back (_silent); nothing of this channel's
+        rings at the song's end, so the jump back needs none either."""
+        ring = self._ring
+        if self._loop_cut is None or (ring.inst is not None and ring.foreign_end is None
+                                      and not self._ended(*Cells.cell(self._cells.end))):
+            return
+        self._cells.clear_stale_cut(*self._loop_cut)
 
     def _on_stop(self) -> None:
         """smpsStop keys the track off (StopTrack → FMNoteOff): an FM note still ringing at the
@@ -225,11 +245,11 @@ class ChannelWriter:
                 # column's last note ringing, which this note re-keyed: a leading rest's C00
                 self._ctx.leading_rests.setdefault(self._router.current(tick), self._cfg.source)
             return
-        if not self._cells.in_song(pattern):
-            return
+        if not self._cells.in_song(pattern) or self._sounds_foreign(tick):
+            return                  # another channel's note on this column: its own rest ends it
         self._col = self._router.current(tick)
-        if not self._cells.note_at(pattern, row, self._col):      # else a note-on already takes the column
-            self._key_off(pattern, row, tick)
+        if not self._ended(pattern, row) and not self._cells.note_at(pattern, row, self._col):
+            self._key_off(pattern, row, tick)       # else ended already, or a note-on takes the column
         self._ring.inst = None
 
     def _on_rest(self, event) -> None:
@@ -268,6 +288,9 @@ class ChannelWriter:
             # (ModLayout.leading_rests).
             self._ctx.leading_rests[self._col] = self._cfg.source
             return
+        if self._silent(event):
+            return
+        loop_cut, self._loop_cut_due = self._loop_cut_due, False
 
         # Another channel's notes take this column here (mod_channel): its note-on ends this ring
         if self._router.borrowed(self._col, tick) and self._cells.note_at(pattern, row, self._col):
@@ -291,6 +314,47 @@ class ChannelWriter:
             if self._cells.note_at(pattern, row, self._col):
                 return
         self._key_off(pattern, row, tick)
+        if loop_cut and self._cells.effect_at(pattern, row, self._col) == (0xC, 0):
+            self._loop_cut = (pattern, row, self._col)
+
+    def _silent(self, event) -> bool:
+        """Nothing of this channel's rings on its column: no note yet, its note keyed off or cut
+        already, moved to another column, or another channel's note spliced in (merge), which
+        its own spliced rest ends.  A rest there writes no C00 (Marble Zone's `nRst $3C, nRst
+        $60`; its chords vacated off column 4 left a C00 per rest behind, and PSG1's rest cut a
+        chord vacated onto its column two rows early).  Except the first rest from the loop's
+        start: on the jump back the song's last note may still ring (_drop_loop_cut)."""
+        ring = self._ring
+        if ring.inst is not None and not self._ended(*self._timeline.pattern_row(event.tick_position)):
+            return event.spliced is None and self._sounds_foreign(event.tick_position)
+        if self._loop_rest is not None and event.tick_position >= self._loop_rest:
+            self._loop_rest = None
+            self._loop_cut_due = True
+            return False
+        return True
+
+    def _ended(self, pattern: int, row: int) -> bool:
+        """The ringing note no longer sounds by (pattern, row): keyed off (a C00 or release slide
+        from a rest), or a cut in its column's cells since its attack row - its fill, its PSG
+        duration.  Read from the cells, not from where a cut was placed: the attack row's slot
+        can go to its Cxx after (Streets of Rage 2's Too Deep, PSG duration ECx under C08)."""
+        ring = self._ring
+        if ring.silent:
+            return True
+        if ring.cell is None:
+            return False
+        for r in range(Cells.row_total(*ring.cell), Cells.row_total(pattern, row)):
+            eff, par = self._cells.effect_at(*Cells.cell(r), self._col)
+            if (eff, par) == (0xC, 0) or (eff == 0xE and par >> 4 == 0xC):
+                return True
+        return False
+
+    def _sounds_foreign(self, tick: int) -> bool:
+        """Another channel's note spliced onto this column still sounds at `tick` (merge).  From
+        its end on, this channel's own event there ends it: core.merge splices no rest of its own
+        where the target has one (Green Hill's fill notes)."""
+        end = self._ring.foreign_end
+        return end is not None and tick < end
 
     def _cut_in_attack_row(self, pattern: int, row: int, tick: int) -> bool:
         """A key-off on its note's own attack row, the voice's release a cut (Fades.release_rate):
@@ -313,6 +377,7 @@ class ChannelWriter:
         loops, or would be cut short of the chip's release either way), else C00.  No slide on
         a column another channel's notes take (mod_channel): it would sit on their notes."""
         rate = None if self._router.borrowed(self._col, tick) else self._release_rate(self._ring.inst, tick)
+        self._ring.silent = True
         if rate is None:
             self._cells.put(pattern, row, self._col, 0xC, 0)
             return
@@ -334,11 +399,15 @@ class ChannelWriter:
             return self._on_carried(event)
         return self._on_melodic(event, res)
 
-    def _open_cell(self, pattern: int, row: int, tick: int) -> None:
-        """Take the column a note-on at `tick` goes to, a stale C00 in its cell cleared."""
+    def _open_cell(self, pattern: int, row: int, tick: int, foreign_end: int | None) -> None:
+        """Take the column a note-on at `tick` goes to, a stale C00 in its cell cleared.
+        `foreign_end`: another channel's note, spliced in (merge), ending at that tick."""
         self._col = self._router.take(pattern, row, tick, self._ring.inst is not None)
         self._cells.clear_stale_cut(pattern, row, self._col)
         self._ring.cell = (pattern, row)
+        self._ring.silent, self._ring.foreign_end = False, foreign_end
+        if self._loop_rest is not None and tick >= self._loop_rest:
+            self._loop_rest = None          # a note-on re-keys the channel on the jump back itself
 
     # --- DAC ------------------------------------------------------------------------------------
     def _on_dac(self, event) -> bool:
@@ -359,7 +428,7 @@ class ChannelWriter:
         pattern, row, delay = self._cells.note_cell(tick, True, None, self._ring.cell)
         if not self._cells.in_song(pattern):
             return False
-        self._open_cell(pattern, row, tick)
+        self._open_cell(pattern, row, tick, tick + note.duration if event.spliced is not None else None)
 
         dac_cfg = self._dac_map.get(note.dac_name)
         if dac_cfg:
@@ -418,7 +487,7 @@ class ChannelWriter:
         n.pattern, n.row, n.delay = self._cells.note_cell(n.tick, slot_free, n.cut_tick, self._ring.cell)
         if not self._cells.in_song(n.pattern):
             return False
-        self._open_cell(n.pattern, n.row, n.tick)
+        self._open_cell(n.pattern, n.row, n.tick, n.tick + n.duration if n.solo is not None else None)
         self._cells.put_note(n.pattern, n.row, self._col, n.mod_note, n.instrument)
         self._played(n.instrument, n.tick)
         self._ring_note(n)
@@ -621,8 +690,7 @@ class ChannelWriter:
         if cut_cell == n.cell and n.bank9:
             cut_cell = Cells.cell(n.row_total + 1)
 
-        # Another row: C00 only where no note-on fires (rest events also emit C00 there, which
-        # is idempotent)
+        # Another row: C00 only where no note-on fires (the rest there then writes nothing)
         if cut_cell != n.cell:
             pattern, row = cut_cell
             if cut_cell not in self._note_on_positions and self._cells.in_song(pattern):

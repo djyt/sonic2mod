@@ -136,3 +136,15 @@ channel_instrument_map:
 mod_pattern_breaks:
   - pattern: 0
     row: 59
+
+
+# -------------------------------------------------------------------------------------------------
+# Amiga build (convert.py --merged): 9 channels → 7 so far, towards 4.  merge_survey: both clean
+# -------------------------------------------------------------------------------------------------
+merge:
+  # Drums: PSG3's pitched noise on the kicks (77 paired), its other 72 hits between them
+  - primary: DAC
+    followers: [PSG3]
+  # Lead: FM3 doubles FM1 at +2 FNUM (smpsAlterNote $02): one chip composite
+  - primary: FM1
+    followers: [FM3]

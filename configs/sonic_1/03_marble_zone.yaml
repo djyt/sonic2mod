@@ -18,6 +18,18 @@ variants:
     mod_pattern_breaks:
       - pattern: 0
         row: 29            # the intro is 30 rows here
+    sample_list:                    # measured on the lofi merged renders, each part against its chip channels
+      - [1, "kick.raw", 51, 0]
+      - [2, "snare.raw", 46, 3]
+      - [3, "fm_v00.raw", 10, 0]    # lead: 8 played 1.9 dB under the drums (the A1 root's lost treble)
+      - [4, "fm_v01.raw", 15, 0]
+      - [5, "fm_v02.raw",  7, 0]    # chords: 8 played 0.8 dB over
+      - [6, "fm_v03.raw", 14, 0]
+      - [7, "fm_v04.raw", 10, 0]
+      - [8, "psg_fTone_08_lo.raw", 7, 0]   # PSG1: 6 played 1.3 dB under
+      - [9, "psg_fTone_08_hi.raw", 7, 0]
+      - [10, "psg_noise.raw", 7, 0]
+      - [12, "fm_v00.raw", 8, 0]
 
 auto_bpm: true
 target_speed: 3

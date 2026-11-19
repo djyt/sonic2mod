@@ -65,6 +65,7 @@ class Composite:
     longest: float = 0.0               # seconds of the longest note that plays it: a looped layer is
                                        #   unrolled for at least this (the mix cannot loop at another rate)
     pitch_hz: float | None = None      # mix: the primary's pitch at `base` (a looped mix's period)
+    sources: tuple[str, ...] = ()      # the channels it sounds; () = its group's (followers' solo chord: theirs)
     chip_base: FmInstrument | None = None   # mix, fm_on_chip: the primary and its FM followers rendered
                                        #   together on the chip (an id past CHIP_BASE_IDS), mixed in
                                        #   place of the primary's sample and those followers' ones

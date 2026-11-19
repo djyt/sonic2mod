@@ -299,7 +299,7 @@ def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None
                 res = ResolvedNote(solo.instrument, solo.index, solo.index, "merged", None,
                                    solo.note_value - 0x81, solo.index, solo.chip or 0, 0, solo.detune)
                 if plan is not None:
-                    _as_vacated(plan, conv.config, chan_cfg.source, event.tick_position, res)
+                    _as_placed(plan, conv.config, chan_cfg.source, event.tick_position, res)
             yield event, (solo.state or st), res
             continue
         if event.is_effect:
@@ -319,16 +319,20 @@ def walk_channel(channel, conv: ConversionPlan, chan_cfg, st: DriverState | None
         yield event, st, res
 
 
-def _as_vacated(plan, config, target: str, tick: int, res: ResolvedNote) -> None:
-    """A `merge_vacate` note spliced onto `target` plays as it would at home: a fold primary's
-    its composite, at the composite's trigger note and gain (Marble Zone's FM4 + FM5 chords on
-    PSG1's column)."""
+def _as_placed(plan, config, target: str, tick: int, res: ResolvedNote) -> None:
+    """A note spliced onto `target` plays what the merge placed there.  A `merge_vacate` fold
+    primary's note: its composite, at the composite's trigger note and gain, as at home (Marble
+    Zone's FM4 + FM5 chords on PSG1's column).  Followers' notes starting together on a silent
+    primary: the composite of them all, on `target`, whose router triggers it at its note as it
+    does a primary note's (Special Stage's FM3 / FM4 / FM5 stabs on FM2's column)."""
     source, _note = plan.solo[(target, tick)]
-    if source not in config.merge_vacate:
+    if source in config.merge_vacate:
+        res.instrument = plan.instrument_at(source, tick, res.instrument)
+        res.index = plan.note_at(source, tick, res.index)
+        res.gain_db = plan.gain_at(source, tick)
         return
-    res.instrument = plan.instrument_at(source, tick, res.instrument)
-    res.index = plan.note_at(source, tick, res.index)
-    res.gain_db = plan.gain_at(source, tick)
+    res.instrument = plan.instrument_at(target, tick, res.instrument)
+    res.gain_db = plan.gain_at(target, tick)
 
 
 def enabled_channels(song, config, kinds=(ChannelType.FM, ChannelType.PSG)):

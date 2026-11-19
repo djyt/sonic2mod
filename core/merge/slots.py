@@ -11,7 +11,8 @@ from .notes import CompositeKey
 
 def fit_composites(plan: MergePlan, song, conv: ConversionPlan, free: list[int],
                     drums: set[int] = frozenset(), fm_slots: set[int] = frozenset(),  # type: ignore[assignment]
-                    reserve: int = 0, last: set[int] = frozenset()) -> set[int]:  # type: ignore[assignment]
+                    reserve: int = 0, last: set[int] = frozenset(),  # type: ignore[assignment]
+                    written=lambda tick: True) -> set[int]:
     """Give every composite a MOD instrument slot - a never-named slot, or one of an instrument
     the merged build no longer plays - dropping composites while they do not all fit.
 
@@ -23,10 +24,10 @@ def fit_composites(plan: MergePlan, song, conv: ConversionPlan, free: list[int],
     no slot here (`core.merge.banks` packs them once mixed); `reserve` slots are held back for the
     banks, and whatever the fit leaves free is theirs too (`plan.spare_slots`).  The `last` slots
     are offered after the others, so the reserve (the list's tail) takes them first: a banked
-    drum's slot becomes a bank.  `conv` walks with `plan` in force.  Returns the instruments left
-    unused by the final plan."""
+    drum's slot becomes a bank.  `conv` walks with `plan` in force; `written(tick)`: a note-on there
+    is in the MOD (not past the loop).  Returns the instruments left unused by the final plan."""
     while True:
-        unused = _unused_instruments(plan, song, conv)
+        unused = _unused_instruments(plan, song, conv, written)
         sources = plan.pcm_sources                          # of the composites still in the plan
         slots = free + sorted(unused - (sources & drums), key=lambda s: (s in last, s))
         pcm_only = (unused & sources & fm_slots) - drums
@@ -202,9 +203,10 @@ def _assign_slots(plan: MergePlan, chosen: dict[int, int]) -> None:
     plan.notes = {k: n for k, n in plan.notes.items() if k in plan.ticks}
 
 
-def _unused_instruments(plan: MergePlan, song, conv: ConversionPlan) -> set[int]:
+def _unused_instruments(plan: MergePlan, song, conv: ConversionPlan, written) -> set[int]:
     """Instruments the merged build renders nothing for: named by the maps, the DAC mapping or
-    the sample list, but played by no note of a channel that stays in the output."""
+    the sample list, but played by no note of a channel that stays in the output, up to the loop
+    (`written`: Green Hill's FM2 bass a note past it, its sample otherwise played inside mixes only)."""
     used: set[int] = set(plan.instruments)
     smap = source_map(song)
     dac_map = {d.name: d.mod_instrument for d in conv.config.dac_samples}
@@ -215,6 +217,8 @@ def _unused_instruments(plan: MergePlan, song, conv: ConversionPlan) -> set[int]
         for event, _st, res in walk_channel(channel, conv, chan_cfg):
             if event.is_note and event.spliced is None and plan.is_folded(chan_cfg.source, event.tick_position):
                 continue                     # played on another channel (or dropped) in this pattern
+            if not written(event.tick_position):
+                continue
             if res is not None:
                 used.add(res.instrument)
             elif event.is_note and event.note.is_dac and event.note.dac_name in dac_map:

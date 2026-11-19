@@ -431,6 +431,34 @@ def pair_channels(p_notes: dict[int, NoteOn], p_rests: list[int],
     return st
 
 
+def solo_chords(p_notes: dict[int, NoteOn], stats: list[PairStats],
+                tolerance: int) -> list[tuple[NoteOn, list[NoteOn], tuple[str, ...]]]:
+    """Solo notes of a group's followers that start together (within `tolerance` ticks): one
+    chord each, (lead, layers, their channels), the lead the first follower's in group order.  Only one note
+    can take the primary's column at a tick, so the layers sound inside the lead's composite:
+    each leaves its follower's solo notes and counts as paired (Sonic 1's Special Stage: FM3 /
+    FM4 / FM5's stabs between FM2's bass notes, which played FM3 alone)."""
+    p_ticks = sorted(p_notes)
+    chords = []
+    for i, lead_st in enumerate(stats):
+        for t in sorted(lead_st.solo_notes):
+            layers, sources = [], [lead_st.follower]
+            for st in stats[i + 1:]:
+                near = [ft for ft in st.solo_notes if abs(ft - t) <= tolerance]
+                if not near:
+                    continue
+                ft = min(near, key=lambda k: abs(k - t))
+                layers.append(st.solo_notes.pop(ft))
+                sources.append(st.follower)
+                if _sounding_at(p_ticks, p_notes, ft) is None:
+                    st.solo -= 1
+                else:
+                    st.cuts -= 1                    # cut_primary: it cut the primary's tail
+                st.paired += 1
+            if layers:
+                chords.append((lead_st.solo_notes[t], layers, tuple(sources)))
+    return chords
+
 def composite_key(p: NoteOn, followers: list[NoteOn], chip: bool, level_scale, tolerance: int = 1) -> CompositeKey:
     """The composite a primary note with these followers plays: rendered on the chip
     (every follower a layer) or mixed from samples (every follower at its MOD note)."""

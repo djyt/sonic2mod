@@ -125,7 +125,7 @@ def sample_names(mod: ModFile, song: SmpsSong, conv: ConversionPlan, played: dic
             if c.banked:
                 continue
             g = c.group
-            label = getattr(g, "name", None) or channel_label([g.primary, *g.followers], "+")
+            label = getattr(g, "name", None) or channel_label(list(c.sources) or [g.primary, *g.followers], "+")
             comps[c.inst] = [label, notes.get(c.inst, ""), f"[{g.where.strip(' []')}]" if g.where else ""]
         # Twins (two chord shapes made at one note) are numbered, ahead of the patterns that may not fit
         seen = Counter(_fit(p) for p in comps.values())

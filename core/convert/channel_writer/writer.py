@@ -574,9 +574,9 @@ class ChannelWriter:
         # other note hard, so half its notes carry a -3 dB Cxx, and all of them start a tick off
         # the grid.
         # A sound inside a sample bank (core.merge.banks): the note starts with 9xx at its offset, so
-        # the attack row's effect slot is the offset's
-        self._ring.member = (plan.bank_members.get((self._cfg.source, tick))
-                             if plan is not None and solo is None else None)
+        # the attack row's effect slot is the offset's.  A solo note's too: followers soloing together
+        # play a composite on this column (Green Hill's bass + hat while the drums rest)
+        self._ring.member = plan.bank_members.get((self._cfg.source, tick)) if plan is not None else None
         region = (plan.region_at(self._cfg.source, tick)
                   if self._ring.member is not None and plan is not None else None)
         return NoteOn(event=event, res=res, tick=tick, duration=note.duration, instrument=res.instrument,

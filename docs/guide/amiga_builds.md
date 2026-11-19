@@ -191,7 +191,7 @@ sample or its note fill, whichever is shorter):
 | resting | the primary alone | `alone` |
 | still sounding from earlier | the primary alone; the follower's ring is lost | `held` |
 | note-on while the primary sounds, not on a primary note-on | lost — or, with `cut_primary: true`, played as a solo note that cuts the primary's tail | `orphan` / `cut` |
-| note-on while the primary is silent | spliced onto the primary's column as itself (its instrument, note, level, fill) | `solo` |
+| note-on while the primary is silent | spliced onto the primary's column as itself (its instrument, note, level, fill); several followers' at once: one composite of them, the first follower's note leading (`merge_solo_chords`: Special Stage's chord stabs between bass notes) | `solo` (the lead), `paired` (the rest) |
 
 **Onset tolerance.**  `merge_tolerance` (ticks, default 1): a follower note-on that close to the
 primary's counts as at *t*.  A note that short followed by an `smpsNoAttack` note is a grace note:

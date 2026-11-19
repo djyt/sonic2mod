@@ -529,6 +529,7 @@ merge_patterns:                   # groups per block of patterns
 | `merge_twins` | song | `short` | `short`: same-shape composites share a slot only while slots are short; `always`: always |
 | `merge_max_synth_shift` | song | `12` | Cap (semitones) on how far above its root a sample is rendered; `0` halves shifted samples |
 | `merge_loop_timbre` | song | `false` | The merged build's loops wait for the timbre to hold, as the reference build's do (bigger samples) |
+| `merge_solo_chords` | song | `true` | Followers' notes starting together while the primary is silent play one composite on its column; `false`: the first follower's note alone, the rest lost (fewer composites) |
 
 "Block group" = a `merge_patterns` group only: `mod_channel`, `fill` and `cut_after` are errors in `merge:`.
 `merge:` groups may sit beside `merge_patterns:`.  A channel stays in the output unless it is a follower or

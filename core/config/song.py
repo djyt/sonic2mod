@@ -27,7 +27,8 @@ _KEYS = frozenset({
     "auto_bpm", "region", "range_space", "samples_dir", "max_patterns", "channels", "dac_samples", "voice_map",
     "channel_instrument_map", "psg_map", "psg_voice_map", "sample_list", "mod_pattern_breaks", "merge",
     "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_vacate", "merge_output_file",
-    "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "merge_loop_timbre", "loop_drift_db",
+    "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "merge_loop_timbre", "merge_solo_chords",
+    "loop_drift_db",
     "treble_shelf_db", "dac_stall", "max_window", "level_patch_min", "baked_slots", "window_root", "row_grid",
 })
 
@@ -223,6 +224,9 @@ class ConversionConfig:
     # The merged build's sustain loops wait for the timbre to hold too (core.audio.loops
     # PROFILE_PER_DB), as the reference build's always do; off by default, as it grows the samples
     merge_loop_timbre: bool = False
+    # Followers' notes starting together while their primary is silent play one composite on its
+    # column (core.merge.solo_chords); off: the first follower's note alone, the rest lost (bytes)
+    merge_solo_chords: bool = True
     merge_output_file: str | None = None                   # default: output_file stem + "_merged"
     merge_active: bool = False                             # set by core.merge.prepare_merged_config
 
@@ -362,6 +366,7 @@ class ConversionConfig:
         self.merge_output_file = data.get('merge_output_file')
         self.merge_max_synth_shift = int(data.get('merge_max_synth_shift', self.merge_max_synth_shift))
         self.merge_loop_timbre = bool(data.get('merge_loop_timbre', self.merge_loop_timbre))
+        self.merge_solo_chords = bool(data.get('merge_solo_chords', self.merge_solo_chords))
         self.merge_tolerance = int(data.get('merge_tolerance', self.merge_tolerance))
         bank_slots = data.get('merge_bank_slots', 'auto')
         self.merge_bank_slots_auto = str(bank_slots).lower() == 'auto'

@@ -1,6 +1,6 @@
 """The merge's note rules (core/merge/notes.py), on hand-built objects: a key-off a tick before the
 primary's end is no key-off, a transposed chord shares its composite, a unison chord is its
-primary louder (no composite).
+primary louder (no composite), followers soloing together are one chord.
 
     python -m pytest tests/core/merge/test_notes.py -q
 """
@@ -21,6 +21,7 @@ from core.merge import (
     trigger_note,
     unison_gain_db,
 )
+from core.merge.notes import pair_channels, solo_chords
 from core.smps import ChannelType
 
 
@@ -103,3 +104,20 @@ class Unison(unittest.TestCase):
         p, f = _note(kind=ChannelType.PSG, inst=17, level_db=-2.0), _note(kind=ChannelType.PSG, inst=17, level_db=-8.0)
         self.assertAlmostEqual(_gain(p, [f], False), 20 * math.log10(1 + 10 ** (-6 / 20)))
         self.assertIsNone(unison_gain_db(p, [_note(kind=ChannelType.PSG, inst=18)], chip=False))
+
+
+class SoloChords(unittest.TestCase):
+    def test_followers_soloing_together_are_one_chord(self):
+        # The primary rests from tick 8; FM4 and FM5 start a tick apart at 16 (one chord), FM5
+        # alone at 32 (a solo note as before)
+        p_notes = {0: _note(0)}
+        fm4 = {16: _note(16, index=28)}
+        fm5 = {17: _note(17, index=31), 32: _note(32)}
+        stats = [pair_channels(p_notes, [8], f, "FM2", name, tolerance=1) for name, f in (("FM4", fm4), ("FM5", fm5))]
+
+        chords = solo_chords(p_notes, stats, tolerance=1)
+
+        self.assertEqual(len(chords), 1)
+        lead, layers, sources = chords[0]
+        self.assertEqual((lead.tick, [n.tick for n in layers], sources), (16, [17], ("FM4", "FM5")))
+        self.assertEqual((stats[1].solo, stats[1].paired, list(stats[1].solo_notes)), (1, 1, [32]))

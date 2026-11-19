@@ -111,6 +111,7 @@ variants:
     loop_drift_db: 20               # loops may freeze 20 dB above the settled level: shorter samples
     merge_max_synth_shift: 0        # render every sample at its root pitch: half the bytes of an octave up
     merge_loop_timbre: true         # loops wait for the timbre to hold, as the reference build's do (+124 B)
+    merge_solo_chords: false        # bass alone where bass + hat start while the drums rest: 18 KB less
     sample_list:                    # measured on the lofi renders (instruments 3, 10, 11 differ)
       - [1,  "kick.raw",        64, -2]
       - [2,  "snare.raw",       64, 1]

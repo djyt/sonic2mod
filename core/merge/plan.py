@@ -21,6 +21,7 @@ from .notes import (
     fm_layer,
     match_onsets,
     pair_channels,
+    solo_chords,
     unison_gain_db,
 )
 from .pool import pool_notes, splice_solo_notes
@@ -220,7 +221,7 @@ def build_merge_plan(song, conv: ConversionPlan, *, pan_law_db: float, bank_slot
                     └──────────┘
     """
     assert conv.merge is None
-    planner = _Planner(song, conv, pan_law_db, baselines or {}, sample_secs, tick_secs, pattern_of)
+    planner = _Planner(song, conv, pan_law_db, baselines or {}, sample_secs, tick_secs, pattern_of, last_pattern)
 
     planner.collect_notes()
     planner.record_lost_notes(last_pattern)
@@ -233,6 +234,8 @@ def build_merge_plan(song, conv: ConversionPlan, *, pan_law_db: float, bank_slot
 
     for gn in planner.groups:
         planner.fold(gn)
+        if conv.config.merge_solo_chords:
+            planner.fold_solos(gn)
         splice_solo_notes(planner.plan, song, gn.group, gn.p_notes)
 
     planner.plan.bank_slots = bank_slots
@@ -244,11 +247,12 @@ class _Planner:
     """build_merge_plan's state between its phases."""
 
     def __init__(self, song, conv: ConversionPlan, pan_law_db: float, baselines: dict[str, dict[int, float]],
-                 sample_secs, tick_secs, pattern_of):
+                 sample_secs, tick_secs, pattern_of, last_pattern: int | None = None):
         config = conv.config
         self.song, self.conv, self.config = song, conv, config
         self.pan_law_db, self.baselines = pan_law_db, baselines
         self.sample_secs, self.tick_secs, self.pattern_of = sample_secs, tick_secs, pattern_of
+        self.last_pattern = last_pattern
         self.plan = MergePlan(config.merge, pattern_drop={k: set(v) for k, v in config.merge_pattern_drop.items()})
         if pattern_of is None and (any(g.patterns is not None for g in self.plan.groups) or config.merge_pattern_drop):
             raise ValueError("merge_patterns: groups need pattern_of(tick) to know which notes they fold")
@@ -358,14 +362,24 @@ class _Planner:
                                          f"({g.primary} plays {p.kind.value} notes)")
                     self._place(g, p, self._composite_for(g, p, [], False, None), False)
                 continue
-            spec = self.cat.instruments.get(p.instrument)
-            chip = spec is not None and all(chip_pair(p, fn) for fn in present)
+            self._fold_chord(g, p, present)
 
-            gain = unison_gain_db(p, present, chip, self.tol)
-            if gain is not None:
-                self._unison(g, p, gain, chip)
-                continue
-            self._place(g, p, self._composite_for(g, p, present, chip, spec), chip)
+    def fold_solos(self, gn: GroupNotes) -> None:
+        """Follower notes starting together while the primary is silent: one note on its column,
+        playing the composite of them all, as a chord on a primary note does (notes.solo_chords)."""
+        for lead, layers, sources in solo_chords(gn.p_notes, self.plan.stats_of(gn.group), self.tol):
+            self._fold_chord(gn.group, lead, layers, sources)
+
+    def _fold_chord(self, g: MergeGroup, p: NoteOn, present: list[NoteOn], sources: tuple[str, ...] = ()) -> None:
+        """Note `p` on the primary's column with `present` sounding in it: a unison, or a composite
+        (of `sources`' notes; none named: the group's)."""
+        spec = self.cat.instruments.get(p.instrument)
+        chip = spec is not None and all(chip_pair(p, fn) for fn in present)
+        gain = unison_gain_db(p, present, chip, self.tol)
+        if gain is not None:
+            self._unison(g, p, gain, chip)
+            return
+        self._place(g, p, self._composite_for(g, p, present, chip, spec, sources), chip)
 
     def _unison(self, g: MergeGroup, p: NoteOn, gain: float, chip: bool) -> None:
         """The primary's own sound, louder: no composite, no slot."""
@@ -375,7 +389,8 @@ class _Planner:
         u['notes'] += 1
         u['gains'][round(gain, 2)] = u['gains'].get(round(gain, 2), 0) + 1
 
-    def _composite_for(self, g: MergeGroup, p: NoteOn, present: list[NoteOn], chip: bool, spec) -> Composite:
+    def _composite_for(self, g: MergeGroup, p: NoteOn, present: list[NoteOn], chip: bool, spec,
+                       sources: tuple[str, ...] = ()) -> Composite:
         """The composite this chord plays: an existing one of its key, else a new one."""
         plan = self.plan
         key = composite_key(p, present, chip, self.level_scale, self.tol)
@@ -392,7 +407,7 @@ class _Planner:
         inst = self.provisional
         vol, ft = self.vol_of.get(p.instrument, (MOD_MAX_VOLUME, 0))
         entry = SampleRow(inst, f"merge {g.label}"[:SAMPLE_NAME_BYTES], vol, ft)
-        comp = Composite(inst, key, g, p.kind, entry=entry, banked=g.bank and not chip,
+        comp = Composite(inst, key, g, p.kind, entry=entry, banked=g.bank and not chip, sources=sources,
                          pitch_hz=semitone_to_hz(p.chip) if p.chip is not None else None)
         if chip:
             assert spec is not None and p.voice is not None
@@ -499,6 +514,10 @@ class _Planner:
             speed = PERIOD_TABLE[own] / PERIOD_TABLE[plan.notes.get((src, tick), plan.bases.get((src, tick), c.base))]
             c.heard.append((end, nxt, speed))
 
+    def _written(self, tick: int) -> bool:
+        """A note-on at `tick` is in the MOD: not past its last pattern (the loop's Bxx)."""
+        return self.pattern_of is None or self.last_pattern is None or self._pat(tick) <= self.last_pattern
+
     def settle(self) -> None:
         """Budgets, then slots (plan.bank_slots held back for the banks), then stand-ins; which
         instruments the build still renders."""
@@ -531,7 +550,8 @@ class _Planner:
         banked_drums = {c.primary for c in plan.composites.values() if c.group.bank_drums and not c.key.layers}
         unused = fit_composites(plan, self.song, self.conv.with_merge(plan), self.free,
                                  drums={d.mod_instrument for d in config.dac_samples} - banked_drums,
-                                 fm_slots=set(self.cat.instruments), reserve=reserve, last=banked_drums)
+                                 fm_slots=set(self.cat.instruments), reserve=reserve, last=banked_drums,
+                                 written=self._written)
         stand_in(plan)
         self._measure_heard()
         for c in plan.composites.values():         # fm_on_chip: rendered for every note's run through it

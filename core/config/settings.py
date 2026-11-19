@@ -25,7 +25,7 @@ def _psg_volume_mode(value) -> str:
 # settings.yaml `samples:` keys; each was top level before it
 SAMPLE_KEYS = ("max_sample_kb", "pt_zero_bytes", "dither", "dc_block", "sustain_loops", "loop_drift_db",
                "treble_shelf_db", "treble_shelf_hz", "resample_taps", "render_cache", "compact_slots",
-               "trim_tails", "names", "root_harmonics", "top_note", "max_window", "drum_root")
+               "trim_tails", "share_duplicates", "names", "root_harmonics", "top_note", "max_window", "drum_root")
 
 
 # settings.yaml's keys, by section (None: the top level)
@@ -89,7 +89,7 @@ def _names(data: dict, default: str, filepath: str) -> str:
 
 def _builds(data: dict, key: str, default: str, filepath: str) -> str:
     """A `samples:` key of settings.yaml naming the builds a step runs in (compact_slots,
-    trim_tails): off | merged | all (SUSTAIN_LOOP_MODES' words)."""
+    trim_tails, share_duplicates): off | merged | all (SUSTAIN_LOOP_MODES' words)."""
     v = mode_word(data.get(key, default))
     if v not in SUSTAIN_LOOP_MODES:
         raise ValueError(f"{filepath}: {key} must be one of {', '.join(SUSTAIN_LOOP_MODES)} (got '{v}')")
@@ -268,6 +268,9 @@ class SampleSettings:
     # settings.yaml samples.trim_tails: which builds have each one-shot sample cut where the written
     # MOD's notes stop hearing it (core.mod.reach, ModFile.trim_tails) - "off", "merged", "all"
     trim_tails: str = "off"
+    # settings.yaml samples.share_duplicates: which builds give samples with the same bytes, loop, volume
+    # and finetune one slot (ModFile.share_duplicates; lossless) - "off", "merged", "all"
+    share_duplicates: str = "all"
     # settings.yaml samples.names: "source" names each sample for what plays it and what it was made
     # from (core/convert/sample_names.py), "file" by its sample_list file name
     names: str = "source"
@@ -303,6 +306,10 @@ class SampleSettings:
         """True when this build's one-shot samples are cut to what is heard of them (ModFile.trim_tails)."""
         return self.trim_tails == "all" or (self.trim_tails == "merged" and merged)
 
+    def shares(self, merged: bool) -> bool:
+        """True when this build's identical samples share one slot (ModFile.share_duplicates)."""
+        return self.share_duplicates == "all" or (self.share_duplicates == "merged" and merged)
+
     def loops_for(self, merged: bool) -> bool:
         """True when this build (the merged one or the reference) gets sustain loops."""
         return self.sustain_loops == "all" or (self.sustain_loops == "merged" and merged)
@@ -318,6 +325,7 @@ class SampleSettings:
             sustain_loops=_sustain_loops(smp, cls.sustain_loops, filepath),
             compact_slots=_builds(smp, "compact_slots", cls.compact_slots, filepath),
             trim_tails=_builds(smp, "trim_tails", cls.trim_tails, filepath),
+            share_duplicates=_builds(smp, "share_duplicates", cls.share_duplicates, filepath),
             names=_names(smp, cls.names, filepath),
             loop_drift_db=_non_negative(smp, "loop_drift_db", cls.loop_drift_db, filepath),
             treble_shelf_db=shelf_db,

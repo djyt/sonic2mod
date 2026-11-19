@@ -87,6 +87,7 @@ Shared by both chips' samples.
 | `pt_zero_bytes` | `true` | `true` | Zero a one-shot sample's first word: ProTracker replays it after the sample ends (else a buzz or DC step) |
 | `compact_slots` | `merged` | `merged` | Renumber the used slots from 1 without gaps: `off`, `merged`, `all` (`all`: slots no longer match the config's numbers) |
 | `trim_tails` | `off` | `merged` | Cut each one-shot sample after the last byte any note can be heard to, found by replaying the MOD as ProTracker does: `off`, `merged`, `all`.  Lossless; disk samples stay whole.  [samples.md](../conversion/samples.md) |
+| `share_duplicates` | `all` | `all` | Samples with the same bytes, loop, volume and finetune share one slot, every note playing the first: `off`, `merged`, `all`.  Lossless |
 | `names` | `source` | `source` | Sample names: `source` (what plays it: `F1/3/4/5 $05 C4-B5`, `D dKick B-2`) or `file` (the `sample_list` file name).  An entry's `name:` wins |
 | `treble_shelf_db` | `0` | `0` | Brightness shelf on every render above `treble_shelf_hz`, before loops and quantising; 0 = off (as the hardware) |
 | `treble_shelf_hz` | `2500` | `2500` | The shelf's corner, at the sample's own pitch |

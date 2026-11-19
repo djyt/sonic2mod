@@ -756,6 +756,8 @@ def print_merge(console: Console, rep: Report) -> None:
     notes += [f"{i['after']}-channel MOD: columns {i['after'] + 1}–{i['before']} were empty" for i in _infos(rep, InfoKind.NARROWED)]
     notes += [f"{_kb(i['bytes'])} of sample tails never heard, cut from {len(i['samples'])} samples (trim_tails)"
               for i in _infos(rep, InfoKind.TAILS_TRIMMED)]
+    notes += [f"{_kb(i['bytes'])} in {i['samples']} sample{'s' if i['samples'] != 1 else ''} the same as another's, "
+              f"their notes moved onto it (share_duplicates)" for i in _infos(rep, InfoKind.SAMPLES_SHARED)]
     notes += [f"limit_db: {i['composites']} mixes' peaks limited, up to {i['max_db']:.1f} dB"
               for i in _infos(rep, InfoKind.MERGE_LIMITED)]
     for n in notes:

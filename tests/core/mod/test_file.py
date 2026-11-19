@@ -66,6 +66,23 @@ class CompactTests(unittest.TestCase):
         self.assertEqual(mod.compact_samples(), {1: 1, 5: 2})
 
 
+class SharedDuplicates(unittest.TestCase):
+    def test_an_identical_sample_gives_its_notes_to_the_first(self):
+        mod = _mod()
+        _fill_slot(mod, 17, 8, 64)                  # now the same as slot 1: bytes, loop, volume
+        self.assertEqual(mod.share_duplicates(), {17: 1})
+        self.assertEqual(mod.samples[16].length, 0)
+        self.assertEqual(read_mod(bytes(mod.get_bytes())).patterns[0][2][2][1], 1)
+
+    def test_a_difference_anywhere_keeps_both(self):
+        for differ in (lambda s: s.set_volume(63), lambda s: s.set_finetune(1),
+                       lambda s: setattr(s, "repeat", 0)):
+            mod = _mod()
+            _fill_slot(mod, 17, 8, 64)
+            differ(mod.samples[16])
+            self.assertEqual(mod.share_duplicates(), {})
+
+
 class ModWriter(unittest.TestCase):
     def test_every_sample_takes_exactly_the_bytes_its_header_declares(self):
         mod = ModFile(4)

@@ -304,7 +304,24 @@ class SmpsToModConverter:
         zero_idle = self.synth.pt_zero_bytes if self.synth else True
         if zero_idle:
             mod.zero_idle_words()
+
+        # Samples left byte for byte the same share a slot: their final bytes, so last
+        if settings is not None and settings.shares(self.config.merge_active):
+            self._share_duplicates(mod, settings.compacts(self.config.merge_active))
         return mod
+
+    def _share_duplicates(self, mod: ModFile, compact: bool) -> None:
+        """Identical samples given one slot (ModFile.share_duplicates), the slots compacted again
+        where this build compacts them; the warnings and sample_sources renumbered to match."""
+        size = {slot: len(s.data) for slot, s in enumerate(mod.samples, 1)}
+        shared = mod.share_duplicates()
+        if not shared:
+            return
+        packed = mod.compact_samples() if compact else {}
+        moved = {s: packed.get(shared.get(s, s), shared.get(s, s)) for s in range(1, len(mod.samples) + 1)}
+        self._diag.remap_instruments({s: t for s, t in moved.items() if s != t})
+        self._slot_map = {old: moved[new] for old, new in (self._slot_map or {s: s for s in moved}).items()}
+        self._diag.info(InfoKind.SAMPLES_SHARED, samples=len(shared), bytes=sum(size[s] for s in shared))
 
     def _trim_tails(self, mod: ModFile, amiga_clock: float) -> None:
         """The one-shot samples cut to what the finished MOD's notes are heard to

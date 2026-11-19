@@ -71,6 +71,7 @@ class InfoKind(StrEnum):
     NOISE_ENVELOPE = 'noise_envelope'
     DAC_SATURATED = 'dac_saturated'
     TAILS_TRIMMED = 'tails_trimmed'                 # one-shots cut to what is heard (samples.trim_tails)
+    SAMPLES_SHARED = 'samples_shared'               # identical samples given one slot (samples.share_duplicates)
     TAILS_KEPT = 'tails_kept'                       # trim_tails skipped: an effect the replay does not model
     NORMALISED = 'normalised'                       # every volume raised (normalise_volumes)
     # merged build

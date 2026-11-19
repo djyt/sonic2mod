@@ -342,6 +342,31 @@ class ModFile:
                     pat.put(row, channel, cell._replace(instrument=new))
         return mapping
 
+    def share_duplicates(self) -> dict[int, int]:
+        """Every sample the same as an earlier slot's (bytes, loop, volume, finetune) emptied, its
+        notes playing the earlier one: lossless (Sonic 1's Special Stage merged, two lead
+        composites differing only past where their samples end).  Returns {emptied slot: slot}."""
+        first: dict[tuple, int] = {}
+        shared: dict[int, int] = {}
+        for slot, s in enumerate(self.samples, 1):
+            if not s.length:
+                continue
+            key = (s.data, s.repeat, s.repeat_length, s.volume, s.finetune)
+            if key in first:
+                shared[slot] = first[key]
+            else:
+                first[key] = slot
+        if not shared:
+            return {}
+        for slot in shared:
+            self.samples[slot - 1] = ModSample("")
+        for pat in self.patterns:
+            for row, channel, cell in pat.cells():
+                to = shared.get(cell.instrument)
+                if to is not None:
+                    pat.put(row, channel, cell._replace(instrument=to))
+        return shared
+
     def trim_tails(self, heard: dict[int, int | None]) -> dict[int, tuple[int, int]]:
         """Each sample cut after the bytes its notes are heard to (`heard`, {slot: bytes; None where
         all of it may be}: core.mod.reach.heard_bytes), in whole words.  A looped sample no note

@@ -87,6 +87,14 @@ samples:
   #   all      : every build
   trim_tails: merged
 
+  # Give samples with the same bytes, loop, volume and finetune one slot: the notes of every later one
+  # play the first.  Lossless.  A merged build can make two composites that differ only past where
+  # their samples end.
+  #   off      : never
+  #   merged   : the --merged reduced channel version only
+  #   all      : every build
+  share_duplicates: all
+
   # What the MOD calls each sample (22 characters):
   #   source   : what plays it and what it was made from - "F1/3/4/5 $05 C4-B5", "F5+3+4+P1 D-3 [1-4]",
   #              "D dKick B-2" (a voice_map / psg entry's or a merge group's `name:` replaces it)

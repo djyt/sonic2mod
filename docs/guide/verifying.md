@@ -319,7 +319,9 @@ inst sample            vol notes    err spread suggest   per channel (Cxx: err x
 - A note's window ends 20 ms before the next key-on: the MOD's rows are even, the chip's ticks not,
   and a loud hit would read into a quiet note before it.
 - MOD renders are moved onto the rows' clock: libopenmpt plays a tick as a whole number of samples
-  (816 for 816.67 at 135 BPM), so a render runs up to 0.1 % fast — 81 ms by 99 s.
+  (816 for 816.67 at 135 BPM), so a render runs up to 0.1 % fast — 81 ms by 99 s.  Pitch and vibrato
+  read the render as written, from where that clock puts the note: the clock repeats a frame a tick,
+  a phase jump that reads as a tick-rate wobble (and 2 cents flat at 197 BPM).
 
 `--write-volumes` writes suggestions of 1 dB or more into the config, with `# VGZ: +4.6 dB at 16` on
 the line.  Re-convert and re-run to verify.  A normalised MOD's volumes are the config's raised by one

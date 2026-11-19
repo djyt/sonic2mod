@@ -149,16 +149,33 @@ def _say_alignment(offset: float, how: str) -> None:
 
 @dataclass
 class _Renders:
-    """Both renders per channel name: stereo for every level figure (see load_wav), mono mixes for the rest."""
+    """Both renders per channel name: stereo for every level figure (see load_wav), mono mixes for the
+    rest.  The MOD's on the rows' clock, but pitch read from them as libopenmpt wrote them (mod_pitch_seg)."""
 
     vgm_st: dict[str, np.ndarray]
-    mod_st: dict[str, np.ndarray]
+    mod_written_st: dict[str, np.ndarray]
+    clock: ModRenderClock
+    mod_st: dict[str, np.ndarray] = field(init=False)
     vgm: dict[str, np.ndarray] = field(init=False)
     mod: dict[str, np.ndarray] = field(init=False)
+    _mod_written: dict[str, np.ndarray] = field(init=False)
 
     def __post_init__(self) -> None:
+        self.mod_st = {n: self.clock.on_clock(a) for n, a in self.mod_written_st.items()}
         self.vgm = {n: a.mean(axis=1) for n, a in self.vgm_st.items()}
         self.mod = {n: a.mean(axis=1) for n, a in self.mod_st.items()}
+        self._mod_written = {n: a.mean(axis=1) for n, a in self.mod_written_st.items()}
+
+    @classmethod
+    def load(cls, workdir: Path, mod: ModImage, speed: int, mod_stems: dict[str, str]) -> _Renders:
+        """{name: the MOD render's stem}: vgm_<name>.wav against mod_<stem>.wav."""
+        return cls({n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in mod_stems},
+                   {n: load_wav(workdir / f"mod_{stem}.wav", stereo=True) for n, stem in mod_stems.items()},
+                   ModRenderClock(mod, speed))
+
+    def mod_pitch_seg(self, ch: str, t: float, dur: float) -> np.ndarray:
+        """The MOD render of `ch` at `t` for pitch: unbroken (ModRenderClock.seg_written)."""
+        return self.clock.seg_written(self._mod_written[ch], t, dur)
 
 
 def _align(offset: float | None, chip_tl: dict, mod_tl: dict, sources: dict[str, int], rd: _Renders) -> float:
@@ -187,7 +204,7 @@ def _note_result(ch: str, evs: list[NoteStart], i: int, rd: _Renders, offset: fl
     t_end = evs[i + 1].ms / 1000.0 if i + 1 < len(evs) else t + 2.0
     win = min(0.3 if fref < 200 else 0.1, max(0.04, t_end - t - 0.03))
     harm, cv = harmonic_cents(seg_at(rd.vgm[ch], t + 0.025, win), fref)
-    _, cm = harmonic_cents(seg_at(rd.mod[ch], t + offset + 0.025, win), fref, harm)
+    _, cm = harmonic_cents(rd.mod_pitch_seg(ch, t + offset + 0.025, win), fref, harm)
     lv = db(rms(seg_at(rd.vgm_st[ch], t + 0.025, win)))
     lm = db(rms(seg_at(rd.mod_st[ch], t + offset + 0.025, win)))
     # MOD against VGM, not against the key-on register value: on a grace note or a legato
@@ -308,7 +325,7 @@ def _report_vibrato(per_ch: dict[str, list], rd: _Renders, offset: float, res: d
     segs = []
     for ch, t, _note, dur in long:
         span = min(dur, 4.0) - 0.02
-        segs += [seg_at(rd.vgm[ch], t + 0.01, span), seg_at(rd.mod[ch], t + offset + 0.01, span)]
+        segs += [seg_at(rd.vgm[ch], t + 0.01, span), rd.mod_pitch_seg(ch, t + offset + 0.01, span)]
     estimates = vibrato_estimates(segs)
 
     long_notes = len(long)
@@ -530,11 +547,8 @@ def report(conv: ConversionPlan, song, recording: _Reference, mod_path: Path, wo
 
     # Renders: the MOD's are named after the source, the VGM's after the chip channel
     mod = read_mod(mod_path)
-    clock = ModRenderClock(mod, cfg.target_speed)
-    vgm_st = {n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]}
-    mod_st = {n: clock.load(workdir / f"mod_{src}.wav") for src, n in zip(chan_map, names, strict=True)}
-    mod_st["FULL"] = clock.load(workdir / "mod_FULL.wav")
-    rd = _Renders(vgm_st, mod_st)
+    rd = _Renders.load(workdir, mod, cfg.target_speed,
+                       {"FULL": "FULL"} | {n: src for src, n in zip(chan_map, names, strict=True)})
 
     offset_auto = offset is None
     chip_tl, chip_end = pitch_segments(log)
@@ -592,9 +606,7 @@ def report_merged(recording: _Reference, mod_path: Path, speed: int, workdir: Pa
     """
     names = list(labels)
     notes = recording.notes
-    clock = ModRenderClock(read_mod(mod_path), speed)
-    rd = _Renders({n: load_wav(workdir / f"vgm_{n}.wav", stereo=True) for n in ["FULL", *names]},
-                  {n: clock.load(workdir / f"mod_{n}.wav") for n in ["FULL", *names]})
+    rd = _Renders.load(workdir, read_mod(mod_path), speed, {n: n for n in ["FULL", *names]})
     offset_auto = offset is None
     if offset is None:
         # Within three quarters of a second: a repetitive song correlates a whole bar off

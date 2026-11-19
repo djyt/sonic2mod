@@ -62,23 +62,34 @@ class ModRenderClock:
         self._played = np.floor(timed).astype(np.int64)
         self._timed_start = np.concatenate(([0.0], np.cumsum(timed)))
         self._played_start = np.concatenate(([0], np.cumsum(self._played)))
+        self._drift = round(self._timed_start[-1]) - int(self._played_start[-1])
 
     def load(self, path: Path) -> np.ndarray:
         """load_wav(path, stereo=True), on the rows' clock."""
-        audio = load_wav(path, stereo=True)
-        return audio[self._render_frames(len(audio))]
+        return self.on_clock(load_wav(path, stereo=True))
 
-    def _render_frames(self, frames: int) -> np.ndarray:
-        """The render's frame for each frame of the rows' clock; past the pass (a release tail)
-        the render runs on, shifted by the pass's drift."""
-        ticks = len(self._played)
-        if not ticks:
-            return np.arange(frames)
-        drift = round(self._timed_start[-1]) - int(self._played_start[-1])
-        n = np.arange(frames + max(drift, 0))
-        k = np.minimum(np.searchsorted(self._timed_start, n, side="right") - 1, ticks - 1)
+    def on_clock(self, audio: np.ndarray) -> np.ndarray:
+        """A render as libopenmpt wrote it, on the rows' clock: right for levels and onsets.  Not
+        for pitch: each tick's repeated frame jumps a partial's phase at the tick rate (seg_written)."""
+        if not len(self._played):
+            return audio
+        return audio[self._frames_at(np.arange(len(audio) + max(self._drift, 0)), len(audio))]
+
+    def seg_written(self, audio: np.ndarray, t: float, dur: float) -> np.ndarray:
+        """seg_at of a render as libopenmpt wrote it, from where the rows' clock puts `t`: unbroken,
+        so a pitch track reads no tick-rate phase jumps (Sonic 1's Special Stage FM6: a 4-cent
+        carrier beat lost under a 79 Hz wobble).  The drift inside it is the render's own, < 0.1 %."""
+        if t < 0 or not len(self._played):
+            return seg_at(audio, t, dur)
+        start = int(self._frames_at(np.array([int(t * SR)]), len(audio))[0])
+        return seg_at(audio, start / SR, dur)
+
+    def _frames_at(self, n: np.ndarray, frames: int) -> np.ndarray:
+        """The render's frame (of `frames`) for each frame `n` of the rows' clock; past the pass (a
+        release tail) the render runs on, shifted by the pass's drift."""
+        k = np.minimum(np.searchsorted(self._timed_start, n, side="right") - 1, len(self._played) - 1)
         within = np.minimum(np.floor(n - self._timed_start[k]).astype(np.int64), self._played[k] - 1)
-        frame = np.where(n < self._timed_start[-1], self._played_start[k] + within, n - drift)
+        frame = np.where(n < self._timed_start[-1], self._played_start[k] + within, n - self._drift)
         return np.clip(frame, 0, frames - 1)
 
 

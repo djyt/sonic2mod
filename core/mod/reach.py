@@ -1,7 +1,7 @@
 """How far into each sample a written MOD is heard: ProTracker's replay of the file, tick by tick.
 
-The converter cuts each one-shot sample there (ModFile.trim_tails, settings.yaml
-`samples.trim_tails`): its own estimates of how long a sample must ring (core.convert.sustain_plan,
+The converter cuts each sample there (ModFile.trim_tails, settings.yaml `samples.trim_tails`): a
+one-shot, or a looped one no note plays past its loop's first pass: its own estimates of how long a sample must ring (core.convert.sustain_plan,
 the mixer's `heard`, a bank member's region) allow for the row grid and a release padding, and the
 written cells are what a player reads.
 
@@ -64,16 +64,29 @@ class _Voice:
 
 
 def heard_bytes(mod: ModImage, amiga_clock: float) -> dict[int, int | None]:
-    """{slot: bytes of its sample a note is heard to} for every one-shot sample a note plays; None
-    for one a note is still heard at the end (the module docstring).  Looped samples are left
-    out: they sound for as long as their notes.  Raises UnmodelledEffect for an effect the replay
-    does not model."""
+    """{slot: bytes of its sample a note is heard to} for every sample a note plays; None for one
+    a note is still heard at the end (the module docstring).  A looped sample's is at most its
+    loop's end: a note there wraps (Sonic 1's Special Stage chord stabs, 0.46 s at most, end
+    a few hundred bytes into a loop that starts 0.29 s in).  Raises UnmodelledEffect for an
+    effect the replay does not model."""
+    return _replay(mod, amiga_clock)[0]
+
+
+def cut_short(mod: ModImage, amiga_clock: float) -> set[int]:
+    """One-shot samples a note is still heard at when their bytes run out (too short for it).
+    Raises UnmodelledEffect as heard_bytes does."""
+    return _replay(mod, amiga_clock)[1]
+
+
+def _replay(mod: ModImage, amiga_clock: float) -> tuple[dict[int, int | None], set[int]]:
+    """(heard_bytes, cut_short): the file played once, and its loop again."""
     rows, loop_at = mod.play_order()
     first_pass = len(rows)
     if loop_at is not None:
         rows = rows + rows[loop_at:]            # the loop played again: notes ringing across it
     voices = [_Voice() for _ in range(mod.channels)]
     reach: dict[int, float | None] = {}             # {slot: furthest byte heard}
+    short: set[int] = set()                         # one-shots a heard note runs off the end of
     speed, bpm = DEFAULT_SPEED, DEFAULT_BPM
 
     for at, (pos, row) in enumerate(rows):
@@ -84,15 +97,19 @@ def heard_bytes(mod: ModImage, amiga_clock: float) -> dict[int, int | None]:
         step_secs = TICK_SECS_AT_1_BPM / bpm * SPEED_MARGIN
         for v, cell in zip(voices, cells, strict=True):
             _check(cell)
-            if _play_row(v, cell, mod.samples, speed, step_secs, amiga_clock, reach):
+            if _play_row(v, cell, mod.samples, speed, step_secs, amiga_clock, reach, short):
                 v.started = at
 
     for v in voices:                            # still heard at the end: all of it may be
-        if (v.sample and v.volume and v.pos < mod.samples[v.sample - 1].length
+        if (v.sample and v.volume and v.pos < _pass_end(mod.samples[v.sample - 1])
                 and (loop_at is None or v.started < first_pass)):
             reach[v.sample] = None
-    return {slot: (None if n is None else math.ceil(n)) for slot, n in reach.items()
-            if not mod.samples[slot - 1].looped}
+    return {slot: (None if n is None else math.ceil(n)) for slot, n in reach.items()}, short
+
+
+def _pass_end(s: SampleInfo) -> int:
+    """Bytes a note plays before the sample repeats: to its loop's end, else to its end."""
+    return s.loop_start + s.loop_len if s.looped else s.length
 
 
 def _check(cell) -> None:
@@ -111,7 +128,7 @@ def _tuned(period: int, sample: SampleInfo) -> float:
 
 
 def _play_row(v: _Voice, cell, samples: list[SampleInfo], speed: int, step_secs: float,
-              amiga_clock: float, reach: dict[int, float | None]) -> bool:
+              amiga_clock: float, reach: dict[int, float | None], short: set[int]) -> bool:
     """One channel through one row: the cell's tick-0 work, then each tick's effects and playing.
     True when a note started on it."""
     period, ins, eff, par = cell
@@ -165,12 +182,15 @@ def _play_row(v: _Voice, cell, samples: list[SampleInfo], speed: int, step_secs:
         if not v.sample or v.period <= 0:
             continue
         s = samples[v.sample - 1]
-        if s.looped or v.pos >= s.length:
+        end = _pass_end(s)
+        if v.pos >= end:
+            if v.volume and not s.looped:
+                short.add(v.sample)                 # still heard after its bytes ran out
             continue
         p = v.period - (_VIBRATO_SWING * v.depth if eff == 0x4 else 0)
         if pending is not None and tick < delay:
             p = min(p, pending)
-        v.pos = min(float(s.length), v.pos + amiga_clock / max(p, 1.0) * step_secs)
+        v.pos = min(float(end), v.pos + amiga_clock / max(p, 1.0) * step_secs)
         if v.volume:
             reach[v.sample] = max(reach.get(v.sample) or 0.0, v.pos)
     return bool(trigger) and delay < speed

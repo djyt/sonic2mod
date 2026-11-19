@@ -33,6 +33,10 @@ ends, a release padding, a merged [mix](../glossary.md#mix) cut at its notes' he
 ProTracker does, tick by tick, and finds how far into each one-shot sample any note is heard (its volume
 above 0: `C00`, `ECx` or a slide to 0 ends that); `ModFile.trim_tails` cuts each there, in whole words.
 
+A looped sample no note plays to its loop's end never repeats: it is cut the same way and its loop dropped
+(Sonic 1's Special Stage merged: the chord stabs, 0.46 s at most, end a few hundred bytes into loops
+starting 0.29 s in).
+
 - A looping song is played once more from its loop target, so a note ringing across the loop is
   followed through it; a note still heard at the end (a stopping song's last notes, one that rang a
   whole second pass) keeps its whole sample.
@@ -43,7 +47,7 @@ above 0: `C00`, `ECx` or a slide to 0 ends that); `ModFile.trim_tails` cuts each
 
 Left whole:
 
-- looped samples;
+- looped samples a note plays to the loop's end;
 - samples read from a file (`sample_list`: the DAC drums): the same drum in several MODs stays the same
   bytes, so a build that shares samples across MODs can store it once and cut it to its longest use;
 - every sample of a MOD with an effect the replay does not model: anything but

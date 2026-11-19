@@ -343,18 +343,22 @@ class ModFile:
         return mapping
 
     def trim_tails(self, heard: dict[int, int | None]) -> dict[int, tuple[int, int]]:
-        """Each one-shot sample cut after the bytes its notes are heard to (`heard`, {slot: bytes;
-        None where all of it may be}: core.mod.reach.heard_bytes), in whole words.  A looped sample
+        """Each sample cut after the bytes its notes are heard to (`heard`, {slot: bytes; None where
+        all of it may be}: core.mod.reach.heard_bytes), in whole words.  A looped sample no note
+        plays to its loop's end never repeats: a one-shot so cut.  One whose loop a note reaches,
         and one read from a file (`ModSample.file`: the same drum in several MODs stays the same
-        bytes) are left whole.  Returns {slot: (bytes before, bytes after)} of every sample cut."""
+        bytes), are left whole.  Returns {slot: (bytes before, bytes after)} of every sample cut."""
         cut: dict[int, tuple[int, int]] = {}
         for slot, n in heard.items():
             s = self.samples[slot - 1]
-            if n is None or s.looped or s.file is not None:
+            if n is None or s.file is not None:
                 continue
+            if s.looped and n >= 2 * (s.repeat + s.repeat_length):
+                continue                                # a note reaches the loop's end: it repeats
             keep = max(_IDLE_WORD_BYTES, n + (n & 1))
             if keep < 2 * s.length:
                 cut[slot] = (2 * s.length, keep)
+                s.repeat, s.repeat_length = 0, 1
                 s.data, s.length = s.data[:keep], keep // 2
         return cut
 

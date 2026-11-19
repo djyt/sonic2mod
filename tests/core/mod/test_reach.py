@@ -1,5 +1,5 @@
 """How far into each sample a written MOD is heard (core/mod/reach.py), and the one-shots cut there
-(ModFile.trim_tails), on hand-built MODs.  Speed 6 at 125 BPM: a tick is 20 ms; C-2 (period 428)
+(ModFile.trim_tails), a loop no note wraps too, on hand-built MODs.  Speed 6 at 125 BPM: a tick is 20 ms; C-2 (period 428)
 plays 8287 bytes a second, 170.7 a tick with the 3 % margin.
 
     python -m pytest tests/core/mod/test_reach.py -q
@@ -19,7 +19,7 @@ from core.mod import (
     heard_bytes,
     read_mod,
 )
-from core.mod.reach import SPEED_MARGIN
+from core.mod.reach import SPEED_MARGIN, cut_short
 
 TICK_BYTES = PAL_AMIGA_CLOCK / PERIOD_TABLE[ModNote.C2.value] * 0.02 * SPEED_MARGIN
 
@@ -90,11 +90,19 @@ class Reach(unittest.TestCase):
         _put(mod, 63, 1, eff=(0xB, 0))                      # back to the start: rows 62, 63, 0 heard
         self.assertEqual(_heard(mod), {1: math.ceil(18 * TICK_BYTES)})
 
-    def test_a_looped_sample_is_left_out(self):
+    def test_a_looped_sample_short_of_its_loop_end(self):
         mod = _mod(loop=(1000, 2000))
         _put(mod, 0, 0, note=True)
-        _put(mod, 1, 0, eff=(0xC, 0))
-        self.assertEqual(_heard(mod), {})
+        _put(mod, 1, 0, eff=(0xC, 0))                       # 6 ticks, inside the loop's first pass
+        self.assertEqual(_heard(mod), {1: math.ceil(6 * TICK_BYTES)})
+
+    def test_a_note_heard_past_its_bytes_is_cut_short(self):
+        short, whole = _mod(size=500), _mod()               # 6 ticks play ~1025 bytes
+        for mod in (short, whole):
+            _put(mod, 0, 0, note=True)
+            _put(mod, 1, 0, eff=(0xC, 0))
+        self.assertEqual(cut_short(read_mod(bytes(short.get_bytes())), PAL_AMIGA_CLOCK), {1})
+        self.assertEqual(cut_short(read_mod(bytes(whole.get_bytes())), PAL_AMIGA_CLOCK), set())
 
     def test_an_effect_it_does_not_model_is_refused(self):
         mod = _mod()
@@ -116,10 +124,23 @@ class TrimTails(unittest.TestCase):
         self.assertEqual(mod.trim_tails({1: 1001}), {1: (8000, 1002)})
         self.assertEqual((mod.samples[0].length, len(mod.samples[0].data)), (501, 1002))
 
-    def test_files_loops_and_whole_notes_stay(self):
+    def test_files_wrapped_loops_and_whole_notes_stay(self):
         mod = _mod()
         mod.samples[0].file = "kick.raw"                    # the same drum in other MODs
         looped = _mod(loop=(1000, 2000))
         self.assertEqual(mod.trim_tails({1: 100}), {})
-        self.assertEqual(looped.trim_tails({1: 100}), {})
+        self.assertEqual(looped.trim_tails({1: 3000}), {})  # its loop's end reached: it repeats
         self.assertEqual(_mod().trim_tails({1: None}), {})
+
+    def test_a_loop_no_note_wraps_is_a_one_shot(self):
+        mod = _mod(loop=(1000, 2000))
+        self.assertEqual(mod.trim_tails({1: 2501}), {1: (8000, 2502)})
+        self.assertFalse(mod.samples[0].looped)
+
+    def test_a_note_past_the_loop_end_keeps_the_loop(self):
+        mod = _mod(size=1000, loop=(200, 400))
+        _put(mod, 0, 0, note=True)
+        _put(mod, 1, 0, eff=(0xC, 0))                       # 6 ticks: past the loop's end (600)
+        heard = _heard(mod)
+        self.assertEqual(heard, {1: 600})
+        self.assertEqual(mod.trim_tails(heard), {})

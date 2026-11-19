@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 from ..audio import gain_to_db
 from .file import PAL_AMIGA_CLOCK
 from .notes import PERIOD_TABLE, period_rate
+from .reach import UnmodelledEffect, cut_short
 from .reader import SampleInfo, read_mod
 from .timing import DEFAULT_BPM, DEFAULT_SPEED, TICK_SECS_AT_1_BPM
 
@@ -93,6 +94,13 @@ def audit(path: str, slack: float = 2.0, amiga_clock: float = PAL_AMIGA_CLOCK) -
     period plays at."""
     mod = read_mod(path)
     pats, chans = mod.patterns, mod.channels
+
+    # The one-shots a note outlasts, as ProTracker plays the file (volume slides, cuts); None where
+    # the replay cannot model an effect: the note lengths below decide alone
+    try:
+        outlasted: set[int] | None = cut_short(mod, amiga_clock)
+    except UnmodelledEffect:
+        outlasted = None
     # Tempo: speed and BPM from F commands as they occur in play order (row 0 defaults)
     speed, bpm = DEFAULT_SPEED, DEFAULT_BPM
     for cell in pats[mod.order[0]][0] if mod.order else []:
@@ -166,9 +174,11 @@ def audit(path: str, slack: float = 2.0, amiga_clock: float = PAL_AMIGA_CLOCK) -
             flags.append("sample bank (9xx offsets)")
         elif rate:
             # Each note against the sample at its own period: a low note runs through it slower
-            # (Continue's chord composite: its 10-row notes are its lowest, its fast ones are cut)
+            # (Continue's chord composite: its 10-row notes are its lowest, its fast ones are cut).
+            # Only where the replay hears a note past the bytes: a note faded or cut before them is
+            # not (trim_tails cuts a sample there)
             short = max((sec - s.length * p / amiga_clock for _c, p, sec in notes), default=0.0)
-            if not looped and short > 0.05:
+            if not looped and short > 0.05 and (outlasted is None or i in outlasted):
                 flags.append(f"too short by {short:.2f} s")
             if not looped and secs is not None and secs > longest + slack:
                 flags.append(f"oversize by {secs - longest:.1f} s")

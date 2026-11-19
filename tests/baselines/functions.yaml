@@ -272,7 +272,7 @@ functions:
   core/convert/channel_writer/cells.py::Cells.grid_ticks: 3ffffe0f8e087fc2160
   core/convert/channel_writer/cells.py::Cells.in_song: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.made: 23ffffd9f7fffffc17f
-  core/convert/channel_writer/cells.py::Cells.note_at: 3fde3e2208002bc1fff
+  core/convert/channel_writer/cells.py::Cells.note_at: 3fdebe2208002bc1fff
   core/convert/channel_writer/cells.py::Cells.note_cell: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.put: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.put_note: 3ffffffffffffffffff
@@ -337,10 +337,10 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._baked: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._base_voice: 3e00000000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._collect_ring_ticks: 3ffffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._cut_at: '200000000000000'
+  core/convert/channel_writer/writer.py::ChannelWriter._cut_at: a00000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._cut_bank_sound: '2800000'
   core/convert/channel_writer/writer.py::ChannelWriter._cut_banked: 3ffffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._cut_in_attack_row: 34007c0000000000000
+  core/convert/channel_writer/writer.py::ChannelWriter._cut_in_attack_row: 3400fc0000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._cut_tick: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._drop_loop_cut: 23ffffd9fffffffc1ff
   core/convert/channel_writer/writer.py::ChannelWriter._emit_volume: 3ffffffffffffffffff
@@ -796,11 +796,11 @@ functions:
   core/merge/slots.py::same_shape_twins: 600060b00000
   core/merge/slots.py::stand_in: 98000600c62b01818
   core/merge/slots.py::trigger_note: 98000600c42801800
-  core/mod/breaks.py::_body: 11e1000f81fffc0011e
-  core/mod/breaks.py::_repack: 11e1000f81fffc0011e
-  core/mod/breaks.py::_retarget_jumps: 11e1000f81fffc0011e
-  core/mod/breaks.py::apply_pattern_breaks: 11e1000f81fffc0011e
-  core/mod/breaks.py::phrase_breaks: '1000000000000000000'
+  core/mod/breaks.py::_body: 11e1800f81fffc0011e
+  core/mod/breaks.py::_repack: 11e1800f81fffc0011e
+  core/mod/breaks.py::_retarget_jumps: 11e1800f81fffc0011e
+  core/mod/breaks.py::apply_pattern_breaks: 11e1800f81fffc0011e
+  core/mod/breaks.py::phrase_breaks: '1000800000000000000'
   core/mod/breaks.py::row_to_bcd: 1119067f00022000
   core/mod/breaks.py::shift_for_breaks: 3ffffffffffffffffff
   core/mod/cell.py::Cell.decode: 3ffffffffffffffffff
@@ -832,12 +832,12 @@ functions:
   core/mod/file.py::ModPattern.__init__: 3ffffffffffffffffff
   core/mod/file.py::ModPattern.cell: 3ffffffffffffffffff
   core/mod/file.py::ModPattern.cells: 3ffffffffffffffffff
-  core/mod/file.py::ModPattern.clear_row: 11e1000f81fffc0011e
+  core/mod/file.py::ModPattern.clear_row: 11e1800f81fffc0011e
   core/mod/file.py::ModPattern.column_used: 3dfffdffeffffffffff
   core/mod/file.py::ModPattern.get_bytes: 3ffffffffffffffffff
   core/mod/file.py::ModPattern.put: 3ffffffffffffffffff
-  core/mod/file.py::ModPattern.put_row: 11e1000f81fffc0011e
-  core/mod/file.py::ModPattern.row_bytes: 11e1000f81fffc0011e
+  core/mod/file.py::ModPattern.put_row: 11e1800f81fffc0011e
+  core/mod/file.py::ModPattern.row_bytes: 11e1800f81fffc0011e
   core/mod/file.py::ModSample.__init__: 3ffffffffffffffffff
   core/mod/file.py::ModSample.finetune: 98000600c62b01818
   core/mod/file.py::ModSample.get_bytes: 3ffffffffffffffffff
@@ -906,11 +906,11 @@ functions:
   core/plan/conversion.py::SampleTable.discard: 80000600042b00000
   core/plan/conversion.py::SampleTable.row: 3ffffffffffffffffff
   core/plan/conversion.py::SampleTable.rows: 3ffffffffffffffffff
-  core/plan/derive.py::_Deriver.__init__: 3e007ff07e00003c000
-  core/plan/derive.py::_Deriver._bar_timing: '1000000000000000000'
+  core/plan/derive.py::_Deriver.__init__: 3e00fff07e00003c000
+  core/plan/derive.py::_Deriver._bar_timing: '1000800000000000000'
   core/plan/derive.py::_Deriver._cut: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._dac_samples: 3e007ff07e00003c000
-  core/plan/derive.py::_Deriver._default: 3e007ff07e00003c000
+  core/plan/derive.py::_Deriver._default: 3e00fff07e00003c000
   core/plan/derive.py::_Deriver._fit: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._fm_drum: 1d00000003c000
   core/plan/derive.py::_Deriver._fm_slots: 3e007ff07e00003c000
@@ -918,9 +918,9 @@ functions:
   core/plan/derive.py::_Deriver._fold_levels: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._fold_one: 1c00280000000000000
   core/plan/derive.py::_Deriver._folded_to: 3c00280000000000000
-  core/plan/derive.py::_Deriver._frame_speed: '1000000000000000000'
+  core/plan/derive.py::_Deriver._frame_speed: '1000800000000000000'
   core/plan/derive.py::_Deriver._glided: 3e007ff07e00003c000
-  core/plan/derive.py::_Deriver._grid_options: 3e007ff07e00003c000
+  core/plan/derive.py::_Deriver._grid_options: 3e00fff07e00003c000
   core/plan/derive.py::_Deriver._inherited: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._items: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._level_miss: 3e007ff07e00003c000
@@ -930,8 +930,8 @@ functions:
   core/plan/derive.py::_Deriver._nearest: 7e006e000000000
   core/plan/derive.py::_Deriver._noise: '320066000000000'
   core/plan/derive.py::_Deriver._notes: 3e007ff07e00003c000
-  core/plan/derive.py::_Deriver._passing: '1000000000000000000'
-  core/plan/derive.py::_Deriver._phrase_breaks: '1000000000000000000'
+  core/plan/derive.py::_Deriver._passing: '1000800000000000000'
+  core/plan/derive.py::_Deriver._phrase_breaks: '1000800000000000000'
   core/plan/derive.py::_Deriver._rang: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._refined: '2000000000000'
   core/plan/derive.py::_Deriver._reserved_fit: 3e007ff07e00003c000
@@ -942,17 +942,18 @@ functions:
   core/plan/derive.py::_Deriver._sources: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._take: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._tone_slots: 3e007ff07e00003c000
-  core/plan/derive.py::_Deriver._tpr_options: 3e007ff07e00003c000
+  core/plan/derive.py::_Deriver._tpr_options: 3e00fff07e00003c000
   core/plan/derive.py::_Deriver._widest: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver._windows: 3e007ff07e00003c000
   core/plan/derive.py::_Deriver.run: 3e007ff07e00003c000
-  core/plan/derive.py::_Deriver.timing: 3e007ff07e00003c000
+  core/plan/derive.py::_Deriver.timing: 3e00fff07e00003c000
   core/plan/derive.py::_Deriver.timing.on_rows: 2e007ff07e00003c000
+  core/plan/derive.py::_derive_rows: '800000000000000'
   core/plan/derive.py::_drum_level: 1d00000003c000
   core/plan/derive.py::_drum_level.loudest: 1d00000003c000
   core/plan/derive.py::_lfo_voice: 1c00280000000000000
   core/plan/derive.py::_output_path: 3e007ff07e00003c000
-  core/plan/derive.py::_pattern_rows: '1000000000000000000'
+  core/plan/derive.py::_pattern_rows: '1000800000000000000'
   core/plan/derive.py::_pitch_name: 3e007ff07e00003c000
   core/plan/derive.py::_unpatched_voice: 1c00280000000000000
   core/plan/derive.py::complete_config: 3ffffffffffffffffff
@@ -1022,16 +1023,16 @@ functions:
   core/plan/instruments.py::free_slots: 3ffffffffffffffffff
   core/plan/instruments.py::psg_catalogue: 3ffffffffffffffffff
   core/plan/instruments.py::psg_catalogue.add: 1fffe0fe7fffc01f61
-  core/plan/meter.py::Meter.rows_per_phrase: '1000000000000000000'
-  core/plan/meter.py::_crowded: '1000000000000000000'
-  core/plan/meter.py::_downbeat: '1000000000000000000'
-  core/plan/meter.py::_notes: '1000000000000000000'
-  core/plan/meter.py::_on_grid: '1000000000000000000'
-  core/plan/meter.py::_phase: '1000000000000000000'
-  core/plan/meter.py::_phrase: '1000000000000000000'
-  core/plan/meter.py::_row: '1000000000000000000'
-  core/plan/meter.py::_step: '1000000000000000000'
-  core/plan/meter.py::find_meter: '1000000000000000000'
+  core/plan/meter.py::Meter.rows_per_phrase: '1000800000000000000'
+  core/plan/meter.py::_crowded: '1000800000000000000'
+  core/plan/meter.py::_downbeat: '1000800000000000000'
+  core/plan/meter.py::_notes: '1000800000000000000'
+  core/plan/meter.py::_on_grid: '1000800000000000000'
+  core/plan/meter.py::_phase: '1000800000000000000'
+  core/plan/meter.py::_phrase: '1000800000000000000'
+  core/plan/meter.py::_row: '1000800000000000000'
+  core/plan/meter.py::_step: '1000800000000000000'
+  core/plan/meter.py::find_meter: '1000800000000000000'
   core/plan/noise_derive.py::derive_noise_envelopes: 3ffffffffffffffffff
   core/plan/noise_derive.py::derive_rate3_dividers: 1fffe0fe7fffc01f61
   core/plan/slot_fit.py::_cheapest: 1c00280000000000000

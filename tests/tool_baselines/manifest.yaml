@@ -1715,13 +1715,13 @@ pitch_sor2_too_deep:
     tests/baselines/sor2_too_deep_baseline.mod: b2c461cce6b5
     tests/settings.yaml: 1be2c231bd5e
 pitch_special_stage:
-  commit: c6d0253-dirty
-  date: '2026-11-01'
+  commit: 4e4bcbf-dirty
+  date: '2026-11-19'
   inputs:
-    configs/sonic_1/08_special_stage.yaml: c0722d83dcf6
+    configs/sonic_1/08_special_stage.yaml: f5640dabc38e
     reference/vgz/sonic_1/08 - Special Stage.vgz: df7ed997e893
-    tests/baselines/special_stage_baseline.mod: 765f7ee8c30f
-    tests/settings.yaml: 1be2c231bd5e
+    tests/baselines/special_stage_baseline.mod: 6b996a57c7ab
+    tests/settings.yaml: cbe7c5cb200c
 pitch_spring_yard_zone:
   commit: c6d0253-dirty
   date: '2026-11-01'

@@ -10930,7 +10930,7 @@ special_stage:
   - tests/settings.yaml
   - --output
   - output/regression/special_stage.mod
-  commit: 557587c-dirty
+  commit: 4e4bcbf-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11103,7 +11103,7 @@ special_stage:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/08_special_stage.yaml: c0722d83dcf6
+    configs/sonic_1/08_special_stage.yaml: f5640dabc38e
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
     tests/settings.yaml: cbe7c5cb200c
 spring_yard_zone:

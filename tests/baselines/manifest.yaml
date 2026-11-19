@@ -280,9 +280,9 @@ sor2_too_deep:
   date: '2026-11-12'
   settings: 9190ec12f30b
 special_stage:
-  commit: 557587c
-  config: 2fdf36b4501f
-  date: '2026-11-12'
+  commit: 4e4bcbf
+  config: d09a349f1e1c
+  date: '2026-11-19'
   settings: 9190ec12f30b
 spring_yard_zone:
   commit: 557587c

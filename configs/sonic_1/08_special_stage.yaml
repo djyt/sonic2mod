@@ -76,12 +76,12 @@ voice_map:
     - low: A4
       high: B5
       mod_instrument: 3
-      root: A1
+      root: C2               # A4-B5 on C2-D3: E5, the commonest, on G2 (the column's notes at one rate)
   3:
     - low: D6
       high: E7
       mod_instrument: 4
-      root: D2
+      root: A1               # D6-E7 on A1-B2: C7, the commonest lead, on G2 (the column's notes at one rate)
       
 # -------------------------------------------------------------------------------------------------
 # PSG Sounds
@@ -98,3 +98,20 @@ psg_voice_map:
     high: C5
     mod_instrument: 6
     root: C3
+
+
+# -------------------------------------------------------------------------------------------------
+# Amiga build (convert.py --merged): 8 channels -> 4.  FM6 doubles FM1's lead two octaves up; FM3 /
+# FM4 / FM5 play the chord stabs in one rhythm, between and on FM2's bass notes.
+# tools/config/merge_survey.py measured the pairs.
+# -------------------------------------------------------------------------------------------------
+merge:
+  - primary: FM1
+    followers: [FM6]
+  - primary: FM2
+    followers: [FM3, FM4, FM5]
+    #loop_start_ms: 278      # the chord stabs loop where voice $03 settles, as the reference build's (+18 KB)
+
+# Channel 4 kept as free as nothing lost allows, for the game's sound effects: each PSG2 note moves to
+# a column silent for all of it (PSG1 plays on the same off-beats, so only 9 of 48 can)
+merge_vacate: [PSG2]

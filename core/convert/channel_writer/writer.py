@@ -304,6 +304,8 @@ class ChannelWriter:
         # ECx inside the row where the release is a cut, else the key-off waits a row (a C00 on the
         # attack row would sound nothing).  A note-on there ends it anyway
         if (pattern, row) == self._ring.cell:
+            if self._cut_at(pattern, row):
+                return              # its fill or PSG duration cut it there already
             if self._cut_in_attack_row(pattern, row, tick):
                 return
             waited = Cells.row_total(pattern, row) + 1
@@ -350,10 +352,14 @@ class ChannelWriter:
             at = Cells.cell(r)
             if not self._cells.made(at[0]):
                 break                       # nothing written that far yet
-            eff, par = self._cells.effect_at(*at, self._col)
-            if (eff, par) == (0xC, 0) or (eff == 0xE and par >> 4 == 0xC):
+            if self._cut_at(*at):
                 return True
         return False
+
+    def _cut_at(self, pattern: int, row: int) -> bool:
+        """The column's cell there silences the channel: a C00 or an ECx."""
+        eff, par = self._cells.effect_at(pattern, row, self._col)
+        return (eff, par) == (0xC, 0) or (eff == 0xE and par >> 4 == 0xC)
 
     def _sounds_foreign(self, tick: int) -> bool:
         """Another channel's note spliced onto this column still sounds at `tick` (merge).  From

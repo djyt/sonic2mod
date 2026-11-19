@@ -91,8 +91,8 @@ unit is `divider` ticks.  ProTracker plays `BPM / (2.5 × speed)` rows a second.
 BPM = fps × (m − 1) × speed × 2.5 / (m × divider × ticks_per_row)        fps = 60 NTSC, 50 PAL
 ```
 
-Worked: Sonic 1's Special Stage, `smpsHeaderTempo $02, $08` (divider 2, *m* 8), `ticks_per_row: 2`,
-`target_speed: 6`:
+Worked: Sonic 1's Special Stage on its finest grid, `smpsHeaderTempo $02, $08` (divider 2, *m* 8),
+`ticks_per_row: 2`, `target_speed: 6`:
 
 ```
 60 × 7 × 6 × 2.5 / (8 × 2 × 2) = 6300 / 32 = 196.875  →  FC5 (197 BPM)
@@ -103,6 +103,7 @@ Worked: Sonic 1's Special Stage, `smpsHeaderTempo $02, $08` (divider 2, *m* 8), 
 | Title Screen | 1 | 5 | 3 | 3 | 120 |
 | Green Hill | 1 | 3 | 3 | 2 | 150 |
 | Special Stage | 2 | 8 | 6 | 2 | 196.875 → 197 |
+| Special Stage, `row_grid: bar` (its config) | 2 | 8 | 16 | 6 | 175 |
 | Drowning | 1 | 2 | 2 | 2 | 75 (header tempo) |
 
 A row lasts `speed × 2.5 / BPM` seconds: Green Hill's speed 3 at 150 BPM is 3 × 16.7 ms = 50 ms a row,

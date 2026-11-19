@@ -23,7 +23,7 @@ sonic1:     # every song: the reference driver
   - {name: lab_zone, config: sonic_1/05_lab_zone, why: Labyrinth Zone - rootless PSG entry + channel transpose}
   - {name: star_light_zone, config: sonic_1/06_star_light_zone, why: "Star Light Zone - range_space: chip"}
   - {name: scrap_brain_zone, config: sonic_1/07_scrap_brain_zone, why: Scrap Brain Zone - PSG3 noise envelope variants}
-  - {name: special_stage, config: sonic_1/08_special_stage, why: Special Stage}
+  - {name: special_stage, config: sonic_1/08_special_stage, why: "Special Stage; row_grid: bar in a full config"}
   - {name: robotnik, config: sonic_1/09_robotnik, why: Robotnik}
   - {name: robotnik_lofi, config: sonic_1/09_robotnik, variant: lofi, why: "Robotnik lofi - loop_drift_db 12, bass mixes at C2"}
   - {name: final_zone, config: sonic_1/10_final_zone, why: Final Zone}

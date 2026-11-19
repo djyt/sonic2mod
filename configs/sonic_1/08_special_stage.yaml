@@ -8,8 +8,7 @@ samples_dir: "input/sonic_1/samples/"
 
 auto_bpm: true              # Derive BPM from SMPS tempo header
 region: ntsc
-target_speed: 6             # 196.875 → 197 BPM (+0.06 %); speed 3 gave 98.4375 → 98 (−0.44 %, +139 ms per pass)
-ticks_per_row: 2
+row_grid: bar               # a 16th a row, a 48-row section a pattern: speed 16, 175 BPM exact (core/plan/meter.py)
 
 # -------------------------------------------------------------------------------------------------
 # Channel layout
@@ -99,9 +98,3 @@ psg_voice_map:
     high: C5
     mod_instrument: 6
     root: C3
-
-variants:
-  bar:                  # rows by the song's meter (core/plan/meter.py): a 16th a row, a 48-row section a pattern
-    row_grid: bar
-    ticks_per_row: null
-    target_speed: null

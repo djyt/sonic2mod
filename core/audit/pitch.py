@@ -221,7 +221,8 @@ def _judge(st: dict, by_inst: dict[int, Counter], t0: float, t1: float, f: float
 
 
 def _judge_slide(st: dict, t0: float, f: float, hit: tuple | None, tolerance: float) -> str:
-    """A slide's chip segment against the MOD's pitch at its midpoint (`hit`), counted in `st`."""
+    """A slide's chip segment against the MOD's pitch `hit` (at its midpoint, or the closest over
+    its span), counted in `st`."""
     cents = 1200 * math.log2(hit[1] / f) if hit is not None else math.inf
     if abs(cents) <= tolerance:
         st["slide_ok"] += 1
@@ -230,6 +231,21 @@ def _judge_slide(st: dict, t0: float, f: float, hit: tuple | None, tolerance: fl
     st["slide_notes"].append({"t_s": t0, "chip": pitch_name(f), "mod": pitch_name(hit[1]) if hit else "-",
                               "cents": cents})
     return "slide off"
+
+
+def _sounding_over(timeline: list[tuple], a: float, b: float) -> list[tuple]:
+    """The entries of `timeline` sounding from `a` to `b` (s): the one at `a`, then each starting before `b`."""
+    out: list[tuple] = []
+    for n in timeline:
+        if n[0] >= b - 1e-6:
+            break
+        out = [n] if n[0] <= a + 1e-6 else [*out, n]
+    return out
+
+
+def _closest(f: float, entries: list[tuple]) -> tuple | None:
+    """The entry whose pitch is closest to `f` Hz; None for none."""
+    return min(entries, key=lambda n: abs(math.log2(n[1] / f)), default=None)
 
 
 def _slide_segments(evs: list[Segment], min_ms: float) -> list[bool]:
@@ -398,6 +414,11 @@ def audit_pitches(chip: dict[str, list[Segment]], vgm_end: float, mod: dict[int,
                     hit = n
             if slides[i]:
                 assert slide_tolerance is not None
+                if paired is None:
+                    # A slide's frame straddling the MOD's pitch change (a row a few ms off the
+                    # frame) meets the closer pitch: Sonic 1's Special Stage FM3, C5's last frame
+                    # against the D5 that took over 7 ms before the chip's
+                    hit = _closest(f, _sounding_over(timeline, t0 + run, t1 + run)) or hit
                 verdict = _judge_slide(st, t0, f, hit, slide_tolerance)
             else:
                 verdict = _judge(st, by_inst, t0, t1, f, hit, min_ms, tolerance)

@@ -45,12 +45,18 @@ channels:
 #          Format: mod_instrument, filename, default volume, finetuning
 # -------------------------------------------------------------------------------------------------
 sample_list:
-  - [1,  "ss_v0.raw",      32, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
-  - [2,  "ss_v1.raw",      40, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right
-  - [3,  "ss_v2.raw",      41, 0] # VGZ: +3.9 dB at 64
-  - [4,  "ss_v3.raw",      31, 0] # -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: -1.1 dB at 27
-  - [5,  "psg_tone04.raw", 16, 0] # baked: 32 at PSG attenuation 3 (−6 dB); -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: +3.6 dB at 25
-  - [6,  "psg_tone08.raw", 29, 0] # baked: 40 at PSG attenuation 1 (−2 dB); -2 dB so ss_v2 (inst 3, at the 64 ceiling) sits right; VGZ: -1.6 dB at 24
+  # Balance only: normalise_volumes lifts the loudest note to 64
+  # --- voice $00: alg 4, fb 5, detuned carriers - FM1 ---
+  - [1,  "ss_v0.raw",      32, 0]
+  # --- voice $01: alg 4, fb 5, detuned carriers - FM6 ---
+  - [2,  "ss_v1.raw",      40, 0]
+  # --- voice $02: alg 0, fb 6 - FM2 ---
+  - [3,  "ss_v2.raw",      41, 0]
+  # --- voice $03: alg 5, fb 7 - FM3, FM4, FM5 ---
+  - [4,  "ss_v3.raw",      31, 0]
+  # --- PSG ---
+  - [5,  "psg_tone04.raw", 16, 0] # PSG1
+  - [6,  "psg_tone08.raw", 29, 0] # PSG2
 
 
 # -------------------------------------------------------------------------------------------------
@@ -93,3 +99,9 @@ psg_voice_map:
     high: C5
     mod_instrument: 6
     root: C3
+
+variants:
+  bar:                  # rows by the song's meter (core/plan/meter.py): a 16th a row, a 48-row section a pattern
+    row_grid: bar
+    ticks_per_row: null
+    target_speed: null

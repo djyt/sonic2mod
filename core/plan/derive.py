@@ -208,12 +208,12 @@ def complete_config(config: ConversionConfig, config_path: str | Path, settings:
     song = song or config.read_song()
     if not config.is_minimal:
         derivation = _derive_rows(config.stated(), song, settings)
-        return ConversionConfig.from_data(derivation.data, str(config_path), config.variant), derivation
+        return ConversionConfig.from_data(derivation.data, str(config_path), config.variant, completed=True), derivation
     settings = with_song_overrides(settings, config)       # the song's max_window
     derivation = derive_config(config.stated(), song, config_path, settings, config.read_dac())
     if config.variant is not None and "output_file" in derivation.derived:
         derivation.data["output_file"] = variant_output_file(derivation.data["output_file"], config.variant)
-    complete = ConversionConfig.from_data(derivation.data, str(config_path), config.variant)
+    complete = ConversionConfig.from_data(derivation.data, str(config_path), config.variant, completed=True)
     if not derivation.files:        # no DAC samples: nothing to write, no folder made in the cwd
         return complete, derivation
 

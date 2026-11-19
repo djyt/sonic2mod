@@ -120,6 +120,7 @@ class ConversionConfig:
     # The `variants:` entry the config was read as (convert.py --variant; None: the base build)
     variant: str | None = None
     _data: dict = field(default_factory=dict, repr=False)   # the YAML it was read from
+    _completed: bool = field(default=False, repr=False)     # core.plan.complete_config's output: derives no more
     # The SMPS variant that played the song; None: not stated (a ROM's is detected, an asm or a
     # VGM log is Sonic 1's).  An asm input states its tempo itself; a VGM / VGZ one is lifted
     # (core/vgm/lift/), and these override the tempo the lift infers.
@@ -275,9 +276,9 @@ class ConversionConfig:
         return cls.from_data(resolved, filepath, variant)
 
     @classmethod
-    def from_data(cls, data: dict, filepath, variant: str | None = None) -> ConversionConfig:
-        """A config from its YAML data with its variant applied (a file's, or a minimal one completed
-        by core.plan.derive_config)."""
+    def from_data(cls, data: dict, filepath, variant: str | None = None, *, completed: bool = False) -> ConversionConfig:
+        """A config from its YAML data with its variant applied (a file's, or one `completed` from its
+        song by core.plan.complete_config: completing it again would refuse the keys it derived)."""
         unknown = sorted(set(data) - _KEYS)
         if unknown:
             raise ValueError(f"{filepath}: unknown key(s): {', '.join(unknown)}")
@@ -298,6 +299,7 @@ class ConversionConfig:
         config.validate_mod_channels()
         config._read_source(data)
         config._data = dict(data)
+        config._completed = completed
         return config
 
     @property
@@ -308,8 +310,8 @@ class ConversionConfig:
     @property
     def is_derived(self) -> bool:
         """Completed from its song (core.plan.complete_config): a minimal config, or one whose rows
-        row_grid: bar derives."""
-        return self.is_minimal or self.row_grid == BAR_GRID
+        row_grid: bar derives; once completed, no more."""
+        return not self._completed and (self.is_minimal or self.row_grid == BAR_GRID)
 
     def stated(self) -> dict:
         """The YAML data the config states, with any later input_file / rom_song override."""

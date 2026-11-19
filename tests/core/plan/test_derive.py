@@ -109,6 +109,17 @@ class RowGrid(unittest.TestCase):
         self.assertAlmostEqual(bpm, 50, places=6)                       # the driver's tempo exactly
 
 
+    def test_a_completed_bar_config_is_not_completed_again(self):
+        # Tools read a config completed (load_config), then prepare it (complete_config again):
+        # the second pass would see the rows the first derived as stated, and refuse them
+        data = {"name": "Bar", "input_file": "input/sonic_1/Mus89 - Special Stage.asm", "row_grid": "bar",
+                "channels": [{"source": "FM1", "mod_channel": 0}]}
+        config = ConversionConfig.from_data(data, "configs/bar.yaml")
+        completed, derivation = complete_config(config, "configs/bar.yaml", _SETTINGS)
+        self.assertIsNotNone(derivation)
+        self.assertIn("ticks_per_row", completed.stated())
+        self.assertEqual(complete_config(completed, "configs/bar.yaml", _SETTINGS), (completed, None))
+
 @needs_moonwalker
 class Moonwalker(unittest.TestCase):
     @classmethod

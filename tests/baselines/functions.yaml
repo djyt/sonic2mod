@@ -257,21 +257,21 @@ functions:
   core/config/song.py::_count: 3ffffffffffffffffff
   core/config/song.py::_range_space: 3ffffffffffffffffff
   core/config/song.py::_region: 3ffffffffffffffffff
-  core/config/song.py::_vacate: 23ffffd9fffffffc1ff
+  core/config/song.py::_vacate: 23ffffddfffffffd9ff
   core/config/song.py::variant_output_file: 100c000300630d90c0c
   core/convert/channel_writer/cells.py::Cells.__init__: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.cell: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.clear_stale_cut: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.cut: 317fd80803fffc01fe0
   core/convert/channel_writer/cells.py::Cells.cut_after: '2800000'
-  core/convert/channel_writer/cells.py::Cells.effect_at: 23ffffd9f7fffffc97f
+  core/convert/channel_writer/cells.py::Cells.effect_at: 23ffffddf7fffffd97f
   core/convert/channel_writer/cells.py::Cells.end: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.ensure: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.fine_slide: 3e20fc0875f07c2007e
   core/convert/channel_writer/cells.py::Cells.free: 3e21fff06a207d988ed
   core/convert/channel_writer/cells.py::Cells.grid_ticks: 3ffffe0f8e087fc2160
   core/convert/channel_writer/cells.py::Cells.in_song: 3ffffffffffffffffff
-  core/convert/channel_writer/cells.py::Cells.made: 23ffffd9f7fffffc17f
+  core/convert/channel_writer/cells.py::Cells.made: 23ffffddf7fffffd97f
   core/convert/channel_writer/cells.py::Cells.note_at: 3fdebe2208002bc1fff
   core/convert/channel_writer/cells.py::Cells.note_cell: 3ffffffffffffffffff
   core/convert/channel_writer/cells.py::Cells.put: 3ffffffffffffffffff
@@ -337,14 +337,14 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._baked: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._base_voice: 3e00000000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._collect_ring_ticks: 3ffffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._cut_at: a00000002000000
+  core/convert/channel_writer/writer.py::ChannelWriter._cut_at: 18a00400c02001800
   core/convert/channel_writer/writer.py::ChannelWriter._cut_bank_sound: '2800000'
   core/convert/channel_writer/writer.py::ChannelWriter._cut_banked: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._cut_in_attack_row: 3400fc0000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._cut_tick: 3ffffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._drop_loop_cut: 23ffffd9fffffffc1ff
+  core/convert/channel_writer/writer.py::ChannelWriter._drop_loop_cut: 23ffffddfffffffd9ff
   core/convert/channel_writer/writer.py::ChannelWriter._emit_volume: 3ffffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._ended: 23ffffd9f7fffffc17f
+  core/convert/channel_writer/writer.py::ChannelWriter._ended: 23ffffddf7fffffd97f
   core/convert/channel_writer/writer.py::ChannelWriter._fill_abs: 17f800803fffc01fe0
   core/convert/channel_writer/writer.py::ChannelWriter._glides_on: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._key_off: 3ffffffffffffffffff
@@ -373,10 +373,10 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._retune_attack: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._retune_tie: 3e20fc0875f07c2007e
   core/convert/channel_writer/writer.py::ChannelWriter._ring_note: 3ffffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._silent: 23ffffd9f7fffffc17f
+  core/convert/channel_writer/writer.py::ChannelWriter._silent: 23ffffddf7fffffd97f
   core/convert/channel_writer/writer.py::ChannelWriter._slide_tie: 3e00000000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._sliding: 3e3ffe087ff07c3c0fe
-  core/convert/channel_writer/writer.py::ChannelWriter._sounds_foreign: 23ffffd9f7fffffc17f
+  core/convert/channel_writer/writer.py::ChannelWriter._sounds_foreign: 23ffffddf7fffffd97f
   core/convert/channel_writer/writer.py::ChannelWriter._stop_ringing: 3fffffdffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._write_decay: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._write_pan_steps: 3ffffffffffffffffff
@@ -750,24 +750,24 @@ functions:
   core/merge/notes.py::keyoff_secs: 98000600c62b01818
   core/merge/notes.py::match_onsets: 98000600c62b01818
   core/merge/notes.py::pair_channels: 98000600c62b01818
-  core/merge/notes.py::solo_chords: '2000000'
+  core/merge/notes.py::solo_chords: 18000400c02001800
   core/merge/notes.py::unison_gain_db: 98000600c62b01818
   core/merge/notes.py::unison_gain_db.add: 98000600c62b01818
   core/merge/plan.py::_Planner.__init__: 98000600c62b01818
   core/merge/plan.py::_Planner._chip_base: '18000600002801800'
   core/merge/plan.py::_Planner._composite_for: 98000600c62b01818
-  core/merge/plan.py::_Planner._fold_chord: '2000000'
+  core/merge/plan.py::_Planner._fold_chord: 18000400c02001800
   core/merge/plan.py::_Planner._measure_heard: 98000600c62b01818
   core/merge/plan.py::_Planner._measure_heard.off_grid: 98000600c42801800
   core/merge/plan.py::_Planner._notes_of: 98000600c62b01818
-  core/merge/plan.py::_Planner._pat: c02800000
+  core/merge/plan.py::_Planner._pat: 18000400c02801800
   core/merge/plan.py::_Planner._place: 98000600c62b01818
   core/merge/plan.py::_Planner._restrict: 98000600c62b01818
   core/merge/plan.py::_Planner._unison: '2800000'
-  core/merge/plan.py::_Planner._written: '2000000'
+  core/merge/plan.py::_Planner._written: 18000400c02001800
   core/merge/plan.py::_Planner.collect_notes: 98000600c62b01818
   core/merge/plan.py::_Planner.fold: 98000600c62b01818
-  core/merge/plan.py::_Planner.fold_solos: '2000000'
+  core/merge/plan.py::_Planner.fold_solos: 18000400c02001800
   core/merge/plan.py::_Planner.level_scale: 98000600c62b01818
   core/merge/plan.py::_Planner.pair_all: 98000600c62b01818
   core/merge/plan.py::_Planner.record_lost_notes: 98000600c62b01818
@@ -865,8 +865,11 @@ functions:
   core/mod/notes.py::shift_ratio: 3ffffffffffffffffff
   core/mod/notes.py::shifted_rate: 3ffffffffffffffffff
   core/mod/reach.py::_check: 98000600c62b01818
+  core/mod/reach.py::_pass_end: 18000400c02001800
   core/mod/reach.py::_play_row: 98000600c62b01818
+  core/mod/reach.py::_replay: 18000400c02001800
   core/mod/reach.py::_tuned: 98000600c62b01818
+  core/mod/reach.py::cut_short: 18000400c02001800
   core/mod/reach.py::heard_bytes: 98000600c62b01818
   core/mod/reader.py::ModImage.play_order: 3ffffffffffffffffff
   core/mod/reader.py::ModImage.play_rows: 3ffffffffffffffffff
@@ -989,8 +992,8 @@ functions:
   core/plan/driver_state.py::DriverState.for_channel: 3ffffffffffffffffff
   core/plan/driver_state.py::DriverState.range_key: 3ffffffffffffffffff
   core/plan/driver_state.py::ResolvedNote.clamped: 3ffffffffffffffffff
-  core/plan/driver_state.py::_as_placed: '2000000'
-  core/plan/driver_state.py::_as_vacated: c60800000
+  core/plan/driver_state.py::_as_placed: c02000000
+  core/plan/driver_state.py::_as_vacated: '60800000'
   core/plan/driver_state.py::enabled_channels: 3ffffffffffffffffff
   core/plan/driver_state.py::psg_range_entry: 1fffe0fe7fffc01f61
   core/plan/driver_state.py::resolve_note: 3ffffffffffffffffff

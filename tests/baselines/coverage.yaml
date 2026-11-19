@@ -2046,7 +2046,7 @@ extra_life_lofi_merged:
   - --merged
   - --output
   - output/regression/extra_life_lofi_merged.mod
-  commit: 38e7866-dirty
+  commit: cff5924-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -2231,7 +2231,7 @@ extra_life_merged:
   - --merged
   - --output
   - output/regression/extra_life_merged.mod
-  commit: 38e7866-dirty
+  commit: cff5924-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4629,7 +4629,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/regression/green_hill_zone_merged.mod
-  commit: 4e2ad19-dirty
+  commit: cff5924-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6300,7 +6300,7 @@ marble_zone_lofi_merged:
   - --merged
   - --output
   - output/regression/marble_zone_lofi_merged.mod
-  commit: 557587c-dirty
+  commit: cff5924-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -6485,7 +6485,7 @@ marble_zone_merged:
   - --merged
   - --output
   - output/regression/marble_zone_merged.mod
-  commit: 557587c-dirty
+  commit: cff5924-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -8522,7 +8522,7 @@ robotnik_merged:
   - --merged
   - --output
   - output/regression/robotnik_merged.mod
-  commit: 38e7866-dirty
+  commit: cff5924-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11671,7 +11671,7 @@ stage_clear_lofi_merged:
   - --merged
   - --output
   - output/regression/stage_clear_lofi_merged.mod
-  commit: 557587c-dirty
+  commit: cff5924-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11856,7 +11856,7 @@ stage_clear_merged:
   - --merged
   - --output
   - output/regression/stage_clear_merged.mod
-  commit: 557587c-dirty
+  commit: cff5924-dirty
   files:
   - convert.py
   - core/__init__.py

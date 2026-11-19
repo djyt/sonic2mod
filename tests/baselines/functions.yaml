@@ -337,6 +337,7 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._baked: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._base_voice: 3e00000000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._collect_ring_ticks: 3ffffffffffffffffff
+  core/convert/channel_writer/writer.py::ChannelWriter._cut_at: '200000000000000'
   core/convert/channel_writer/writer.py::ChannelWriter._cut_bank_sound: '2800000'
   core/convert/channel_writer/writer.py::ChannelWriter._cut_banked: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._cut_in_attack_row: 34007c0000000000000

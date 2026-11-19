@@ -10560,7 +10560,7 @@ sor2_song_12:
   - tests/settings.yaml
   - --output
   - output/regression/sor2_song_12.mod
-  commit: 557587c-dirty
+  commit: eef8a94-dirty
   files:
   - convert.py
   - core/__init__.py

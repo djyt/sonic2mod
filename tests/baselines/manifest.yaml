@@ -270,9 +270,9 @@ sor2_level_complete:
   date: '2026-11-12'
   settings: 9190ec12f30b
 sor2_song_12:
-  commit: 557587c
+  commit: eef8a94-dirty
   config: 51b5789bab39
-  date: '2026-11-12'
+  date: '2026-11-19'
   settings: 9190ec12f30b
 sor2_too_deep:
   commit: 557587c

@@ -4629,7 +4629,7 @@ green_hill_zone_merged:
   - --merged
   - --output
   - output/regression/green_hill_zone_merged.mod
-  commit: 557587c-dirty
+  commit: 4e2ad19-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -4802,7 +4802,7 @@ green_hill_zone_merged:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/02_green_hill_zone.yaml: 59a89677bd7f
+    configs/sonic_1/02_green_hill_zone.yaml: 81b39ee3ae27
     input/sonic_1/Mus81 - GHZ.asm: eb1e02ed826c
     tests/settings.yaml: cbe7c5cb200c
 green_hill_zone_rom:

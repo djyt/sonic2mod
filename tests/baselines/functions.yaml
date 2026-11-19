@@ -337,7 +337,7 @@ functions:
   core/convert/channel_writer/writer.py::ChannelWriter._baked: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._base_voice: 3e00000000000000000
   core/convert/channel_writer/writer.py::ChannelWriter._collect_ring_ticks: 3ffffffffffffffffff
-  core/convert/channel_writer/writer.py::ChannelWriter._cut_at: a00000000000000
+  core/convert/channel_writer/writer.py::ChannelWriter._cut_at: a00000002000000
   core/convert/channel_writer/writer.py::ChannelWriter._cut_bank_sound: '2800000'
   core/convert/channel_writer/writer.py::ChannelWriter._cut_banked: 3ffffffffffffffffff
   core/convert/channel_writer/writer.py::ChannelWriter._cut_in_attack_row: 3400fc0000000000000
@@ -750,11 +750,13 @@ functions:
   core/merge/notes.py::keyoff_secs: 98000600c62b01818
   core/merge/notes.py::match_onsets: 98000600c62b01818
   core/merge/notes.py::pair_channels: 98000600c62b01818
+  core/merge/notes.py::solo_chords: '2000000'
   core/merge/notes.py::unison_gain_db: 98000600c62b01818
   core/merge/notes.py::unison_gain_db.add: 98000600c62b01818
   core/merge/plan.py::_Planner.__init__: 98000600c62b01818
   core/merge/plan.py::_Planner._chip_base: '18000600002801800'
   core/merge/plan.py::_Planner._composite_for: 98000600c62b01818
+  core/merge/plan.py::_Planner._fold_chord: '2000000'
   core/merge/plan.py::_Planner._measure_heard: 98000600c62b01818
   core/merge/plan.py::_Planner._measure_heard.off_grid: 98000600c42801800
   core/merge/plan.py::_Planner._notes_of: 98000600c62b01818
@@ -762,8 +764,10 @@ functions:
   core/merge/plan.py::_Planner._place: 98000600c62b01818
   core/merge/plan.py::_Planner._restrict: 98000600c62b01818
   core/merge/plan.py::_Planner._unison: '2800000'
+  core/merge/plan.py::_Planner._written: '2000000'
   core/merge/plan.py::_Planner.collect_notes: 98000600c62b01818
   core/merge/plan.py::_Planner.fold: 98000600c62b01818
+  core/merge/plan.py::_Planner.fold_solos: '2000000'
   core/merge/plan.py::_Planner.level_scale: 98000600c62b01818
   core/merge/plan.py::_Planner.pair_all: 98000600c62b01818
   core/merge/plan.py::_Planner.record_lost_notes: 98000600c62b01818
@@ -985,7 +989,8 @@ functions:
   core/plan/driver_state.py::DriverState.for_channel: 3ffffffffffffffffff
   core/plan/driver_state.py::DriverState.range_key: 3ffffffffffffffffff
   core/plan/driver_state.py::ResolvedNote.clamped: 3ffffffffffffffffff
-  core/plan/driver_state.py::_as_vacated: c62800000
+  core/plan/driver_state.py::_as_placed: '2000000'
+  core/plan/driver_state.py::_as_vacated: c60800000
   core/plan/driver_state.py::enabled_channels: 3ffffffffffffffffff
   core/plan/driver_state.py::psg_range_entry: 1fffe0fe7fffc01f61
   core/plan/driver_state.py::resolve_note: 3ffffffffffffffffff

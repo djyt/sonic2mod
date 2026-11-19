@@ -120,9 +120,9 @@ green_hill_zone:
   date: '2026-11-12'
   settings: 9190ec12f30b
 green_hill_zone_merged:
-  commit: 557587c
+  commit: 4e2ad19-dirty
   config: 70c92b9a3960
-  date: '2026-11-12'
+  date: '2026-11-19'
   settings: 9190ec12f30b
 invincibility:
   commit: 557587c

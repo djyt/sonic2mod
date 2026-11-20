@@ -43,7 +43,7 @@ def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps: float =
 
     Args:
         tempo_divider: SMPS header divider (multiplies note durations)
-        tempo_modifier: SMPS header modifier (TempoWait fires every N frames)
+        tempo_modifier: SMPS header modifier (TempoWait fires every N frames; 0, an SFX's: never)
         ticks_per_row: SMPS ticks per MOD row
         speed: MOD speed (ticks per row in ProTracker)
         fps: the driver's frames a second (core.smps.update_hz: 60 NTSC V-int)
@@ -51,17 +51,25 @@ def derive_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps: float =
     Returns:
         Integer BPM clamped to 32–255
     """
-    if tempo_modifier <= 1 or tempo_divider < 1:
+    bpm = exact_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps)
+    if math.isnan(bpm):
         return 150  # fallback
-    bpm = fps * (tempo_modifier - 1) * speed * 2.5 / (tempo_modifier * tempo_divider * ticks_per_row)
     return max(32, min(255, round(bpm)))
 
 
 def exact_bpm(tempo_divider, tempo_modifier, ticks_per_row, speed, fps: float = 60.0) -> float:
     """derive_bpm() before rounding and clamping (nan when the tempo cannot be derived)."""
-    if tempo_modifier <= 1 or tempo_divider < 1:
+    if tempo_modifier == 1 or tempo_divider < 1:
         return float("nan")
-    return fps * (tempo_modifier - 1) * speed * 2.5 / (tempo_modifier * tempo_divider * ticks_per_row)
+    return fps * _ticks_per_frame(tempo_modifier) * speed * 2.5 / (tempo_divider * ticks_per_row)
+
+
+def _ticks_per_frame(tempo_modifier) -> float:
+    """Duration ticks a frame: (m - 1) / m; 1 with no modifier (an SFX header's 0: no TempoWait,
+    as core.plan.Timeline counts it)."""
+    if tempo_modifier == 0:
+        return 1.0
+    return (tempo_modifier - 1) / tempo_modifier
 
 
 def bpm_rounding_options(tempo_divider, tempo_modifier, ticks_per_row, fps: float = 60.0,

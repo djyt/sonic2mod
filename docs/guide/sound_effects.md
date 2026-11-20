@@ -86,7 +86,7 @@ Every key the SFX path reads.  The code's defaults are the shipped base values. 
 | `dither` | `off` | 8-bit rounding: `shaped` (first order), `flat`, `off` (`core.audio.to_int8`, the converter's) |
 | `paula` | `false` | Rates on ProTracker's period grid, a silent repeat word appended; the manifest gains `period`, `note`, `finetune` and the repeat.  Needs `bits: 8`, `channels: mono`, and `rate` in Hz or `auto` |
 | `max_rate` | `28604` | `auto`'s ceiling (period 124); 16574 for an A500 |
-| `trim_lead` | `false` | Start at the first sample that rounds to a step ([Lead and tail](#lead-and-tail)).  Plays a frame earlier than the Mega Drive |
+| `trim_lead` | `false` | `true`: start at the first sample that rounds to a step ([Lead and tail](#lead-and-tail)), a frame earlier than the Mega Drive.  dB (`-20`): where the effect first comes within that of its own peak, faded in 2 ms |
 | `tail_db` | `off` | Cut where the effect stays this many dB under its own peak (`-30`), the last frame faded |
 | `transpose` | `0` | Semitones on every track's notes, rendered so ([Transpose](#transpose)) |
 | `effects` | `{}` | One effect's own `trim_lead` / `tail_db` / `transpose` / `gain_db`, by sound id (`CC`, `$CC`, `0xCC`): `{CC: {tail_db: -24}}` |
@@ -206,6 +206,11 @@ Bumper, Shield, Giant Ring ...; Collapse `$02`, Signpost `$04`), most likely key
 frame while the voice uploads (an effect takes FM4 / FM5 from a music note that may still sound).  A sample
 starts from silence anyway: `trim_lead` drops that frame (138 bytes at 8287 Hz; 1.6 KB over the 49), and the
 effect sounds a frame earlier.
+
+**A slow attack is not silence.**  Enter Special Stage (`$CA`) has no rest: its carrier's attack rate `$0B`
+swells to the peak over 7 frames (frame 0 at −29 dB, frame 2 at −12 dB).  `trim_lead: -20` starts where the
+effect first comes within 20 dB of its own peak (about 2 frames in) and fades in over 2 ms.  The attack is
+cut: a re-voicing for a game's timing, not the Mega Drive's sound.
 
 **Tails are the voices' own fades.**  44 of the 45 effect voices release every operator at `$0F`, so the long
 tails are written: Spring's `smpsAlterVol $02` every two frames, 25 times, falls 37.5 dB over 50 frames.

@@ -73,7 +73,8 @@ class OutputSettings:
     dither: str = DITHER_OFF                # 8-bit rounding: core.audio.DITHER_MODES
     paula: bool = False                     # ProTracker period grid, silent repeat word
     max_rate: float = DEFAULT_MAX_RATE      # auto's ceiling
-    trim_lead: bool = False                 # from the first sample that rounds to a step
+    trim_lead: bool | float = False         # true: from the first sample that rounds to a step; dB
+                                            # (-20): from where it first comes within that of its peak
     tail_db: float | None = None            # cut where the effect stays this far under its own peak
     transpose: int = 0                      # semitones on every track's notes: a high effect moved
                                             # into a low rate's band
@@ -147,7 +148,7 @@ def _output(data: dict, where: str) -> OutputSettings:
         dither=dither_mode(data.get("dither", d.dither), where),
         paula=_flag(data, "paula", d.paula, where),
         max_rate=_positive(data, "max_rate", d.max_rate, where),
-        trim_lead=_flag(data, "trim_lead", d.trim_lead, where),
+        trim_lead=_trim_lead(data.get("trim_lead", d.trim_lead), where),
         tail_db=_tail_db(data.get("tail_db", d.tail_db), where),
         transpose=_semitones(data.get("transpose", d.transpose), where),
         gain_db=_db(data.get("gain_db", d.gain_db), where),
@@ -179,6 +180,15 @@ def _sound_ids(value, where: str) -> tuple[int, ...]:
     if not isinstance(value, (list, tuple)):
         raise ValueError(f"{where}: must be a list of sound ids ([A0, B5]) (got {value!r})")
     return tuple(parse_number(v, where, base=16) for v in value)
+
+
+def _trim_lead(value, where: str) -> bool | float:
+    """true / false, or dB under the effect's own peak (negative): where its slow attack is cut."""
+    if isinstance(value, bool):
+        return value
+    if not isinstance(value, (int, float)) or value >= 0:
+        raise ValueError(f"{where}: trim_lead must be true, false or dB under the peak (-20) (got {value!r})")
+    return float(value)
 
 
 def _tail_db(value, where: str) -> float | None:
@@ -214,7 +224,7 @@ def _effects(data: dict, where: str) -> dict[int, dict]:
         _check_keys(entry, set(EFFECT_KEYS), ctx)
         own = {}
         if "trim_lead" in entry:
-            own["trim_lead"] = _flag(entry, "trim_lead", False, ctx)
+            own["trim_lead"] = _trim_lead(entry["trim_lead"], ctx)
         if "tail_db" in entry:
             own["tail_db"] = _tail_db(entry["tail_db"], ctx)
         if "transpose" in entry:

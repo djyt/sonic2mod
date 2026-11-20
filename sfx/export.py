@@ -48,6 +48,9 @@ _TAIL_FADE_SECS = 1 / 60
 # Half a step rounds to silence: the lead trim keeps from the first sample past it
 _HALF_STEP = 0.5
 
+# A lead cut in dB starts mid-attack: faded in just enough not to click
+_LEAD_FADE_SECS = 0.002
+
 # The DC blocker's corner: a one-pole high-pass, not a mean subtraction, since many SFX open with a
 # rest a mean would push off zero
 _DC_BLOCK_HZ = 30.0
@@ -207,21 +210,46 @@ def _trim(channels: list[list[float]], gain: float, peak: float, out: OutputSett
           rate: int) -> list[list[float]]:
     """What of an effect is kept:
 
-        trim_lead  from the first sample that rounds to a step: 19 of Sonic 1's SFX open on a rest
-                   (nRst, $01: the voice keyed off a frame before its note), silence in a sample
+        trim_lead  true: from the first sample that rounds to a step: 19 of Sonic 1's SFX open on a
+                   rest (nRst, $01: the voice keyed off a frame before its note), silence in a sample.
+                   dB (-20): from the first sample within that of the effect's own peak, faded in (a
+                   slow attack's swell: Enter Special Stage's)
         tail_db    to the last sample within tail_db of the effect's own peak, its last frame faded
     """
     n = len(channels[0])
-    start = min(sounding_start(c, _HALF_STEP / gain) for c in channels) if out.trim_lead else 0
+    floor = _lead_floor(out.trim_lead, gain, peak)
+    start = min(sounding_start(c, floor) for c in channels) if floor is not None else 0
     end = max(sounding_end(c, peak * 10.0 ** (out.tail_db / 20.0)) for c in channels) \
         if out.tail_db is not None else n
     if start >= end or (start, end) == (0, n):
         return channels
 
     kept = [c[start:end] for c in channels]
+    if start and out.trim_lead is not True:
+        kept = [_fade_start(c, rate, _LEAD_FADE_SECS) for c in kept]
     if end == n:
         return kept
     return [fade_end(c, len(c), rate, _TAIL_FADE_SECS) for c in kept]
+
+
+def _lead_floor(trim_lead: bool | float, gain: float, peak: float) -> float | None:
+    """The level trim_lead keeps from (None: no trim): half a step, or its dB under the peak (never
+    under half a step: a dB trim keeps no more than true does)."""
+    if trim_lead is False:
+        return None
+    step = _HALF_STEP / gain
+    if trim_lead is True:
+        return step
+    return max(step, peak * 10.0 ** (trim_lead / 20.0))
+
+
+def _fade_start(samples: list[float], rate: int, secs: float) -> list[float]:
+    """The first `secs` faded in."""
+    out = list(samples)
+    fade = min(len(out), max(1, int(rate * secs)))
+    for i in range(fade):
+        out[i] *= i / fade
+    return out
 
 
 def _to_pcm8(channels: list[list[float]], gain: float, dither: str) -> array:

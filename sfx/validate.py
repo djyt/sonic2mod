@@ -217,6 +217,15 @@ def check_level() -> None:
     alone = export_all(renders[:1], out, taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)[0]
     check("no reference effect rendered: the set's own loudest", alone.peak == 127, f"peak {alone.peak}")
 
+    # trim_lead in dB: a linear swell 0 -> 1 over 1000 samples, held; -20 dB starts past 0.1 (sample 101)
+    swell = [min(i / 1000, 1.0) for i in range(4000)]
+    attack = SfxRender("CA_Swell", "CA_Swell", swell, swell, NATIVE_RATE, 0, [], [], False)
+    cut = export_all([attack], replace(out, trim_lead=-20.0), taps=DEFAULT_TAPS, clock=PAL_AMIGA_CLOCK)[0]
+    check("trim_lead dB starts within its dB of the peak", len(cut.pcm) == len(swell) - 101,
+          f"starts at sample {len(swell) - len(cut.pcm)}")
+    check("trim_lead dB fades in from silence", cut.pcm[0] == 0 and cut.pcm[200] == round(0.3 * 127),
+          f"first {cut.pcm[0]}, at 200 {cut.pcm[200]}")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate the offline SFX driver")

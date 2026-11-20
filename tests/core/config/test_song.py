@@ -11,7 +11,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from core.config import ConversionConfig, load_yaml, parse_number
+from core.config import (
+    ConversionConfig,
+    PsgSynthesisSettings,
+    SynthesisSettings,
+    load_yaml,
+    parse_number,
+    with_song_overrides,
+)
 
 _BASE = {"input_file": "song.asm", "channels": [{"source": "FM1", "mod_channel": 0}]}
 
@@ -65,6 +72,13 @@ class Values(unittest.TestCase):
         self.assertEqual(_config(dac_stall=0.35).dac_stall, 0.35)
         with self.assertRaisesRegex(ValueError, "dac_stall"):
             _config(dac_stall=1.2)
+
+    def test_detune_variants_overrides_the_fm_setting_only(self):
+        fm, psg = SynthesisSettings(), PsgSynthesisSettings()
+        off = _config(detune_variants=False)
+        self.assertFalse(with_song_overrides(fm, off).detune_variants)
+        self.assertIs(with_song_overrides(psg, off), psg)
+        self.assertTrue(with_song_overrides(fm, _config()).detune_variants)
 
 
 class SampleRows(unittest.TestCase):

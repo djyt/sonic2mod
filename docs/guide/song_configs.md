@@ -58,7 +58,7 @@ is an error everywhere: top level, inside every entry, group and block.  So is a
 YAML read ─► variants: blocks laid over ─► keys parsed and checked
   ─► completed from the song (a minimal config, or row_grid: bar)
   ─► --merged: the merged build's columns ─► auto_bpm: target_bpm from the tempo header
-  ─► settings.yaml, with the song's own overrides (loop_drift_db, treble_shelf_db, max_window) ─► --output
+  ─► settings.yaml, with the song's own overrides (loop_drift_db, treble_shelf_db, max_window, detune_variants) ─► --output
 ```
 
 ---
@@ -470,6 +470,7 @@ Optional keys that trade bytes for fidelity.  "FM entry" = a `voice_map` or `cha
 | `treble_shelf_hz` | group | `samples.treble_shelf_hz` (2500) | The group's shelf corner |
 | `saturate_db`, `merge_saturate_db` | `dac_samples` entry | 0 | [above](#dac_samples) |
 | `limit_db` | group | — | Limit a mix's peaks past full scale by up to this many dB instead of turning the whole mix down |
+| `detune_variants` | song | `fm_synthesis.detune_variants` (true) | `false`: a detuned FM note plays its instrument's own sample, no variant slot ([detune.md](../conversion/detune.md)).  Sonic 1's Get Continue SFX: one sample |
 
 Sustain loops and release slides: [samples.md](../conversion/samples.md).  `tools/mod/mod_audit.py` shows each
 sample's loop and size.

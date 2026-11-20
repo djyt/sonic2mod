@@ -4,7 +4,7 @@ PsgSynthesisSettings for the SN76489) and the MOD-wide choices (legato, player).
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 from ..audio import DEFAULT_DITHER, DEFAULT_TAPS
 from ..chips import DEFAULT_FM_PAN_LAW_DB, FM_CHIP_MODES, MD_FM_CLOCK, MD_PSG_CLOCK
@@ -483,10 +483,15 @@ class SynthesisSettings(SampleSettings):
         )
 
 
-def with_song_overrides(settings, config: "ConversionConfig"):
+_Settings = TypeVar("_Settings", bound=SampleSettings)
+
+
+def with_song_overrides(settings: _Settings, config: "ConversionConfig") -> _Settings:
     """`settings` (Synthesis- or PsgSynthesisSettings) with the song's own overrides applied:
-    loop_drift_db, treble_shelf_db, max_window."""
+    loop_drift_db, treble_shelf_db, max_window, detune_variants (FM only)."""
     import dataclasses
+    if config.detune_variants is not None and isinstance(settings, SynthesisSettings):
+        settings = dataclasses.replace(settings, detune_variants=config.detune_variants)
     if config.loop_drift_db is not None:
         settings = dataclasses.replace(settings, loop_drift_db=config.loop_drift_db)
     if config.treble_shelf_db is not None:

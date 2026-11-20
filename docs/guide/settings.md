@@ -20,7 +20,8 @@ must state the same keys as the live file (the runner exits 2 otherwise): add a 
 `sonic2wav.py` reads the chip clocks, `amiga_clock`, `psg_synthesis.oversample` and `samples.resample_taps`
 from `configs/settings.yaml` too ([sound_effects.md](sound_effects.md)).
 
-A song config can override three `samples:` keys for itself: `loop_drift_db`, `treble_shelf_db`, `max_window`
+A song config can override three `samples:` keys for itself: `loop_drift_db`, `treble_shelf_db`, `max_window`,
+and `fm_synthesis.detune_variants`
 ([song_configs.md](song_configs.md)).  The levels, legato and sample keys are explained on the
 [conversion pages](../conversion/overview.md); this page only lists them.
 

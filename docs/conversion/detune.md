@@ -17,7 +17,7 @@ $03 on A#  (FNUM 1148):  1200 · log2(1151 / 1148) = +4.5 cents
 It is not semitones and never affects range lookup ([notes.md](notes.md)).  A MOD retunes only a whole
 sample, in 12.5-cent finetune steps, so `core/plan/detune.py` renders every detune an instrument plays
 into a sample of its own: a [**detune variant**](../glossary.md#detune-variant).  settings.yaml
-`fm_synthesis.detune_variants: false` turns this off: detuned notes then play the instrument's own sample.
+`fm_synthesis.detune_variants: false` (or a song's `detune_variants: false`) turns this off: detuned notes then play the instrument's own sample.
 
 > **Pitfall:** Never stand in for a detune with `finetune: 1`: that moves every note of the slot,
 > detuned or not.

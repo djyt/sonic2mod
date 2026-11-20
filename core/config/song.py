@@ -29,7 +29,7 @@ _KEYS = frozenset({
     "merge_patterns", "merge_drop", "merge_fill", "merge_fill_cut_after", "merge_vacate", "merge_output_file",
     "merge_max_synth_shift", "merge_tolerance", "merge_bank_slots", "merge_twins", "merge_loop_timbre", "merge_solo_chords",
     "loop_drift_db",
-    "treble_shelf_db", "dac_stall", "max_window", "level_patch_min", "baked_slots", "window_root", "row_grid",
+    "treble_shelf_db", "dac_stall", "max_window", "detune_variants", "level_patch_min", "baked_slots", "window_root", "row_grid",
 })
 
 _TEMPO_OVERRIDES = ("tempo_modifier", "tempo_divider")
@@ -201,6 +201,9 @@ class ConversionConfig:
     # Song-level override of settings.yaml max_window (a minimal config's widest window, semitones; 0:
     # any): a build with slots to spare plays its notes nearer their samples' pitch
     max_window: int | None = None
+    # Song-level override of settings.yaml fm_synthesis.detune_variants (None: the settings'): false
+    # plays a detuned note on its instrument's own sample, a slot saved (Sonic 1's Get Continue SFX)
+    detune_variants: bool | None = None
     # The share of the DAC's time its driver's update holds the play loop (measured from the song's
     # rip: core/audit/dac_stall.py): a derived DAC note plays its loop's rate times 1 - it.  0: none
     dac_stall: float = 0.0
@@ -383,6 +386,8 @@ class ConversionConfig:
             self.max_window = int(data['max_window'])
             if self.max_window < 0:
                 raise ValueError(f"max_window: {self.max_window} is not a number of semitones (0: no cap)")
+        if data.get('detune_variants') is not None:
+            self.detune_variants = bool(data['detune_variants'])
         self.dac_stall = float(data.get('dac_stall', self.dac_stall))
         if not 0.0 <= self.dac_stall < 1.0:
             raise ValueError(f"dac_stall: {self.dac_stall} is not a share of the time (0 to under 1)")

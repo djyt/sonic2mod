@@ -1,8 +1,23 @@
 # Written by tests/regression.py --generate-baselines: what each baseline was made with.
 chaos_emerald:
-  commit: f18ed43
-  config: 27c0f7a4c8b5
-  date: '2026-11-19'
+  commit: 8df2605
+  config: ab40a4194e88
+  date: '2026-11-20'
+  settings: d3a5832ac4eb
+chaos_emerald_lofi:
+  commit: 8df2605
+  config: fd8ce8409c2c
+  date: '2026-11-20'
+  settings: d3a5832ac4eb
+chaos_emerald_lofi_merged:
+  commit: 8df2605
+  config: fd8ce8409c2c
+  date: '2026-11-20'
+  settings: d3a5832ac4eb
+chaos_emerald_merged:
+  commit: 8df2605
+  config: ab40a4194e88
+  date: '2026-11-20'
   settings: d3a5832ac4eb
 continue_screen:
   commit: f18ed43

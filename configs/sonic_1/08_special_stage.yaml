@@ -110,6 +110,10 @@ merge:
     followers: [FM6]
   - primary: FM2
     followers: [FM3, FM4, FM5]
+    loop_start_ms: 160       # the B-3 / A-3 stabs loop 0.17 / 0.14 s in, not 30 ms into the attack (+2.8 KB);
+                             # 120-140 ms: A-3 on a 46 ms loop, 200 ms: A-3 unlooped
+    loop_drift_db: 3         # the held A#3 chord loops 0.2 s in, not 0.72 (17 -> 5.7 KB; 57 -> 40 KB in all),
+                             # every column's level as before; at 6 it loops in the attack, 0.8 dB loud
     #loop_start_ms: 278      # the chord stabs loop where voice $03 settles, as the reference build's (+18 KB)
 
 # Channel 4 kept as free as nothing lost allows, for the game's sound effects: each PSG2 note moves to

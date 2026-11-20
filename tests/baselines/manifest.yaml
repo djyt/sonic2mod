@@ -300,9 +300,9 @@ special_stage:
   date: '2026-11-19'
   settings: d3a5832ac4eb
 special_stage_merged:
-  commit: f18ed43
-  config: 4caaa1558fa7
-  date: '2026-11-19'
+  commit: 1d3dc5e
+  config: c28422f8cc9a
+  date: '2026-11-20'
   settings: d3a5832ac4eb
 spring_yard_zone:
   commit: f18ed43

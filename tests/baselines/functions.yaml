@@ -172,7 +172,7 @@ functions:
   core/chips/ym2612/wrapper.py::OPN2.write_reg: 3fffffffffffffffffff
   core/chips/ym2612/wrapper.py::_load_lib: 3fffffffffffffffffff
   core/chips/ym2612/wrapper.py::output_rate: 3fffffffffffffffffff
-  core/config/bpm.py::_ticks_per_frame: f
+  core/config/bpm.py::_ticks_per_frame: 800000000000000f
   core/config/bpm.py::bpm_report: 3fffffffffffffffffff
   core/config/bpm.py::bpm_rounding_options: 3fffffffffffffffffff
   core/config/bpm.py::derive_bpm: 3fffffffffffffffffff
@@ -182,10 +182,10 @@ functions:
   core/config/entries.py::MergeGroup.label: 98800300631580c0cc
   core/config/entries.py::MergeGroup.where: 98800300631580c0cc
   core/config/entries.py::_check_keys: 3fffffffffffffffffff
-  core/config/entries.py::_drift_db: 1c0000000f986c06066
+  core/config/entries.py::_drift_db: 1c0800000f986c06066
   core/config/entries.py::_loop_decay: c06060
   core/config/entries.py::_loop_min_ms: 6c00000
-  core/config/entries.py::_loop_start_ms: 300000f066
+  core/config/entries.py::_loop_start_ms: 800000300000f066
   core/config/entries.py::_mod_note: 3fffffffffffffffffff
   core/config/entries.py::_opt: 3fffffffffffffffffff
   core/config/entries.py::_parse_instrument_range: 3fffffffffffffffffff

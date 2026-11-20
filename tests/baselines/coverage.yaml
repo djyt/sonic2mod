@@ -11673,7 +11673,7 @@ special_stage_merged:
   - --merged
   - --output
   - output/regression/special_stage_merged.mod
-  commit: f18ed43-dirty
+  commit: 1d3dc5e-dirty
   files:
   - convert.py
   - core/__init__.py
@@ -11846,7 +11846,7 @@ special_stage_merged:
   - core/vgm/updates.py
   - core/vgm/writes.py
   inputs:
-    configs/sonic_1/08_special_stage.yaml: 8b7f81ae7bae
+    configs/sonic_1/08_special_stage.yaml: 3966ef61b87d
     input/sonic_1/Mus89 - Special Stage.asm: 6211c75f8147
     tests/settings.yaml: 03ec07b2329f
 spring_yard_zone:

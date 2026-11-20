@@ -37,6 +37,8 @@ sonic1:     # every song: the reference driver
   - {name: extra_life_lofi, config: sonic_1/15_1up, variant: lofi,
      why: Extra Life lofi - the bass pair on a sliding loop, harmony mixes at F2}
   - {name: chaos_emerald, config: sonic_1/16_chaos_emerald, why: Chaos Emerald}
+  - {name: chaos_emerald_lofi, config: sonic_1/16_chaos_emerald, variant: lofi,
+     why: "Chaos Emerald lofi - chip triads at root pitch, looped early"}
   - {name: drowning, config: sonic_1/17_drowning, why: Drowning - mid-song smpsSetTempoMod}
   - {name: continue_screen, config: sonic_1/18_continue_screen, why: "Continue - range_space: chip, key changes"}
   - {name: continue_screen_lofi, config: sonic_1/18_continue_screen, variant: lofi,
